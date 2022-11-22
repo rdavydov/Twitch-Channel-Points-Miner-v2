@@ -51,6 +51,7 @@ logger = logging.getLogger(__name__)
 class TwitchChannelPointsMiner:
     __slots__ = [
         "username",
+        "otp_secret",
         "twitch",
         "claim_drops_startup",
         "enable_analytics",
@@ -71,6 +72,7 @@ class TwitchChannelPointsMiner:
     def __init__(
         self,
         username: str,
+        otp_secret: str,
         password: str = None,
         claim_drops_startup: bool = False,
         enable_analytics: bool = False,
@@ -99,7 +101,7 @@ class TwitchChannelPointsMiner:
         Settings.streamer_settings = streamer_settings
 
         user_agent = get_user_agent("FIREFOX")
-        self.twitch = Twitch(self.username, user_agent, password)
+        self.twitch = Twitch(self.username, user_agent, otp_secret,password)
 
         self.claim_drops_startup = claim_drops_startup
         self.priority = priority if isinstance(priority, list) else [priority]
