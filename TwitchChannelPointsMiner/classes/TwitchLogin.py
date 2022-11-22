@@ -148,6 +148,13 @@ class TwitchLogin(object):
                         )
                         use_backup_flow = True
                         break
+                    # https://github.com/rdavydov/Twitch-Channel-Points-Miner-v2/issues/46
+                    elif err_code == 5023:
+                        logger.error(
+                            "Probably an automatic temporary ban from Twitch. Please wait 24 hours till they lift the ban from the account and try again."
+                        )
+                        use_backup_flow = True
+                        break                    
                     else:
                         logger.error(f"Unknown error: {login_response}")
                         raise NotImplementedError(

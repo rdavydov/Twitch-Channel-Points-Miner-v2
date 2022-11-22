@@ -83,6 +83,12 @@ class TwitchChannelPointsMiner:
         # Default values for all streamers
         streamer_settings: StreamerSettings = StreamerSettings(),
     ):
+        # Fixes TypeError: 'NoneType' object is not subscriptable
+        if not username or username == "your-twitch-username":
+            logger.error("Please edit your runner file (usually run.py) and try again.")
+            logger.error("No username, exiting...")
+            sys.exit(0)
+
         # Analytics switch
         Settings.enable_analytics = enable_analytics
 
@@ -123,6 +129,10 @@ class TwitchChannelPointsMiner:
 
         # Check for the latest version of the script
         current_version, github_version = check_versions()
+
+        logger.info(f"Twitch Channel Points Miner v2-{current_version} (fork by rdavydov)")
+        logger.info("https://github.com/rdavydov/Twitch-Channel-Points-Miner-v2")
+
         if github_version == "0.0.0":
             logger.error(
                 "Unable to detect if you have the latest version of this script"
