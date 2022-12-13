@@ -62,7 +62,7 @@ class Twitch(object):
         "twilight_build_id_pattern",
     ]
 
-    def __init__(self, username, user_agent, password=None):
+    def __init__(self, username, user_agent, otp_secret,password=None):
         cookies_path = os.path.join(Path().absolute(), "cookies")
         Path(cookies_path).mkdir(parents=True, exist_ok=True)
         self.cookies_file = os.path.join(cookies_path, f"{username}.pkl")
@@ -71,7 +71,7 @@ class Twitch(object):
             choice(string.ascii_letters + string.digits) for _ in range(32)
         )
         self.twitch_login = TwitchLogin(
-            CLIENT_ID, self.device_id, username, self.user_agent, password=password
+            CLIENT_ID, self.device_id, username, self.user_agent, otp_secret,password=password
         )
         self.running = True
         self.integrity = None

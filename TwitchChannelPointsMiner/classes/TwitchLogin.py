@@ -7,6 +7,7 @@ import getpass
 import logging
 import os
 import pickle
+import pyotp
 
 import requests
 
@@ -41,12 +42,13 @@ class TwitchLogin(object):
         "session",
         "username",
         "password",
+        "otp_secret",
         "user_id",
         "email",
         "cookies"
     ]
 
-    def __init__(self, client_id, device_id, username, user_agent, password=None):
+    def __init__(self, client_id, device_id, username, user_agent, otp_secret,password=None):
         self.client_id = client_id
         self.device_id = device_id
         self.token = None
@@ -57,6 +59,7 @@ class TwitchLogin(object):
         )
         self.username = username
         self.password = password
+        self.otp_secret = otp_secret
         self.user_id = None
         self.email = None
 
@@ -95,11 +98,16 @@ class TwitchLogin(object):
                     err_code = login_response["error_code"]
                     if err_code in [3011, 3012]:  # missing 2fa token
                         if err_code == 3011:
-                            logger.info(
+                            if self.otp_secret == "":
+                                logger.info(
                                 "Two factor authentication enabled, please enter token below."
-                            )
+                                )
+                            else:
+                                post_data["authy_token"] = pyotp.TOTP(self.otp_secret).now() #HIER MAX
+                                continue
                         else:
                             logger.info("Invalid two factor token, please try again.")
+            
 
                         twofa = input("2FA token: ")
                         post_data["authy_token"] = twofa.strip()
