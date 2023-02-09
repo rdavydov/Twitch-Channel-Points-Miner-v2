@@ -1,22 +1,15 @@
 import copy
 from enum import Enum, auto
-from random import uniform
 
 from millify import millify
 
-#from TwitchChannelPointsMiner.utils import char_decision_as_index, float_round
+from TwitchChannelPointsMiner.classes.entities.Strategy import (
+    OutcomeKeys,
+    Strategy,
+    StrategySettings,
+)
+
 from TwitchChannelPointsMiner.utils import float_round
-
-
-class Strategy(Enum):
-    MOST_VOTED = auto()
-    HIGH_ODDS = auto()
-    PERCENTAGE = auto()
-    SMART_MONEY = auto()
-    SMART = auto()
-
-    def __str__(self):
-        return self.name
 
 
 class Condition(Enum):
@@ -27,20 +20,6 @@ class Condition(Enum):
 
     def __str__(self):
         return self.name
-
-
-class OutcomeKeys(object):
-    # Real key on Bet dict ['']
-    PERCENTAGE_USERS = "percentage_users"
-    ODDS_PERCENTAGE = "odds_percentage"
-    ODDS = "odds"
-    TOP_POINTS = "top_points"
-    # Real key on Bet dict [''] - Sum()
-    TOTAL_USERS = "total_users"
-    TOTAL_POINTS = "total_points"
-    # This key does not exist
-    DECISION_USERS = "decision_users"
-    DECISION_POINTS = "decision_points"
 
 
 class DelayMode(Enum):
@@ -72,43 +51,46 @@ class BetSettings(object):
     __slots__ = [
         "strategy",
         "percentage",
-        "percentage_gap",
         "max_points",
+        "only_doubt",
         "minimum_points",
         "stealth_mode",
         "filter_condition",
         "delay",
         "delay_mode",
+        "strategy_settings",
     ]
 
     def __init__(
         self,
         strategy: Strategy = None,
         percentage: int = None,
-        percentage_gap: int = None,
         max_points: int = None,
+        only_doubt: bool = None,
         minimum_points: int = None,
         stealth_mode: bool = None,
         filter_condition: FilterCondition = None,
         delay: float = None,
         delay_mode: DelayMode = None,
+        strategy_settings: StrategySettings = None,
     ):
         self.strategy = strategy
         self.percentage = percentage
-        self.percentage_gap = percentage_gap
         self.max_points = max_points
+        self.only_doubt = only_doubt
         self.minimum_points = minimum_points
         self.stealth_mode = stealth_mode
         self.filter_condition = filter_condition
         self.delay = delay
         self.delay_mode = delay_mode
+        self.strategy_settings = StrategySettings(
+            strategy=strategy, **strategy_settings
+        ).get_instance()
 
     def default(self):
         self.strategy = self.strategy if self.strategy is not None else Strategy.SMART
         self.percentage = self.percentage if self.percentage is not None else 5
-        self.percentage_gap = (
-            self.percentage_gap if self.percentage_gap is not None else 20
-        )
+        self.only_doubt = self.only_doubt if self.only_doubt is not None else False
         self.max_points = self.max_points if self.max_points is not None else 50000
         self.minimum_points = (
             self.minimum_points if self.minimum_points is not None else 0
@@ -120,13 +102,16 @@ class BetSettings(object):
         self.delay_mode = (
             self.delay_mode if self.delay_mode is not None else DelayMode.FROM_END
         )
+        self.strategy_settings = (
+            self.strategy_settings if self.strategy_settings is not None else {}
+        )
 
     def __repr__(self):
-        return f"BetSettings(strategy={self.strategy}, percentage={self.percentage}, percentage_gap={self.percentage_gap}, max_points={self.max_points}, minimum_points={self.minimum_points}, stealth_mode={self.stealth_mode})"
+        return f"BetSettings(strategy={self.strategy}, percentage={self.percentage}, max_points={self.max_points}, minimum_points={self.minimum_points}, stealth_mode={self.stealth_mode})"
 
 
 class Bet(object):
-    __slots__ = ["outcomes", "decision", "total_users", "total_points", "settings"]
+    __slots__ = ["outcomes", "decision", "total_users", "total_points", "settings", "strategy"]
 
     def __init__(self, outcomes: list, settings: BetSettings):
         self.outcomes = outcomes
@@ -225,91 +210,10 @@ class Bet(object):
                 if key not in self.outcomes[index]:
                     self.outcomes[index][key] = 0
 
-    '''def __return_choice(self, key) -> str:
-        return "A" if self.outcomes[0][key] > self.outcomes[1][key] else "B"'''
-
-    def __return_choice(self, key) -> int:
-        largest=0
-        for index in range(0, len(self.outcomes)):
-            if self.outcomes[index][key] > self.outcomes[largest][key]:
-                largest = index
-        return largest
-
     def skip(self) -> bool:
-        if self.settings.filter_condition is not None:
-            # key == by , condition == where
-            key = self.settings.filter_condition.by
-            condition = self.settings.filter_condition.where
-            value = self.settings.filter_condition.value
-
-            fixed_key = (
-                key
-                if key not in [OutcomeKeys.DECISION_USERS, OutcomeKeys.DECISION_POINTS]
-                else key.replace("decision", "total")
-            )
-            if key in [OutcomeKeys.TOTAL_USERS, OutcomeKeys.TOTAL_POINTS]:
-                compared_value = (
-                    self.outcomes[0][fixed_key] + self.outcomes[1][fixed_key]
-                )
-            else:
-                #outcome_index = char_decision_as_index(self.decision["choice"])
-                outcome_index = self.decision["choice"]
-                compared_value = self.outcomes[outcome_index][fixed_key]
-
-            # Check if condition is satisfied
-            if condition == Condition.GT:
-                if compared_value > value:
-                    return False, compared_value
-            elif condition == Condition.LT:
-                if compared_value < value:
-                    return False, compared_value
-            elif condition == Condition.GTE:
-                if compared_value >= value:
-                    return False, compared_value
-            elif condition == Condition.LTE:
-                if compared_value <= value:
-                    return False, compared_value
-            return True, compared_value  # Else skip the bet
-        else:
-            return False, 0  # Default don't skip the bet
+        return self.strategy.skip()
 
     def calculate(self, balance: int) -> dict:
-        self.decision = {"choice": None, "amount": 0, "id": None}
-        if self.settings.strategy == Strategy.MOST_VOTED:
-            self.decision["choice"] = self.__return_choice(OutcomeKeys.TOTAL_USERS)
-        elif self.settings.strategy == Strategy.HIGH_ODDS:
-            self.decision["choice"] = self.__return_choice(OutcomeKeys.ODDS)
-        elif self.settings.strategy == Strategy.PERCENTAGE:
-            self.decision["choice"] = self.__return_choice(OutcomeKeys.ODDS_PERCENTAGE)
-        elif self.settings.strategy == Strategy.SMART_MONEY:
-            self.decision["choice"] = self.__return_choice(OutcomeKeys.TOP_POINTS)
-        elif self.settings.strategy == Strategy.SMART:
-            difference = abs(
-                self.outcomes[0][OutcomeKeys.PERCENTAGE_USERS]
-                - self.outcomes[1][OutcomeKeys.PERCENTAGE_USERS]
-            )
-            self.decision["choice"] = (
-                self.__return_choice(OutcomeKeys.ODDS)
-                if difference < self.settings.percentage_gap
-                else self.__return_choice(OutcomeKeys.TOTAL_USERS)
-            )
-
-        if self.decision["choice"] is not None:
-            #index = char_decision_as_index(self.decision["choice"])
-            index = self.decision["choice"]
-            self.decision["id"] = self.outcomes[index]["id"]
-            self.decision["amount"] = min(
-                int(balance * (self.settings.percentage / 100)),
-                self.settings.max_points,
-            )
-            if (
-                self.settings.stealth_mode is True
-                and self.decision["amount"]
-                >= self.outcomes[index][OutcomeKeys.TOP_POINTS]
-            ):
-                reduce_amount = uniform(1, 5)
-                self.decision["amount"] = (
-                    self.outcomes[index][OutcomeKeys.TOP_POINTS] - reduce_amount
-                )
-            self.decision["amount"] = int(self.decision["amount"])
+        self.strategy = Strategy(self.outcomes, self.settings).get_instance()
+        self.decision = self.strategy.calculate(balance)
         return self.decision
