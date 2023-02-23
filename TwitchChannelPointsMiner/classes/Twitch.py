@@ -150,11 +150,10 @@ class Twitch(object):
             settings_request = requests.get(settings_url, headers=headers)
             response = settings_request.text
             regex_spade = '"spade_url":"(.*?)"'
-            streamer.stream.spade_url = re.search(
-                regex_spade, response).group(1)
+            streamer.stream.spade_url = re.search(regex_spade, response).group(1)
         except requests.exceptions.RequestException as e:
-            logger.error(
-                f"Something went wrong during extraction of 'spade_url': {e}")
+            logger.error(f"Something went wrong during extraction of 'spade_url': {e}")
+            logger.exception("message")
 
     def get_broadcast_id(self, streamer):
         json_data = copy.deepcopy(GQLOperations.WithIsStreamLiveQuery)
@@ -296,6 +295,7 @@ class Twitch(object):
             logger.error(
                 f"Error with GQLOperations ({json_data['operationName']}): {e}"
             )
+            logger.exception("message")
             return {}
 
     # Request for Integrity Token
@@ -335,6 +335,7 @@ class Twitch(object):
             return self.integrity
         except requests.exceptions.RequestException as e:
             logger.error(f"Error with post_integrity: {e}")
+            logger.exception("message")
             return self.integrity
 
     # verify the integrity token's contents for the "is_bad_bot" flag
@@ -371,6 +372,7 @@ class Twitch(object):
             return self.client_version
         except requests.exceptions.RequestException as e:
             logger.error(f"Error with update_client_version: {e}")
+            logger.exception("message")
             return self.client_version
 
     def send_minute_watched_events(self, streamers, priority, chunk_size=3):
@@ -642,12 +644,12 @@ class Twitch(object):
                                             )
 
                     except requests.exceptions.ConnectionError as e:
-                        logger.error(
-                            f"Error while trying to send minute watched: {e}")
+                        logger.error(f"Error while trying to send minute watched: {e}")
+                        logger.exception("message")
                         self.__check_connection_handler(chunk_size)
                     except requests.exceptions.Timeout as e:
-                        logger.error(
-                            f"Error while trying to send minute watched: {e}")
+                        logger.error(f"Error while trying to send minute watched: {e}")
+                        logger.exception("message")
 
                     self.__chuncked_sleep(
                         next_iteration - time.time(), chunk_size=chunk_size
@@ -657,8 +659,8 @@ class Twitch(object):
                     # self.__chuncked_sleep(60, chunk_size=chunk_size)
                     self.__chuncked_sleep(20, chunk_size=chunk_size)
             except Exception:
-                logger.error(
-                    "Exception raised in send minute watched", exc_info=True)
+                logger.error("Exception raised in send minute watched", exc_info=True)
+                logger.exception("message")
 
     # === CHANNEL POINTS / PREDICTION === #
     # Load the amount of current points for a channel, check if a bonus is available
@@ -919,18 +921,15 @@ class Twitch(object):
                             drop.is_claimed = self.claim_drop(drop)
                             time.sleep(random.uniform(5, 10))
 
-    def sync_campaigns(self, streamers, chunk_size=3):
+    def sync_campaigns(self, streamers, twitch_dash_update, chunk_size=3):
         campaigns_update = 0
+        campaigns = []
         while self.running:
             try:
-                # Get update from dashboard each 60minutes
+                # Get update from dashboard each X minutes (defined in global variable twitch_dash_update)
                 if (
                     campaigns_update == 0
-                    # or ((time.time() - campaigns_update) / 60) > 60
-                    # TEMPORARY AUTO DROP CLAIMING FIX
-                    # 30 minutes instead of 60 minutes
-                    or ((time.time() - campaigns_update) / 30) > 30
-                    #####################################
+                    or ((time.time() - campaigns_update) / twitch_dash_update) > twitch_dash_update
                 ):
                     campaigns_update = time.time()
 
@@ -943,8 +942,6 @@ class Twitch(object):
                     campaigns_details = self.__get_campaigns_details(
                         self.__get_drops_dashboard(status="ACTIVE")
                     )
-                    campaigns = []
-
                     # Going to clear array and structure. Remove all the timeBasedDrops expired or not started yet
                     for index in range(0, len(campaigns_details)):
                         if campaigns_details[index] is not None:
@@ -977,6 +974,7 @@ class Twitch(object):
 
             except (ValueError, KeyError, requests.exceptions.ConnectionError) as e:
                 logger.error(f"Error while syncing inventory: {e}")
+                logger.exception("message")
                 self.__check_connection_handler(chunk_size)
 
             self.__chuncked_sleep(60, chunk_size=chunk_size)

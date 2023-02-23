@@ -54,6 +54,7 @@ class TwitchChannelPointsMiner:
         "username",
         "twitch",
         "claim_drops_startup",
+        "twitch_dash_update",
         "enable_analytics",
         "disable_ssl_cert_verification",
         "disable_at_in_nickname",
@@ -76,6 +77,7 @@ class TwitchChannelPointsMiner:
         username: str,
         password: str = None,
         claim_drops_startup: bool = False,
+        twitch_dash_update : int = 60,
         enable_analytics: bool = False,
         disable_ssl_cert_verification: bool = False,
         disable_at_in_nickname: bool = False,
@@ -140,6 +142,7 @@ class TwitchChannelPointsMiner:
         self.twitch = Twitch(self.username, user_agent, password)
 
         self.claim_drops_startup = claim_drops_startup
+        self.twitch_dash_update = twitch_dash_update
         self.priority = priority if isinstance(priority, list) else [priority]
 
         self.streamers: list[Streamer] = []
@@ -315,7 +318,7 @@ class TwitchChannelPointsMiner:
             ):
                 self.sync_campaigns_thread = threading.Thread(
                     target=self.twitch.sync_campaigns,
-                    args=(self.streamers,),
+                    args=(self.streamers, self.twitch_dash_update),
                 )
                 self.sync_campaigns_thread.name = "Sync campaigns/inventory"
                 self.sync_campaigns_thread.start()
