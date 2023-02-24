@@ -853,8 +853,13 @@ class Twitch(object):
 
             response = self.post_gql_request(json_data)
             for r in response:
-                if r["data"]["user"] is not None:
-                    result.append(r["data"]["user"]["dropCampaign"])
+                try:
+                    if r["data"]["user"] is not None:
+                        result.append(r["data"]["user"]["dropCampaign"])
+                except KeyError as e:
+                    logger.debug(
+                        f"KeyError: r['data']['user'] {e}"
+                    )
         return result
 
     def __sync_campaigns(self, campaigns):
