@@ -1,5 +1,5 @@
 // https://apexcharts.com/javascript-chart-demos/line-charts/zoomable-timeseries/
-var options = {
+const options = {
     series: [],
     chart: {
         type: 'area',
@@ -56,11 +56,11 @@ var options = {
             format: 'HH:mm:ss dd MMM',
         },
         custom: ({
-            series,
-            seriesIndex,
-            dataPointIndex,
-            w
-        }) => {
+                     series,
+                     seriesIndex,
+                     dataPointIndex,
+                     w
+                 }) => {
             return (`<div class="apexcharts-active">
                 <div class="apexcharts-tooltip-title">${w.globals.seriesNames[seriesIndex]}</div>
                 <div class="apexcharts-tooltip-series-group apexcharts-active" style="order: 1; display: flex; padding-bottom: 0px !important;">
@@ -79,17 +79,17 @@ var options = {
     }
 };
 
-var chart = new ApexCharts(document.querySelector("#chart"), options);
-var currentStreamer = null;
-var annotations = [];
+const chart = new ApexCharts(document.querySelector("#chart"), options);
+let currentStreamer = null;
+let annotations = [];
 
-var streamersList = [];
-var sortBy = "Name ascending";
-var sortField = 'name';
+let streamersList = [];
+let sortBy = "Name ascending";
+let sortField = 'name';
 
-var startDate = new Date();
+let startDate = new Date();
 startDate.setDate(startDate.getDate() - daysAgo);
-var endDate = new Date();
+let endDate = new Date();
 
 $(document).ready(function () {
     chart.render();
@@ -116,10 +116,10 @@ $(document).ready(function () {
 });
 
 function formatDate(date) {
-    var d = new Date(date),
-        month = '' + (d.getMonth() + 1),
-        day = '' + d.getDate(),
-        year = d.getFullYear();
+    const d = new Date(date);
+    let month = '' + (d.getMonth() + 1),
+        day = '' + d.getDate();
+    const year = d.getFullYear();
 
     if (month.length < 2) month = '0' + month;
     if (day.length < 2) day = '0' + day;
@@ -156,7 +156,7 @@ function getStreamerData(streamer) {
 
 function getAllStreamersData() {
     $.getJSON(`./json_all`, function (response) {
-        for (var i in response) {
+        for (let i in response) {
             chart.appendSeries({
                 name: response[i]["name"].replace(".json", ""),
                 data: response[i]["data"]["series"]
@@ -175,11 +175,11 @@ function getStreamers() {
 
 function renderStreamers() {
     $("#streamers-list").empty();
-    var promised = new Promise((resolve, reject) => {
+    const promised = new Promise((resolve, reject) => {
         streamersList.forEach((streamer, index, array) => {
             displayname = streamer.name.replace(".json", "");
             if (sortField == 'points') displayname = "<font size='-2'>" + streamer['points'] + "</font>&nbsp;" + displayname;
-            else if (sortField == 'last_activity') displayname = "<font size='-2'>" + formatDate(streamer['last_activity']) + "</font>&nbsp;"+ displayname;
+            else if (sortField == 'last_activity') displayname = "<font size='-2'>" + formatDate(streamer['last_activity']) + "</font>&nbsp;" + displayname;
             $("#streamers-list").append(`<li><a onClick="changeStreamer('${streamer.name}', ${index + 1}); return false;">${displayname}</a></li>`);
             if (index === array.length - 1) resolve();
         });

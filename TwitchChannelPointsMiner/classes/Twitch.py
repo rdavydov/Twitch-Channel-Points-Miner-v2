@@ -111,8 +111,8 @@ class Twitch(object):
                 }
 
                 if (
-                    streamer.stream.game_name() is not None
-                    and streamer.settings.claim_drops is True
+                        streamer.stream.game_name() is not None
+                        and streamer.settings.claim_drops is True
                 ):
                     event_properties["game"] = streamer.stream.game_name()
                     # Update also the campaigns_ids so we are sure to tracking the correct campaign
@@ -192,16 +192,16 @@ class Twitch(object):
         json_data["variables"] = {"channelLogin": streamer_username}
         json_response = self.post_gql_request(json_data)
         if (
-            "data" not in json_response
-            or "user" not in json_response["data"]
-            or json_response["data"]["user"] is None
+                "data" not in json_response
+                or "user" not in json_response["data"]
+                or json_response["data"]["user"] is None
         ):
             raise StreamerDoesNotExistException
         else:
             return json_response["data"]["user"]["id"]
 
     def get_followers(
-        self, limit: int = 100, order: FollowersOrder = FollowersOrder.ASC
+            self, limit: int = 100, order: FollowersOrder = FollowersOrder.ASC
     ):
         json_data = copy.deepcopy(GQLOperations.ChannelFollows)
         json_data["variables"] = {"limit": limit, "order": str(order)}
@@ -371,10 +371,10 @@ class Twitch(object):
                     i
                     for i in range(0, len(streamers))
                     if streamers[i].is_online is True
-                    and (
-                        streamers[i].online_at == 0
-                        or (time.time() - streamers[i].online_at) > 30
-                    )
+                       and (
+                               streamers[i].online_at == 0
+                               or (time.time() - streamers[i].online_at) > 30
+                       )
                 ]
 
                 for index in streamers_index:
@@ -390,13 +390,13 @@ class Twitch(object):
                         streamers_watching += streamers_index[:2]
 
                     elif (
-                        prior in [Priority.POINTS_ASCENDING,
-                                  Priority.POINTS_DESCEDING]
-                        and len(streamers_watching) < 2
+                            prior in [Priority.POINTS_ASCENDING,
+                                      Priority.POINTS_DESCEDING]
+                            and len(streamers_watching) < 2
                     ):
                         items = [
                             {"points": streamers[index].channel_points,
-                                "index": index}
+                             "index": index}
                             for index in streamers_index
                         ]
                         items = sorted(
@@ -418,18 +418,18 @@ class Twitch(object):
                         """
                         for index in streamers_index:
                             if (
-                                streamers[index].settings.watch_streak is True
-                                and streamers[index].stream.watch_streak_missing is True
-                                and (
+                                    streamers[index].settings.watch_streak is True
+                                    and streamers[index].stream.watch_streak_missing is True
+                                    and (
                                     streamers[index].offline_at == 0
                                     or (
-                                        (time.time() -
-                                         streamers[index].offline_at)
-                                        // 60
+                                            (time.time() -
+                                             streamers[index].offline_at)
+                                            // 60
                                     )
                                     > 30
-                                )
-                                and streamers[index].stream.minute_watched < 7
+                            )
+                                    and streamers[index].stream.minute_watched < 7
                             ):
                                 streamers_watching.append(index)
                                 if len(streamers_watching) == 2:
@@ -488,8 +488,8 @@ class Twitch(object):
                                 for drop in campaign.drops:
                                     # We could add .has_preconditions_met condition inside is_printable
                                     if (
-                                        drop.has_preconditions_met is not False
-                                        and drop.is_printable is True
+                                            drop.has_preconditions_met is not False
+                                            and drop.is_printable is True
                                     ):
                                         drop_messages = [
                                             f"{streamers[index]} is streaming {streamers[index].stream}",
@@ -606,10 +606,10 @@ class Twitch(object):
                     }
                     response = self.post_gql_request(json_data)
                     if (
-                        "data" in response
-                        and "makePrediction" in response["data"]
-                        and "error" in response["data"]["makePrediction"]
-                        and response["data"]["makePrediction"]["error"] is not None
+                            "data" in response
+                            and "makePrediction" in response["data"]
+                            and "error" in response["data"]["makePrediction"]
+                            and response["data"]["makePrediction"]["error"] is not None
                     ):
                         error_code = response["data"]["makePrediction"]["error"]["code"]
                         logger.error(
@@ -755,14 +755,14 @@ class Twitch(object):
             # response["data"]["claimDropRewards"] can be null and respose["data"]["errors"] != []
             # or response["data"]["claimDropRewards"]["status"] === DROP_INSTANCE_ALREADY_CLAIMED
             if ("claimDropRewards" in response["data"]) and (
-                response["data"]["claimDropRewards"] is None
+                    response["data"]["claimDropRewards"] is None
             ):
                 return False
             elif ("errors" in response["data"]) and (response["data"]["errors"] != []):
                 return False
             elif ("claimDropRewards" in response["data"]) and (
-                response["data"]["claimDropRewards"]["status"]
-                in ["ELIGIBLE_FOR_ALL", "DROP_INSTANCE_ALREADY_CLAIMED"]
+                    response["data"]["claimDropRewards"]["status"]
+                    in ["ELIGIBLE_FOR_ALL", "DROP_INSTANCE_ALREADY_CLAIMED"]
             ):
                 return True
             else:
@@ -788,8 +788,8 @@ class Twitch(object):
             try:
                 # Get update from dashboard each 60minutes
                 if (
-                    campaigns_update == 0
-                    or ((time.time() - campaigns_update) / 60) > 60
+                        campaigns_update == 0
+                        or ((time.time() - campaigns_update) / 60) > 60
                 ):
                     campaigns_update = time.time()
                     # Get full details from current ACTIVE campaigns
@@ -814,14 +814,14 @@ class Twitch(object):
                 # Check if user It's currently streaming the same game present in campaigns_details
                 for i in range(0, len(streamers)):
                     if streamers[i].drops_condition() is True:
-                        # yes! The streamer[i] have the drops_tags enabled and we It's currently stream a game with campaign active!
+                        # yes! The streamer[i] have the drops_tags enabled and it's currently stream a game with campaign active!
                         # With 'campaigns_ids' we are also sure that this streamer have the campaign active.
-                        # yes! The streamer[index] have the drops_tags enabled and we It's currently stream a game with campaign active!
+                        # yes! The streamer[index] have the drops_tags enabled and it's currently stream a game with campaign active!
                         streamers[i].stream.campaigns = list(
                             filter(
                                 lambda x: x.drops != []
-                                and x.game == streamers[i].stream.game
-                                and x.id in streamers[i].stream.campaigns_ids,
+                                          and x.game == streamers[i].stream.game
+                                          and x.id in streamers[i].stream.campaigns_ids,
                                 campaigns,
                             )
                         )
