@@ -61,7 +61,7 @@ class ClientIRC(SingleServerIRCBot):
 
         # also self._realname
         # if msg.startswith(f"@{self._nickname}"):
-        if f"@{self._nickname.lower()}" in msg.lower():
+        if f"{self._nickname.lower()}" in msg.lower():
             # nickname!username@nickname.tmi.twitch.tv
             nick = event.source.split("!", 1)[0]
             # chan = event.target
