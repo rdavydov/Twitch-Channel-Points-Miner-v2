@@ -75,7 +75,7 @@ class ClientIRC(SingleServerIRCBot):
         msg = event.arguments[0]
 
         # Known message "TwitchLit A wild {Pokemon} appears TwitchLit Catch it using !pokecatch (winners revealed in 90s)"
-        if "Catch it using !pokecatch" in msg(): #Try part of string
+        if f"Catch it using !pokecatch" in msg(): #Try part of string
             # nickname!username@nickname.tmi.twitch.tv
             nick = event.source.split("!", 1)[0]
             # chan = event.target
@@ -96,7 +96,6 @@ class ThreadChat(Thread):
         self.username = username
         self.token = token
         self.channel = channel
-
         self.chat_irc = None
 
     def run(self):
