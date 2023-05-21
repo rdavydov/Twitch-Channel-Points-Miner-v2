@@ -74,9 +74,8 @@ class ClientIRC(SingleServerIRCBot):
     def on_pubmsg(self, connection, event):
         msg = event.arguments[0]
 
-        # also self._realname
-        # if msg.startswith(f"@{self._nickname}"):
-        if f"twitchlit a wild" in msg.lower():
+        # Known message "TwitchLit A wild {Pokemon} appears TwitchLit Catch it using !pokecatch (winners revealed in 90s)"
+        if "Catch it using !pokecatch" in msg(): #Try part of string
             # nickname!username@nickname.tmi.twitch.tv
             nick = event.source.split("!", 1)[0]
             # chan = event.target
