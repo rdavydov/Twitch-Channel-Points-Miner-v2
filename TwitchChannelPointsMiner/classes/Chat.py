@@ -70,6 +70,21 @@ class ClientIRC(SingleServerIRCBot):
                         "emoji": ":speech_balloon:", "event": Events.CHAT_MENTION})
     # """
 
+    # """
+    def on_pubmsg(self, connection, event):
+        msg = event.arguments[0]
+
+        # also self._realname
+        # if msg.startswith(f"@{self._nickname}"):
+        if f"TwitchLit A wild" in msg.lower():
+            # nickname!username@nickname.tmi.twitch.tv
+            nick = event.source.split("!", 1)[0]
+            # chan = event.target
+
+            logger.info(f"{nick} at {self.channel} wrote: {msg}", extra={
+                        "emoji": ":speech_balloon:", "event": Events.CHAT_MENTION})
+    # """
+
 
 class ThreadChat(Thread):
     def __deepcopy__(self, memo):

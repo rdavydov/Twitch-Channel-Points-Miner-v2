@@ -157,9 +157,9 @@ class TwitchChannelPointsMiner:
         current_version, github_version = check_versions()
 
         logger.info(
-            f"Twitch Channel Points Miner v2-{current_version} (fork by rdavydov)")
+            f"Twitch Channel Points Miner v2-{current_version} (fork of rdavydov by Stayingfalse)")
         logger.info(
-            "https://github.com/rdavydov/Twitch-Channel-Points-Miner-v2")
+            "https://github.com/Stayingfalse/Twitch-Channel-Points-Miner-v2")
 
         if github_version == "0.0.0":
             logger.error(
@@ -175,7 +175,7 @@ class TwitchChannelPointsMiner:
 
     def analytics(
         self,
-        host: str = "127.0.0.1",
+        host: str = "0.0.0.0",
         port: int = 5000,
         refresh: int = 5,
         days_ago: int = 7,
