@@ -70,13 +70,13 @@ class ClientIRC(SingleServerIRCBot):
                         "emoji": ":speech_balloon:", "event": Events.CHAT_MENTION})
     # """
 
-    # "@Stayingfalse Trying to get "
+    # """ @Stayingfalse Trying to get
     def on_pubmsg(self, connection, event):
         msg = event.arguments[0]
 
         # also self._realname
         # if msg.startswith(f"@{self._nickname}"):
-        if f"twitchit a wild" in msg.lower():
+        if f"twitchlit a wild" in msg.lower():
             # nickname!username@nickname.tmi.twitch.tv
             nick = event.source.split("!", 1)[0]
             # chan = event.target
