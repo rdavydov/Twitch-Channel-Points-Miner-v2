@@ -68,14 +68,10 @@ class ClientIRC(SingleServerIRCBot):
 
             logger.info(f"{nick} at {self.channel} wrote: {msg}", extra={
                         "emoji": ":speech_balloon:", "event": Events.CHAT_MENTION})
-    # """
-
-    # """ @Stayingfalse Trying to get
-    def on_pubmsg(self, connection, event):
-        msg = event.arguments[0]
-
+    
         # Known message "TwitchLit A wild {Pokemon} appears TwitchLit Catch it using !pokecatch (winners revealed in 90s)"
-        if f"Catch it using !pokecatch" in msg(): #Try part of string
+        #if f"Catch it using !pokecatch" in msg(): #Try part of string
+        if msg.startswith("TwitchLit A wild ")
             # nickname!username@nickname.tmi.twitch.tv
             nick = event.source.split("!", 1)[0]
             # chan = event.target
