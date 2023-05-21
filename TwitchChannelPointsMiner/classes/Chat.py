@@ -79,6 +79,7 @@ class ClientIRC(SingleServerIRCBot):
             # nickname!username@nickname.tmi.twitch.tv
             nick = event.source.split("!", 1)[0]
             # chan = event.target
+            self.send_msg("!pokecatch")
 
             logger.info(f"{nick} at {self.channel} wrote: {msg}", extra={
                         "emoji": ":speech_balloon:", "event": Events.CHAT_MENTION})
