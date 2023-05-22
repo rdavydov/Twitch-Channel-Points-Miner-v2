@@ -58,6 +58,8 @@ class ClientIRC(SingleServerIRCBot):
     # """
     def on_pubmsg(self, connection, event):
         msg = event.arguments[0]
+        # Known message "TwitchLit A wild {Pokemon} appears TwitchLit Catch it using !pokecatch (winners revealed in 90s)"
+        newpokemon = "Catch it using !pokecatch"
 
         # also self._realname
         # if msg.startswith(f"@{self._nickname}"):
@@ -69,13 +71,12 @@ class ClientIRC(SingleServerIRCBot):
             logger.info(f"{nick} at {self.channel} wrote: {msg}", extra={
                         "emoji": ":speech_balloon:", "event": Events.CHAT_MENTION})
     
-        # Known message "TwitchLit A wild {Pokemon} appears TwitchLit Catch it using !pokecatch (winners revealed in 90s)"
-        #if f"Catch it using !pokecatch" in msg(): #Try part of string
-        if msg.endswith("Catch it using !pokecatch (winners revealed in 90s)"):
+        if newpokemon.lower in msg.lower():        
+            #if msg.endswith("Catch it using !pokecatch (winners revealed in 90s)"):
             # nickname!username@nickname.tmi.twitch.tv
             nick = event.source.split("!", 1)[0]
             # chan = event.target
-            self.send_msg("!pokecatch")
+            #self.send_msg("!pokecatch")
 
             logger.info(f"{nick} at {self.channel} wrote: {msg}", extra={
                         "emoji": ":speech_balloon:", "event": Events.CHAT_MENTION})
