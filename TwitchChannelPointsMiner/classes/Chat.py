@@ -81,8 +81,8 @@ class ClientIRC(SingleServerIRCBot):
 
         pokecaught = " has been caught by: " #Pokemon Caught
         if pokecaught in msg:  #Caught by me
+            pokemon = msg.split(" ")[0]        
             if self._nickname.lower() in msg:
-                pokemon = msg.split(" ")[0]        
                 # nickname!username@nickname.tmi.twitch.tv
                 nick = event.source.split("!", 1)[0]
                 time.sleep(random.randrange(5,30))          
