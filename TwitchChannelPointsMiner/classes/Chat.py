@@ -72,7 +72,6 @@ class ClientIRC(SingleServerIRCBot):
                         "emoji": ":speech_balloon:", "event": Events.CHAT_MENTION})
  
         """ START POKEMON CODE """
-        global pokeball
         ball = pokeball or "greatball"
 
         pokeescape = "escaped. No one caught it. jonasw5Rigged" #Pokemon Escaped
@@ -118,7 +117,6 @@ class ClientIRC(SingleServerIRCBot):
 
         if nick.lower is self._nickname.lower():
             if "~ball" in msg:
-                global pokeball
                 pokeball = msg.split(" ",1)[0]
                 self.connection.privmsg(self.channel,f"Default Ball Changed to --{ball}")
 
@@ -128,7 +126,6 @@ class ClientIRC(SingleServerIRCBot):
         nick = event.source.split("!", 1)[0]
         # also self._realname
         # if msg.startswith(f"@{self._nickname}"):
-        global pokeball
         ball = pokeball or "greatball"
        
         pokenew = 'Catch it using !pokecatch' # Define message for a new pokemon
