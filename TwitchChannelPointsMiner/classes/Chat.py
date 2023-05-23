@@ -11,6 +11,8 @@ from TwitchChannelPointsMiner.classes.Settings import Events
 
 logger = logging.getLogger(__name__)
 
+pokeball = ""
+
 
 class ChatPresence(Enum):
     ALWAYS = auto()
@@ -70,6 +72,9 @@ class ClientIRC(SingleServerIRCBot):
                         "emoji": ":speech_balloon:", "event": Events.CHAT_MENTION})
  
         """ START POKEMON CODE """
+        global pokeball
+        ball = pokeball or "greatball"
+
         pokeescape = "escaped. No one caught it. jonasw5Rigged" #Pokemon Escaped
         if pokeescape in msg:
             pokemon = msg.split(" ")[0]        
@@ -93,22 +98,38 @@ class ClientIRC(SingleServerIRCBot):
                 #self.connection.privmsg(self.channel,f"Well Done {caughtby} enjoy your {pokemon} cezzbbPotato")
                 logger.info(f"{pokemon} at {self.channel} Excaped but was caught by {caughtby}  <https://twitch.tv/{self.channel[1:]}>", extra={"emoji": ":basketball:", "event": Events.CHAT_MENTION})
 
-        pokenoball = f"@{self._nickname.lower()} You don't own that ball. Check the extension to see your items" #Pokemon No Ball then throw
+        pokenoball = f"@{self._nickname.lower()} You don't own that ball. Check the extension to see your items" 
         if pokenoball in msg:
             pokemon = msg.split(" ")[0]        
             # nickname!username@nickname.tmi.twitch.tv
             nick = event.source.split("!", 1)[0]
             time.sleep(random.randrange(2,10))
-            self.connection.privmsg(self.channel,f"!pokemart greatball 3")
-            time.sleep(random.randrange(1,5))
-            self.connection.privmsg(self.channel,f"!pokecatch greatball")
+            self.connection.privmsg(self.channel,f"!pokemart {ball} 3")
             logger.info(f"New Ball Purchased at <https://twitch.tv/{self.channel[1:]}>", extra={"emoji": ":basketball:", "event": Events.CHAT_MENTION})
+
+        pokepurchased = f"@{self._nickname.lower()} Purchase successful!"
+        if pokepurchased in msg:
+            pokemon = msg.split(" ")[3]                
+            # nickname!username@nickname.tmi.twitch.tv
+            nick = event.source.split("!", 1)[0]
+            time.sleep(random.randrange(1,10))
+            self.connection.privmsg(self.channel,f"!pokecatch {ball}")
+            logger.info(f"Purchase Successful at {self.channel} <https://twitch.tv/{self.channel[1:]}>)", extra={"emoji": ":basketball:", "event": Events.CHAT_MENTION})
+
+        if nick.lower = self._nickname.lower():
+            if "~ball" in msg:
+                global pokeball
+                pokeball = msg.split(" ",1)[0]
+                self.connection.privmsg(self.channel,f"Default Ball Changed to --{ball}")
+
             
     def on_ctcp(self, connection, event):
         msg = event.arguments[1]
         nick = event.source.split("!", 1)[0]
         # also self._realname
         # if msg.startswith(f"@{self._nickname}"):
+        global pokeball
+        ball = pokeball or "greatball"
        
         pokenew = 'Catch it using !pokecatch' # Define message for a new pokemon
         if pokenew in msg:
@@ -116,11 +137,10 @@ class ClientIRC(SingleServerIRCBot):
             # nickname!username@nickname.tmi.twitch.tv
             nick = event.source.split("!", 1)[0]
             time.sleep(random.randrange(1,10))
-            self.connection.privmsg(self.channel,"!pokecatch greatball")
+            self.connection.privmsg(self.channel,f"!pokecatch {ball}")
             logger.info(f"Pokemon {pokemon} Spawned in at {self.channel} <https://twitch.tv/{self.channel[1:]}>)", extra={"emoji": ":basketball:", "event": Events.CHAT_MENTION})
         
         """ END OF POKEMON CODE """
-
 
 class ThreadChat(Thread):
     def __deepcopy__(self, memo):
