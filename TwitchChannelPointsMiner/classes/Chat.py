@@ -117,6 +117,7 @@ class ClientIRC(SingleServerIRCBot):
 
         if nick.lower is self._nickname.lower():
             if "~ball" in msg:
+                global pokeball
                 pokeball = msg.split(" ",1)[0]
                 self.connection.privmsg(self.channel,f"Default Ball Changed to --{ball}")
 
