@@ -76,19 +76,25 @@ class ClientIRC(SingleServerIRCBot):
             # nickname!username@nickname.tmi.twitch.tv
             nick = event.source.split("!", 1)[0]
             time.sleep(random.randrange(5,30))          
-            self.connection.privmsg(self.channel,f"cezzbbHYPE cezzbbHYPE {pokemon} you pretty you are mine now! cezzbbHYPE cezzbbHYPE")
-            logger.info(f"{pokemon} at {self.channel} Excaped  https://twitch.tv/{self.channel[1:]}", extra={"emoji": ":basketball:", "event": Events.CHAT_MENTION})
+            self.connection.privmsg(self.channel,f"cezzbbRIOT cezzbbRiotA  Damn you {pokemon} cezzbbRiotA cezzbbRIOT")
+            logger.info(f"{pokemon} at {self.channel} Excaped", extra={"emoji": ":basketball:", "event": Events.CHAT_MENTION})
 
+        """
         pokecaught = " has been caught by: " #Pokemon Caught
-        if pokecaught in msg:
+        if pokecaught in msg:  #Caught by me
             if self._nickname.lower() in msg:
                 pokemon = msg.split(" ", 1)[0]        
                 # nickname!username@nickname.tmi.twitch.tv
                 nick = event.source.split("!", 1)[0]
                 time.sleep(random.randrange(5,30))          
-                self.connection.privmsg(self.channel,f"cezzbbRIOT cezzbbRiotA  Damn you {pokemon} cezzbbRiotA cezzbbRIOT")
-                logger.info(f"Pokemon {pokemon} Was Caught at {self.channel}  https://twitch.tv/{self.channel[1:]}", extra={"emoji": ":basketball:", "event": Events.CHAT_MENTION})
-
+                self.connection.privmsg(self.channel,f"cezzbbHYPE cezzbbHYPE {pokemon} you pretty you are mine now! cezzbbHYPE cezzbbHYPE")
+                logger.info(f"Pokemon {pokemon} Was Caught at {self.channel}", extra={"emoji": ":basketball:", "event": Events.CHAT_MENTION})
+            else:               #Caught by someone else
+                caughtby = msg.split(":",1)[1]
+                self.connection.privmsg(self.channel,f"Well Done {caughtby} enjoy your {pokemon} cezzbbPotato")
+                logger.info(f"{pokemon} at {self.channel} Excaped but was caught by {caughtby}", extra={"emoji": ":basketball:", "event": Events.CHAT_MENTION})
+        """
+        #"""
         pokenoball = f"@{self._nickname.lower()} You don't own that ball. Check the extension to see your items" #Pokemon No Ball then throw
         if pokenoball in msg:
             pokemon = msg.split(" ", 1)[0]        
@@ -98,8 +104,8 @@ class ClientIRC(SingleServerIRCBot):
             self.connection.privmsg(self.channel,f"!pokemart pokeball 3")
             time.sleep(random.randrange(1,5))
             self.connection.privmsg(self.channel,f"!pokecatch pokeball")
-            logger.info(f"New Ball Purchased at https://twitch.tv/{self.channel[1:]}", extra={"emoji": ":basketball:", "event": Events.CHAT_MENTION})
-            
+            logger.info(f"New Ball Purchased at {self.channel}", extra={"emoji": ":basketball:", "event": Events.CHAT_MENTION})
+        #"""   
     def on_ctcp(self, connection, event):
         msg = event.arguments[1]
         nick = event.source.split("!", 1)[0]
@@ -113,7 +119,7 @@ class ClientIRC(SingleServerIRCBot):
             nick = event.source.split("!", 1)[0]
             time.sleep(random.randrange(1,10))
             self.connection.privmsg(self.channel,"!pokecatch")
-            logger.info(f"Pokemon {pokemon} Spawned in at {self.channel} https://twitch.tv/{self.channel[1:]})", extra={"emoji": ":basketball:", "event": Events.CHAT_MENTION})
+            logger.info(f"Pokemon {pokemon} Spawned in at {self.channel})", extra={"emoji": ":basketball:", "event": Events.CHAT_MENTION})
         
         """ END OF POKEMON CODE """
 
