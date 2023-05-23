@@ -62,7 +62,7 @@ class ClientIRC(SingleServerIRCBot):
         msg = event.arguments[0]
         # Known message "TwitchLit A wild {Pokemon} appears TwitchLit Catch it using !pokecatch (winners revealed in 90s)"
         nick = event.source.split("!", 1)[0]
-        logger.info(f"{nick} at {self.channel} wrote: {msg}", extra={"emoji": ":speech_balloon:"})
+        #logger.info(f"{nick} at {self.channel} wrote: {msg}", extra={"emoji": ":speech_balloon:"})
         # also self._realname
         # if msg.startswith(f"@{self._nickname}"):
         if f"@{self._nickname.lower()}" in msg.lower():
