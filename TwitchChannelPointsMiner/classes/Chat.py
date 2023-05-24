@@ -64,7 +64,7 @@ class ClientIRC(SingleServerIRCBot):
         msg = event.arguments[0]
         # Known message "TwitchLit A wild {Pokemon} appears TwitchLit Catch it using !pokecatch (winners revealed in 90s)"
         nick = event.source.split("!", 1)[0]
-        #logger.info(f"{nick} at {self.channel} wrote: {msg}", extra={"emoji": ":speech_balloon:"})
+        logger.info(f"{nick.lower()} at {self._nickname.lower()} wrote: {msg}", extra={"emoji": ":speech_balloon:"})
         # also self._realname
         # if msg.startswith(f"@{self._nickname}"):
         if f"@{self._nickname.lower()}" in msg.lower():
@@ -72,7 +72,7 @@ class ClientIRC(SingleServerIRCBot):
                         "emoji": ":speech_balloon:", "event": Events.CHAT_MENTION})
  
         """ START POKEMON CODE """
-        ball = pokeball or "greatball"
+        ball = pokeball or "pokeball"
 
         pokeescape = "escaped. No one caught it. jonasw5Rigged" #Pokemon Escaped
         if pokeescape in msg:
