@@ -103,7 +103,7 @@ class ClientIRC(SingleServerIRCBot):
             # nickname!username@nickname.tmi.twitch.tv
             nick = event.source.split("!", 1)[0]
             time.sleep(random.randrange(2,10))
-            self.connection.privmsg(self.channel,f"!pokemart {ball} 3")
+            self.connection.privmsg(self.channel,f"!pokemart {ball} 1")
             logger.info(f"New Ball Purchased at <https://twitch.tv/{self.channel[1:]}>", extra={"emoji": ":basketball:", "event": Events.CHAT_MENTION})
 
         pokepurchased = f"@{self._nickname.lower()} Purchase successful!"
