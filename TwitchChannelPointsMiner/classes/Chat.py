@@ -115,7 +115,7 @@ class ClientIRC(SingleServerIRCBot):
             self.connection.privmsg(self.channel,f"!pokecatch {ball}")
             logger.info(f"Purchase Successful at {self.channel} <https://twitch.tv/{self.channel[1:]}>)", extra={"emoji": ":basketball:", "event": Events.CHAT_MENTION})
 
-        if nick.lower is self._nickname.lower():
+        if nick.lower() is self._nickname.lower():
             logger.info(f"Messgae drom self{msg}",extra={"emoji": ":basketball:", "event": Events.CHAT_MENTION})
 
             if msg.startswith("~"):
