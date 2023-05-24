@@ -132,7 +132,7 @@ class ClientIRC(SingleServerIRCBot):
         nick = event.source.split("!", 1)[0]
         # also self._realname on
         # if msg.startswith(f"@{self._nickname}"):
-        ball = pokeball or "greatball"
+        ball = pokeball or "pokeball"
        
         pokenew = 'Catch it using !pokecatch' # Define message for a new pokemon
         if pokenew in msg:
