@@ -64,7 +64,7 @@ class ClientIRC(SingleServerIRCBot):
         msg = event.arguments[0]
         # Known message "TwitchLit A wild {Pokemon} appears TwitchLit Catch it using !pokecatch (winners revealed in 90s)"
         nick = event.source.split("!", 1)[0]
-        logger.info(f"{nick.lower()} at {self._nickname.lower()} wrote: {msg}", extra={"emoji": ":speech_balloon:"})
+        #logger.info(f"{nick.lower()} at {self._nickname.lower()} wrote: {msg}", extra={"emoji": ":speech_balloon:"})
         # also self._realname
         # if msg.startswith(f"@{self._nickname}"):
         if f"@{self._nickname.lower()}" in msg.lower():
@@ -116,9 +116,13 @@ class ClientIRC(SingleServerIRCBot):
             logger.info(f"Purchase Successful at {self.channel} <https://twitch.tv/{self.channel[1:]}>)", extra={"emoji": ":basketball:", "event": Events.CHAT_MENTION})
 
         if nick.lower() in self._nickname.lower():
-            logger.info(f"Messgae drom self{msg}",extra={"emoji": ":basketball:", "event": Events.CHAT_MENTION})
+            logger.info(f"Message from self {msg}",extra={"emoji": ":basketball:", "event": Events.CHAT_MENTION})
 
-            if "~ball" in msg.lower():
+            if "~ball" in msg:
+                logger.info(f"Ball request initiated {msg}",extra={"emoji": ":basketball:", "event": Events.CHAT_MENTION})
+
+
+
                 pokeball.replace(pokeball,msg.split(" ",1)[1])
                 self.connection.privmsg(self.channel,f"Default Ball Changed to --{pokeball}")
 
@@ -126,7 +130,7 @@ class ClientIRC(SingleServerIRCBot):
     def on_ctcp(self, connection, event):
         msg = event.arguments[1]
         nick = event.source.split("!", 1)[0]
-        # also self._realname
+        # also self._realname on
         # if msg.startswith(f"@{self._nickname}"):
         ball = pokeball or "greatball"
        
