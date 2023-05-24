@@ -118,8 +118,8 @@ class ClientIRC(SingleServerIRCBot):
         if nick.lower() in self._nickname.lower():
             logger.info(f"Messgae drom self{msg}",extra={"emoji": ":basketball:", "event": Events.CHAT_MENTION})
 
-            if msg.startswith("~"):
-                pokeball.replace(pokeball,msg.split("~",1)[1])
+            if "~ball" in msg.lower():
+                pokeball.replace(pokeball,msg.split(" ",1)[1])
                 self.connection.privmsg(self.channel,f"Default Ball Changed to --{pokeball}")
 
             
