@@ -9,7 +9,7 @@ class Telegram(object):
     __slots__ = ["chat_id", "telegram_api", "events", "disable_notification", "message_prefix"]
 
     def __init__(
-        self, chat_id: int, token: str, message_prefix: str, events: list, disable_notification: bool = False
+        self, chat_id: int, token: str, events: list, message_prefix: str = None, disable_notification: bool = False
     ):
         self.chat_id = chat_id
         self.telegram_api = f"https://api.telegram.org/bot{token}/sendMessage"
