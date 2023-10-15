@@ -236,7 +236,7 @@ twitch_miner = TwitchChannelPointsMiner(
             events=[Events.STREAMER_ONLINE, Events.STREAMER_OFFLINE,
                     Events.BET_LOSE, Events.CHAT_MENTION],                          # Only these events will be sent to the chat
             disable_notification=True,                                              # Revoke the notification (sound/vibration)
-            message_prefix="Essp "                                                  # Message prefix either False or a string (E.g. "User ") Useful when many miners using same messaging service. Add a space for formatting.
+            message_prefix=False                                                  # Message prefix either False or a string (E.g. "User ") Useful when many miners using same messaging service. Add a space for formatting.
         ),
         discord=Discord(
             webhook_api="https://discord.com/api/webhooks/0123456789/0a1B2c3D4e5F6g7H8i9J",  # Discord Webhook URL
