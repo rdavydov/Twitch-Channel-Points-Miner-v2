@@ -88,18 +88,18 @@ class LoggerSettings:
         less: bool = False,
         console_level: int = logging.INFO,
         console_username: bool = False,
-        time_zone: str or None = None,
+        time_zone: str | None = None,
         file_level: int = logging.DEBUG,
         emoji: bool = platform.system() != "Windows",
         colored: bool = False,
         color_palette: ColorPalette = ColorPalette(),
         auto_clear: bool = True,
-        telegram: Telegram or None = None,
-        discord: Discord or None = None,
-        webhook: Webhook or None = None,
-        matrix: Matrix or None = None,
-        pushover: Pushover or None = None,
-        username: str or None = None
+        telegram: Telegram | None = None,
+        discord: Discord | None = None,
+        webhook: Webhook | None = None,
+        matrix: Matrix | None = None,
+        pushover: Pushover | None = None,
+        username: str | None = None
     ):
         self.save = save
         self.less = less
