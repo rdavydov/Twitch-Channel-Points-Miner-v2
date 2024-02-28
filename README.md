@@ -29,7 +29,7 @@
 
 > It can wait for a streamer to go live (+_450 points_ when the stream starts), it will automatically click the bonus button (_+50 points_), and it will follow raids (_+250 points_).
 
-Read more about channels point [here](https://help.twitch.tv/s/article/channel-points-guide).
+Read more about the channel points [here](https://help.twitch.tv/s/article/channel-points-guide).
 
 # README Contents
 1. 🤝 [Community](#community)
@@ -63,10 +63,6 @@ Read more about channels point [here](https://help.twitch.tv/s/article/channel-p
 If you want to help with this project, please leave a star 🌟 and share it with your friends! 😎
 
 If you want to offer me a coffee, I would be grateful! ❤️
-
-|                                                                                                                                                                                                                                                                                                           |
-|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-|<a href="https://www.buymeacoffee.com/davydov" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/lato-yellow.png" alt="Buy Me A Coffee (rdavydov)" height="41" width="174"></a>|
 
 |                                                                                                                                                                                                                                                                                                           |                                               |
 |-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------|
