@@ -18,46 +18,6 @@ password = os.getenv('Password')
 webHook = os.getenv('WebHook')
 chatID = os.getenv('ChatID')
 telegramToken = os.getenv('TelegramToken')
-StreamerList = [
-        ("ralumyst"),
-        ("cypathic"),
-        ("kittxnlylol"),
-        ("lauraa"),
-        ("melvniely"), 
-        ("adorbie"),
-        ("alisa"),
-        ("chloelock"),
-        ("daeye"), 
-        ("dessyy"),
-        ("etain"),
-        ("hannahmelin"),
-        ("hekimae"),
-        ("ibbaa"), 
-        ("imSoff"),
-        ("itspinkwater"),
-        ("justcallmemary"),
-        ("karmixxy"),
-        ("kiaa"), 
-        ("ki_pi"),
-        ("laurenp681"),
-        ("lillithy"),
-        ("maawlin"),
-        ("manyissues"), 
-        ("marteemilie"),
-        ("martey0"),
-        ("maryydlg"),
-        ("mathy"),
-        ("midoriopup"),
-        ("punzzl"),
-        ("rainingshady"),
-        ("rikkemor"),
-        ("shabs"),
-        ("smoodie"), 
-        ("strawberrytops"),
-        ("suzie95"),
-        ("suzikynz"),
-        ("Witch_Sama")
-    ]
 
 twitch_miner = TwitchChannelPointsMiner(
     username=user,
@@ -69,7 +29,7 @@ twitch_miner = TwitchChannelPointsMiner(
         Priority.ORDER  
     ],
 
-    enable_analytics=False,
+    enable_analytics=True,
     logger_settings=LoggerSettings(
         save=False,  
         console_level=logging.INFO,
@@ -152,8 +112,46 @@ twitch_miner.analytics(host="0.0.0.0", port=5050, refresh=36000, days_ago=30)  #
 
 twitch_miner.mine(
     [     
-        Streamer ("xhenniii", settings=StreamerSettings(chat=ChatPresence.ONLINE)),       
-        Streamer(StreamerList)
+        Streamer("ralumyst"),
+        Streamer ("xhenniii", settings=StreamerSettings(chat=ChatPresence.ONLINE)),
+        Streamer("cypathic"),
+        Streamer("kittxnlylol"),
+        Streamer("lauraa"),
+        Streamer("melvniely"), 
+        Streamer("adorbie"),
+        Streamer("alisa"),
+        Streamer("chloelock"),
+        Streamer("daeye"), 
+        Streamer("dessyy"),
+        Streamer("etain"),
+        Streamer("hannahmelin"),
+        Streamer("hekimae"),
+        Streamer("ibbaa"), 
+        Streamer("imSoff"),
+        Streamer("itspinkwater"),
+        Streamer("justcallmemary"),
+        Streamer("karmixxy"),
+        Streamer("kiaa"), 
+        Streamer("ki_pi"),
+        Streamer("laurenp681"),
+        Streamer("lillithy"),
+        Streamer("maawlin"),
+        Streamer("manyissues"), 
+        Streamer("marteemilie"),
+        Streamer("martey0"),
+        Streamer("maryydlg"),
+        Streamer("mathy"),
+        Streamer("midoriopup"),
+        Streamer("punzzl"),
+        Streamer("rainingshady"),
+        Streamer("rikkemor"),
+        Streamer("shabs"),
+        Streamer("smoodie"), 
+        Streamer("strawberrytops"),
+        Streamer("suzie95"),
+        Streamer("suzikynz"),
+        Streamer("Witch_Sama")
+
     ],
     followers=False,  
     followers_order=FollowersOrder.ASC
