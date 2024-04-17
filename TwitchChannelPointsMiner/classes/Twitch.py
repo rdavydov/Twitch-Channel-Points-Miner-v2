@@ -22,6 +22,9 @@ import requests
 
 from TwitchChannelPointsMiner.classes.entities.Campaign import Campaign
 from TwitchChannelPointsMiner.classes.entities.Drop import Drop
+from TwitchChannelPointsMiner.classes.entities.Raid import Raid
+from TwitchChannelPointsMiner.classes.entities.Streamer import Streamer
+from TwitchChannelPointsMiner.classes.entities.EventPrediction import EventPrediction
 from TwitchChannelPointsMiner.classes.Exceptions import (
     StreamerDoesNotExistException,
     StreamerIsOfflineException,
@@ -91,7 +94,7 @@ class Twitch(object):
             self.twitch_login.set_token(self.twitch_login.get_auth_token())
 
     # === STREAMER / STREAM / INFO === #
-    def update_stream(self, streamer):
+    def update_stream(self, streamer: Streamer):
         if streamer.stream.update_required() is True:
             stream_info = self.get_stream_info(streamer)
             if stream_info is not None:
@@ -162,7 +165,7 @@ class Twitch(object):
             else:
                 raise StreamerIsOfflineException
 
-    def get_stream_info(self, streamer):
+    def get_stream_info(self, streamer: Streamer):
         json_data = copy.deepcopy(
             GQLOperations.VideoPlayerStreamInfoOverlayChannel)
         json_data["variables"] = {"channel": streamer.username}
@@ -173,7 +176,7 @@ class Twitch(object):
             else:
                 return response["data"]["user"]
 
-    def check_streamer_online(self, streamer):
+    def check_streamer_online(self, streamer: Streamer):
         if time.time() < streamer.offline_at + 60:
             return
 
@@ -227,7 +230,7 @@ class Twitch(object):
                 return []
         return follows
 
-    def update_raid(self, streamer, raid):
+    def update_raid(self, streamer, raid: Raid):
         if streamer.raid != raid:
             streamer.raid = raid
             json_data = copy.deepcopy(GQLOperations.JoinRaid)
@@ -240,7 +243,7 @@ class Twitch(object):
                        "event": Events.JOIN_RAID},
             )
 
-    def viewer_is_mod(self, streamer):
+    def viewer_is_mod(self, streamer: Streamer):
         json_data = copy.deepcopy(GQLOperations.ModViewChannelQuery)
         json_data["variables"] = {"channelLogin": streamer.username}
         response = self.post_gql_request(json_data)
@@ -368,10 +371,10 @@ class Twitch(object):
             logger.error(f"Error with update_client_version: {e}")
             return self.client_version
 
-    def send_minute_watched_events(self, streamers, priority, chunk_size=3):
+    def send_minute_watched_events(self, streamers: list[Streamer], priority: Priority, chunk_size=3):
         while self.running:
             try:
-                streamers_index = [
+                streamers_index: list[int] = [
                     i
                     for i in range(0, len(streamers))
                     if streamers[i].is_online is True
@@ -464,7 +467,7 @@ class Twitch(object):
                 Twitch has a limit - you can't watch more than 2 channels at one time.
                 We take the first two streamers from the list as they have the highest priority (based on order or WatchStreak).
                 """
-                streamers_watching = streamers_watching[:2]
+                streamers_watching: list[int] = streamers_watching[:2]
 
                 for index in streamers_watching:
                     next_iteration = time.time() + 60 / len(streamers_watching)
@@ -550,7 +553,7 @@ class Twitch(object):
 
     # === CHANNEL POINTS / PREDICTION === #
     # Load the amount of current points for a channel, check if a bonus is available
-    def load_channel_points_context(self, streamer):
+    def load_channel_points_context(self, streamer: Streamer):
         json_data = copy.deepcopy(GQLOperations.ChannelPointsContext)
         json_data["variables"] = {"channelLogin": streamer.username}
 
@@ -567,7 +570,7 @@ class Twitch(object):
                 self.claim_bonus(
                     streamer, community_points["availableClaim"]["id"])
 
-    def make_predictions(self, event):
+    def make_predictions(self, event: EventPrediction):
         decision = event.bet.calculate(event.streamer.channel_points)
         # selector_index = 0 if decision["choice"] == "A" else 1
 
@@ -731,7 +734,7 @@ class Twitch(object):
                     result.append(r["data"]["user"]["dropCampaign"])
         return result
 
-    def __sync_campaigns(self, campaigns):
+    def __sync_campaigns(self, campaigns: list[Campaign]):
         # We need the inventory only for get the real updated value/progress
         # Get data from inventory and sync current status with streamers.campaigns
         inventory = self.__get_inventory()
@@ -755,7 +758,7 @@ class Twitch(object):
                         break
         return campaigns
 
-    def claim_drop(self, drop):
+    def claim_drop(self, drop: Drop):
         logger.info(
             f"Claim {drop}", extra={"emoji": ":package:", "event": Events.DROP_CLAIM}
         )
@@ -795,7 +798,7 @@ class Twitch(object):
                             drop.is_claimed = self.claim_drop(drop)
                             time.sleep(random.uniform(5, 10))
 
-    def sync_campaigns(self, streamers, chunk_size=3):
+    def sync_campaigns(self, streamers: list[Streamer], chunk_size=3):
         campaigns_update = 0
         while self.running:
             try:

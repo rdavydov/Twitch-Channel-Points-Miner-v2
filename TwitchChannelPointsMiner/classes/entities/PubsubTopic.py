@@ -1,10 +1,12 @@
+from TwitchChannelPointsMiner.classes.entities.Streamer import Streamer
+
 class PubsubTopic(object):
     __slots__ = ["topic", "user_id", "streamer"]
 
     def __init__(self, topic, user_id=None, streamer=None):
         self.topic = topic
         self.user_id = user_id
-        self.streamer = streamer
+        self.streamer: Streamer = streamer
 
     def is_user_topic(self):
         return self.streamer is None

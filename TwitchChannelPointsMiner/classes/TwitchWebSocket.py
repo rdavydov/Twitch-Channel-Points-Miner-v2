@@ -4,13 +4,14 @@ import time
 
 from websocket import WebSocketApp, WebSocketConnectionClosedException
 
+from TwitchChannelPointsMiner.classes.WebSocketsPool import WebSocketsPool
 from TwitchChannelPointsMiner.utils import create_nonce
 
 logger = logging.getLogger(__name__)
 
 
 class TwitchWebSocket(WebSocketApp):
-    def __init__(self, index, parent_pool, *args, **kw):
+    def __init__(self, index: int, parent_pool: WebSocketsPool, *args, **kw):
         super().__init__(*args, **kw)
         self.index = index
 

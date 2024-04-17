@@ -84,10 +84,10 @@ class Streamer(object):
         "mutex",
     ]
 
-    def __init__(self, username, settings=None):
-        self.username: str = username.lower().strip()
+    def __init__(self, username: str, settings=None):
+        self.username = username.lower().strip()
         self.channel_id: str = ""
-        self.settings = settings
+        self.settings: StreamerSettings = settings
         self.is_online = False
         self.stream_up = 0
         self.online_at = 0
@@ -205,7 +205,7 @@ class Streamer(object):
             return prediction_window_seconds
 
     # === ANALYTICS === #
-    def persistent_annotations(self, event_type, event_text):
+    def persistent_annotations(self, event_type:str, event_text):
         event_type = event_type.upper()
         if event_type in ["WATCH_STREAK", "WIN", "PREDICTION_MADE", "LOSE"]:
             primary_color = (
@@ -225,7 +225,7 @@ class Streamer(object):
     def persistent_series(self, event_type="Watch"):
         self.__save_json("series", event_type=event_type)
 
-    def __save_json(self, key, data={}, event_type="Watch"):
+    def __save_json(self, key, data:dict={}, event_type="Watch"):
         # https://stackoverflow.com/questions/4676195/why-do-i-need-to-multiply-unix-timestamps-by-1000-in-javascript
         now = datetime.now().replace(microsecond=0)
         data.update({"x": round(datetime.timestamp(now) * 1000)})

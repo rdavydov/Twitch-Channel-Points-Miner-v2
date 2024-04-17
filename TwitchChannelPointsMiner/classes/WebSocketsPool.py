@@ -11,7 +11,10 @@ from dateutil import parser
 from TwitchChannelPointsMiner.classes.entities.EventPrediction import EventPrediction
 from TwitchChannelPointsMiner.classes.entities.Message import Message
 from TwitchChannelPointsMiner.classes.entities.Raid import Raid
+from TwitchChannelPointsMiner.classes.entities.Streamer import Streamer
+from TwitchChannelPointsMiner.classes.entities.EventPrediction import EventPrediction
 from TwitchChannelPointsMiner.classes.Settings import Events, Settings
+from TwitchChannelPointsMiner.classes.Twitch import Twitch
 from TwitchChannelPointsMiner.classes.TwitchWebSocket import TwitchWebSocket
 from TwitchChannelPointsMiner.constants import WEBSOCKET
 from TwitchChannelPointsMiner.utils import (
@@ -25,8 +28,13 @@ logger = logging.getLogger(__name__)
 class WebSocketsPool:
     __slots__ = ["ws", "twitch", "streamers", "events_predictions"]
 
-    def __init__(self, twitch, streamers, events_predictions):
-        self.ws = []
+    def __init__(
+        self, 
+        twitch: Twitch, 
+        streamers: list[Streamer], 
+        events_predictions: dict[str, EventPrediction]
+        ):
+        self.ws: list[TwitchWebSocket]= []
         self.twitch = twitch
         self.streamers = streamers
         self.events_predictions = events_predictions
@@ -46,7 +54,7 @@ class WebSocketsPool:
 
         self.__submit(-1, topic)
 
-    def __submit(self, index, topic):
+    def __submit(self, index: int, topic):
         # Topic in topics should never happen. Anyway prevent any types of duplicates
         if topic not in self.ws[index].topics:
             self.ws[index].topics.append(topic)
@@ -90,7 +98,7 @@ class WebSocketsPool:
             self.ws[index].close()
 
     @staticmethod
-    def on_open(ws):
+    def on_open(ws:TwitchWebSocket):
         def run():
             ws.is_opened = True
             ws.ping()
@@ -116,19 +124,19 @@ class WebSocketsPool:
         thread_ws.start()
 
     @staticmethod
-    def on_error(ws, error):
+    def on_error(ws:TwitchWebSocket, error):
         # Connection lost | [WinError 10054] An existing connection was forcibly closed by the remote host
         # Connection already closed | Connection is already closed (raise WebSocketConnectionClosedException)
         logger.error(f"#{ws.index} - WebSocket error: {error}")
 
     @staticmethod
-    def on_close(ws, close_status_code, close_reason):
+    def on_close(ws:TwitchWebSocket, close_status_code, close_reason):
         logger.info(f"#{ws.index} - WebSocket closed")
         # On close please reconnect automatically
         WebSocketsPool.handle_reconnection(ws)
 
     @staticmethod
-    def handle_reconnection(ws):
+    def handle_reconnection(ws:TwitchWebSocket):
         # Reconnect only if ws.is_reconnecting is False to prevent more than 1 ws from being created
         if ws.is_reconnecting is False:
             # Close the current WebSocket.
@@ -165,7 +173,7 @@ class WebSocketsPool:
                     self.__submit(ws.index, topic)
 
     @staticmethod
-    def on_message(ws, message):
+    def on_message(ws:TwitchWebSocket, message):
         logger.debug(f"#{ws.index} - Received: {message.strip()}")
         response = json.loads(message)
 

@@ -13,6 +13,7 @@ from pathlib import Path
 
 from TwitchChannelPointsMiner.classes.Chat import ChatPresence, ThreadChat
 from TwitchChannelPointsMiner.classes.entities.PubsubTopic import PubsubTopic
+from TwitchChannelPointsMiner.classes.entities.EventPrediction import EventPrediction
 from TwitchChannelPointsMiner.classes.entities.Streamer import (
     Streamer,
     StreamerSettings,
@@ -143,8 +144,8 @@ class TwitchChannelPointsMiner:
         self.claim_drops_startup = claim_drops_startup
         self.priority = priority if isinstance(priority, list) else [priority]
 
-        self.streamers = []
-        self.events_predictions = {}
+        self.streamers: list[Streamer] = []
+        self.events_predictions: dict[str, EventPrediction] = {}
         self.minute_watcher_thread = None
         self.sync_campaigns_thread = None
         self.ws_pool = None
