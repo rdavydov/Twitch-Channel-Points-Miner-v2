@@ -38,7 +38,7 @@ jobs:
 
       - name: Build and push AMD64, ARM64, ARMv7
         id: docker_build
-        uses: docker/build-push-action@v5.1.0
+        uses: docker/build-push-action@v5.3.0
         with:
           context: .
           push: true
