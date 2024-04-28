@@ -206,7 +206,7 @@ class WebSocketsPool:
                             reason_code = message.data["point_gain"]["reason_code"]
 
                             logger.info(
-                                f"+{earned} → {ws.streamers[streamer_index]} - Reason: {reason_code}.",
+                                f"+{earned} → {ws.streamers[streamer_index]} - Reason: {reason_code}." + " | www.twitch.tv/" + ws.streamers ,
                                 extra={
                                     "emoji": ":rocket:",
                                     "event": Events.get(f"GAIN_FOR_{reason_code}"),
