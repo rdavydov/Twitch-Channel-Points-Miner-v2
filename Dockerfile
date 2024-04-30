@@ -21,7 +21,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get install -qq -y --fix-missing --no-ins
     libblas-dev \
     liblapack-dev \
     make \
-    cmake \    
+    cmake \
     automake \
     ninja-build \
     g++ \
@@ -41,3 +41,5 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get install -qq -y --fix-missing --no-ins
 
 ADD ./TwitchChannelPointsMiner ./TwitchChannelPointsMiner
 ENTRYPOINT [ "python", "run.py" ]
+
+HEALTHCHECK --interval=1m --timeout=10s --start-period=1m CMD curl -f http://localhost:5000 || exit 1
