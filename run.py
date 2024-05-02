@@ -31,7 +31,7 @@ twitch_miner = TwitchChannelPointsMiner(
 
     enable_analytics=True,
     logger_settings=LoggerSettings(
-        save=False,  
+        save=True,  
         console_level=logging.INFO,
         console_username=False,
         file_level=logging.INFO,
