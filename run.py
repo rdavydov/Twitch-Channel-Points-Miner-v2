@@ -120,6 +120,9 @@ twitch_miner.mine(
         Streamer("kittxnlylol"),
         Streamer("lauraa"),
         Streamer("melvniely"), 
+        Streamer("warframe"),
+        Streamer("kartoffelschtriem"),
+        Streamer("mandycandysupersandy"),
         Streamer("adorbie"),
         Streamer("alisa"),
         Streamer("chloelock"),
@@ -150,12 +153,12 @@ twitch_miner.mine(
         Streamer("rainingshady"),
         Streamer("rikkemor"),
         Streamer("shabs"),
+        Streamer("saara_maria"),
         Streamer("smoodie"), 
         Streamer("strawberrytops"),
         Streamer("suzie95"),
         Streamer("suzikynz"),
         Streamer("Witch_Sama")
-
     ],
     followers=False,  
     followers_order=FollowersOrder.ASC
