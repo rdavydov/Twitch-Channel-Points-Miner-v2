@@ -116,6 +116,7 @@ twitch_miner.mine(
         Streamer ("xhenniii", settings=StreamerSettings(chat=ChatPresence.ONLINE)),
         Streamer("cypathic"),
         Streamer("ggxenia"),
+        Streamer("helenalive"),
         Streamer("Faellu"),
         Streamer("kittxnlylol"),
         Streamer("lauraa"),
