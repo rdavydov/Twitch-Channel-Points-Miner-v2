@@ -156,7 +156,7 @@ twitch_miner.mine(
         Streamer("maawlin"),
         Streamer("Kunshikitty"),
         Streamer("kdrkitten"),
-        Streamer("yololarry"),
+        Streamer("yololaryy"),
         Streamer("marteemilie"),
         Streamer("maryydlg"),
         Streamer("manyissues"), 
