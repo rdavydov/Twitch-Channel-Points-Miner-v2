@@ -11,14 +11,14 @@ import random
 import re
 import string
 import time
-# from datetime import datetime
+# import json
+import requests
+import validators
 from pathlib import Path
 from secrets import choice, token_hex
-
-# import json
+# from urllib.parse import quote
 # from base64 import urlsafe_b64decode
-
-import requests
+# from datetime import datetime
 
 from TwitchChannelPointsMiner.classes.entities.Campaign import Campaign
 from TwitchChannelPointsMiner.classes.entities.Drop import Drop
@@ -79,7 +79,7 @@ class Twitch(object):
         self.client_session = token_hex(16)
         self.client_version = CLIENT_VERSION
         self.twilight_build_id_pattern = re.compile(
-            r"window\.__twilightBuildID=\"([0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-4[0-9A-Fa-f]{3}-[89ABab][0-9A-Fa-f]{3}-[0-9A-Fa-f]{12})\";"
+            r'window\.__twilightBuildID\s*=\s*"([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})"'
         )
 
     def login(self):
@@ -433,7 +433,8 @@ class Twitch(object):
                                     )
                                     > 30
                                 )
-                                and streamers[index].stream.minute_watched < 7 # fix #425
+                                # fix #425
+                                and streamers[index].stream.minute_watched < 7
                             ):
                                 streamers_watching.append(index)
                                 if len(streamers_watching) == 2:
@@ -467,14 +468,87 @@ class Twitch(object):
                 streamers_watching = streamers_watching[:2]
 
                 for index in streamers_watching:
-                    next_iteration = time.time() + 60 / len(streamers_watching)
+                    # next_iteration = time.time() + 60 / len(streamers_watching)
+                    next_iteration = time.time() + 20 / len(streamers_watching)
 
                     try:
+                        ####################################
+                        # Start of fix for 2024/5 API Change
+                        # Create the JSON data for the GraphQL request
+                        json_data = copy.deepcopy(
+                            GQLOperations.PlaybackAccessToken)
+                        json_data["variables"] = {
+                            "login": streamers[index].username,
+                            "isLive": True,
+                            "isVod": False,
+                            "vodID": "",
+                            # "playerType": "site"
+                            "playerType": "picture-by-picture"
+                        }
+
+                        # Get signature and value using the post_gql_request method
+                        responsePlaybackAccessToken = self.post_gql_request(
+                            json_data)
+                        logger.debug(
+                            f"Sent PlaybackAccessToken request for {streamers[index]}"
+                        )
+                        signature = responsePlaybackAccessToken["data"]['streamPlaybackAccessToken']["signature"]
+                        value = responsePlaybackAccessToken["data"]['streamPlaybackAccessToken']["value"]
+                        if not signature or not value:
+                            continue
+
+                        # encoded_value = quote(json.dumps(value))
+
+                        # Construct the URL for the broadcast qualities
+                        RequestBroadcastQualitiesURL = f"https://usher.ttvnw.net/api/channel/hls/{streamers[index].username}.m3u8?sig={signature}&token={value}"
+
+                        # Get list of video qualities
+                        responseBroadcastQualities = requests.get(RequestBroadcastQualitiesURL, headers={
+                                                                  "User-Agent": self.user_agent}, timeout=20)  # timeout=60
+                        logger.debug(
+                            f"Send RequestBroadcastQualitiesURL request for {streamers[index]} - Status code: {responseBroadcastQualities.status_code}"
+                        )
+                        if responseBroadcastQualities.status_code != 200:
+                            continue
+                        BroadcastQualities = responseBroadcastQualities.text
+
+                        # Just takes the last line, which should be the URL for the lowest quality
+                        BroadcastLowestQualityURL = BroadcastQualities.split(
+                            "\n")[-1]
+                        if not validators.url(BroadcastLowestQualityURL):
+                            continue
+
+                        # Get list of video URLs
+                        responseStreamURLList = requests.get(BroadcastLowestQualityURL, headers={
+                                                             "User-Agent": self.user_agent}, timeout=20)  # timeout=60
+                        logger.debug(
+                            f"Send BroadcastLowestQualityURL request for {streamers[index]} - Status code: {responseStreamURLList.status_code}"
+                        )
+                        if responseStreamURLList.status_code != 200:
+                            continue
+                        StreamURLList = responseStreamURLList.text
+
+                        # Just takes the last line, which should be the URL for the lowest quality
+                        StreamLowestQualityURL = StreamURLList.split("\n")[-2]
+                        if not validators.url(StreamLowestQualityURL):
+                            continue
+
+                        # Perform a HEAD request to simulate watching the stream
+                        responseStreamLowestQualityURL = requests.head(StreamLowestQualityURL, headers={
+                                                                       "User-Agent": self.user_agent}, timeout=20)  # timeout=60
+                        logger.debug(
+                            f"Send StreamLowestQualityURL request for {streamers[index]} - Status code: {responseStreamLowestQualityURL.status_code}"
+                        )
+                        if responseStreamLowestQualityURL.status_code != 200:
+                            continue
+                        # End of fix for 2024/5 API Change
+                        ##################################
                         response = requests.post(
                             streamers[index].stream.spade_url,
                             data=streamers[index].stream.encode_payload(),
                             headers={"User-Agent": self.user_agent},
-                            timeout=60,
+                            # timeout=60,
+                            timeout=20,
                         )
                         logger.debug(
                             f"Send minute watched request for {streamers[index]} - Status code: {response.status_code}"
@@ -543,7 +617,8 @@ class Twitch(object):
                     )
 
                 if streamers_watching == []:
-                    self.__chuncked_sleep(60, chunk_size=chunk_size)
+                    # self.__chuncked_sleep(60, chunk_size=chunk_size)
+                    self.__chuncked_sleep(20, chunk_size=chunk_size)
             except Exception:
                 logger.error(
                     "Exception raised in send minute watched", exc_info=True)

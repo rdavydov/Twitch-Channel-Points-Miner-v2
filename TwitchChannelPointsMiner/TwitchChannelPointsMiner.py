@@ -190,6 +190,7 @@ class TwitchChannelPointsMiner:
         if Settings.enable_analytics is True:
             from TwitchChannelPointsMiner.classes.AnalyticsServer import AnalyticsServer
 
+            days_ago = days_ago if days_ago <= 365*15 else 365*15
             http_server = AnalyticsServer(
                 host=host, port=port, refresh=refresh, days_ago=days_ago, username=self.username
             )
