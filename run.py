@@ -58,7 +58,7 @@ twitch_miner = TwitchChannelPointsMiner(
                 GAIN_FOR_RAID=Fore.BLUE,
                 GAIN_FOR_CLAIM=Fore.YELLOW,
                 GAIN_FOR_WATCH=Fore.BLUE,
-                GAIN_FOR_WATCH_STREAK=Fore.GBLUE,
+                GAIN_FOR_WATCH_STREAK=Fore.BLUE,
 
                 CHAT_MENTION=Fore.WHITE
         ),                                                                                        # Only these events will be sent to the endpoint
