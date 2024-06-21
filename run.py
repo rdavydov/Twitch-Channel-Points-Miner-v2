@@ -55,7 +55,7 @@ twitch_miner = TwitchChannelPointsMiner(
                 DROP_CLAIM=Fore.YELLOW,
                 DROP_STATUS=Fore.MAGENTA,
                 
-                GAIN_FOR_RAID=Fore.BLUEBLUE,
+                GAIN_FOR_RAID=Fore.BLUE,
                 GAIN_FOR_CLAIM=Fore.YELLOW,
                 GAIN_FOR_WATCH=Fore.BLUE,
                 GAIN_FOR_WATCH_STREAK=Fore.GBLUE,
