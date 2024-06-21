@@ -45,19 +45,22 @@ twitch_miner = TwitchChannelPointsMiner(
         emoji=True,  
         less=True,  
         colored=True,  
-        color_palette=ColorPalette(  
-            STREAMER_ONLINE=Fore.GREEN,  
-            STREAMER_OFFLINE=Fore.RED,
-            GAIN_FOR_RAID=Fore.YELLOW,
-            GAIN_FOR_CLAIM=Fore.YELLOW,
-            GAIN_FOR_WATCH=Fore.WHITE,
-            GAIN_FOR_WATCH_STREAK=Fore.MAGENTA,
-            BET_WIN=Fore.GREEN,
-            BET_LOSE=Fore.RED,
-            BET_REFUND=Fore.RESET,
-            BET_FILTERS=Fore.MAGENTA,
-            BET_GENERAL=Fore.BLUE,
-            BET_FAILED=Fore.RED,
+        color_palette=ColorPalette(             # Color allowed are: [BLACK, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE, RESET].
+                STREAMER_ONLINE=Fore.GREEN,
+                STREAMER_OFFLINE=Fore.RED,
+
+                BONUS_CLAIM=Fore.YELLOW,
+                MOMENT_CLAIM=Fore.YELLOW,
+                
+                DROP_CLAIM=Fore.YELLOW,
+                DROP_STATUS=Fore.MAGENTA,
+                
+                GAIN_FOR_RAID=Fore.BLUEBLUE,
+                GAIN_FOR_CLAIM=Fore.YELLOW,
+                GAIN_FOR_WATCH=Fore.BLUE,
+                GAIN_FOR_WATCH_STREAK=Fore.GBLUE,
+
+                CHAT_MENTION=Fore.WHITE
         ),                                                                                        # Only these events will be sent to the endpoint
         telegram=Telegram(  
             chat_id=chatID,
@@ -65,15 +68,18 @@ twitch_miner = TwitchChannelPointsMiner(
             events=[
                 Events.STREAMER_ONLINE,
                 Events.STREAMER_OFFLINE,
+                
                 Events.BONUS_CLAIM,
-                Events.DROP_STATUS,
-                Events.DROP_CLAIM,
                 Events.MOMENT_CLAIM,
+                
+                Events.DROP_CLAIM,
                 Events.DROP_STATUS,
+                
                 Events.GAIN_FOR_RAID,
                 Events.GAIN_FOR_CLAIM,
                 Events.GAIN_FOR_WATCH,
                 Events.GAIN_FOR_WATCH_STREAK,
+                
                 Events.CHAT_MENTION
             ],                                                                                  # Only these events will be sent to the endpoint
             disable_notification=True,
@@ -83,15 +89,18 @@ twitch_miner = TwitchChannelPointsMiner(
             events=[
                 Events.STREAMER_ONLINE,
                 Events.STREAMER_OFFLINE,
+                
                 Events.BONUS_CLAIM,
-                Events.DROP_STATUS,
-                Events.DROP_CLAIM,
                 Events.MOMENT_CLAIM,
+                
+                Events.DROP_CLAIM,
                 Events.DROP_STATUS,
+                
                 Events.GAIN_FOR_RAID,
                 Events.GAIN_FOR_CLAIM,
                 Events.GAIN_FOR_WATCH,
                 Events.GAIN_FOR_WATCH_STREAK,
+                
                 Events.CHAT_MENTION
             ],
             ),                                                                                  # Only these events will be sent to the endpoint
@@ -101,15 +110,18 @@ twitch_miner = TwitchChannelPointsMiner(
             events=[
                 Events.STREAMER_ONLINE,
                 Events.STREAMER_OFFLINE,
+                
                 Events.BONUS_CLAIM,
-                Events.DROP_STATUS,
-                Events.DROP_CLAIM,
                 Events.MOMENT_CLAIM,
+                
+                Events.DROP_CLAIM,
                 Events.DROP_STATUS,
+                
                 Events.GAIN_FOR_RAID,
                 Events.GAIN_FOR_CLAIM,
                 Events.GAIN_FOR_WATCH,
                 Events.GAIN_FOR_WATCH_STREAK,
+                
                 Events.CHAT_MENTION
             ],                                                                                  # Only these events will be sent to the endpoint
             ),
@@ -121,15 +133,18 @@ twitch_miner = TwitchChannelPointsMiner(
             events=[
                 Events.STREAMER_ONLINE,
                 Events.STREAMER_OFFLINE,
+                
                 Events.BONUS_CLAIM,
-                Events.DROP_STATUS,
-                Events.DROP_CLAIM,
                 Events.MOMENT_CLAIM,
+                
+                Events.DROP_CLAIM,
                 Events.DROP_STATUS,
+                
                 Events.GAIN_FOR_RAID,
                 Events.GAIN_FOR_CLAIM,
                 Events.GAIN_FOR_WATCH,
                 Events.GAIN_FOR_WATCH_STREAK,
+                
                 Events.CHAT_MENTION
             ],                                                                                  # Only these events will be sent
             ),
@@ -141,15 +156,18 @@ twitch_miner = TwitchChannelPointsMiner(
             events=[
                 Events.STREAMER_ONLINE,
                 Events.STREAMER_OFFLINE,
+                
                 Events.BONUS_CLAIM,
-                Events.DROP_STATUS,
-                Events.DROP_CLAIM,
                 Events.MOMENT_CLAIM,
+                
+                Events.DROP_CLAIM,
                 Events.DROP_STATUS,
+                
                 Events.GAIN_FOR_RAID,
                 Events.GAIN_FOR_CLAIM,
                 Events.GAIN_FOR_WATCH,
                 Events.GAIN_FOR_WATCH_STREAK,
+                
                 Events.CHAT_MENTION
             ],                                                                                  # Only these events will be sent
         )
