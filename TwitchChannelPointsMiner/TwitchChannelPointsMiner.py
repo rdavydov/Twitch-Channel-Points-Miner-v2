@@ -143,7 +143,7 @@ class TwitchChannelPointsMiner:
         self.claim_drops_startup = claim_drops_startup
         self.priority = priority if isinstance(priority, list) else [priority]
 
-        self.streamers = []
+        self.streamers: list[Streamer] = []
         self.events_predictions = {}
         self.minute_watcher_thread = None
         self.sync_campaigns_thread = None
@@ -457,7 +457,7 @@ class TwitchChannelPointsMiner:
             extra={"emoji": ":hourglass:"},
         )
 
-        if self.events_predictions != {}:
+        if not Settings.logger.less and self.events_predictions != {}:
             print("")
             for event_id in self.events_predictions:
                 event = self.events_predictions[event_id]
@@ -486,12 +486,20 @@ class TwitchChannelPointsMiner:
                     self.streamers[streamer_index].channel_points
                     - self.original_streamers[streamer_index]
                 )
-                logger.info(
-                    f"{repr(self.streamers[streamer_index])}, Total Points Gained (after farming - before farming): {_millify(gained)}",
-                    extra={"emoji": ":robot:"},
+                
+                from colorama import Fore
+                streamer_highlight = Fore.YELLOW
+                
+                streamer_gain = (
+                    f"{streamer_highlight}{self.streamers[streamer_index]}{Fore.RESET}, Total Points Gained: {_millify(gained)}"
+                    if Settings.logger.less
+                    else f"{streamer_highlight}{repr(self.streamers[streamer_index])}{Fore.RESET}, Total Points Gained (after farming - before farming): {_millify(gained)}"
                 )
-                if self.streamers[streamer_index].history != {}:
-                    logger.info(
-                        f"{self.streamers[streamer_index].print_history()}",
-                        extra={"emoji": ":moneybag:"},
-                    )
+                
+                indent = ' ' * 25
+                streamer_history = '\n'.join(f"{indent}{history}" for history in self.streamers[streamer_index].print_history().split('; ')) 
+                
+                logger.info(
+                    f"{streamer_gain}\n{streamer_history}",
+                    extra={"emoji": ":moneybag:"},
+                )
