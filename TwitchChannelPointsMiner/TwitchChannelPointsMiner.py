@@ -408,6 +408,9 @@ class TwitchChannelPointsMiner:
                             )
 
     def end(self, signum, frame):
+        if not self.running:
+            return
+        
         logger.info("CTRL+C Detected! Please wait just a moment!")
 
         for streamer in self.streamers:
