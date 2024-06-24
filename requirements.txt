@@ -10,3 +10,4 @@ flask
 irc
 pandas
 pytz
+validators
