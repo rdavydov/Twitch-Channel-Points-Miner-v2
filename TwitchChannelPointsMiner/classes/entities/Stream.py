@@ -4,6 +4,7 @@ import time
 from base64 import b64encode
 
 from TwitchChannelPointsMiner.classes.Settings import Settings
+from TwitchChannelPointsMiner.classes.entities.Campaign import Campaign
 from TwitchChannelPointsMiner.constants import DROP_ID
 
 logger = logging.getLogger(__name__)
@@ -35,7 +36,7 @@ class Stream(object):
         self.tags = []
 
         self.drops_tags = False
-        self.campaigns = []
+        self.campaigns: list[Campaign] = []
         self.campaigns_ids = []
 
         self.viewers_count = 0

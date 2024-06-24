@@ -260,7 +260,7 @@ class GlobalFormatter(logging.Formatter):
             self.settings.pushover.send(record.msg, record.event)
 
 
-def configure_loggers(username, settings):
+def configure_loggers(username, settings: LoggerSettings):
     if settings.colored is True:
         init(autoreset=True)
 
