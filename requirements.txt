@@ -11,5 +11,3 @@ irc
 pandas
 pytz
 validators
-os
-sentry_sdk
