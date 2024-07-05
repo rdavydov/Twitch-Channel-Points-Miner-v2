@@ -6,12 +6,6 @@
       "use": "@vercel/python"
     }
   ],
-  "installs": [
-    {
-      "src": "requirements.txt",
-      "installcommand": "pip install -r requirements.txt"
-    }
-  ],
   "routes": [
     {
       "src": "/(.*)",
