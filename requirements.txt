@@ -12,3 +12,5 @@ pandas
 pytz
 validators
 newrelic==n.n.n.n
+os
+sentry_sdk
