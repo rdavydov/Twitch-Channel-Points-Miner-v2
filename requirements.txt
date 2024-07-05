@@ -11,3 +11,4 @@ irc
 pandas
 pytz
 validators
+newrelic==n.n.n.n
