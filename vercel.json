@@ -2,13 +2,20 @@
   "version": 2,
   "builds": [
     {
-      "src": "*.py"
+      "src": "./run.py",
+      "use": "@vercel/python"
+    }
+  ],
+  "installs": [
+    {
+      "src": "requirements.txt",
+      "installcommand": "pip install -r requirements.txt"
     }
   ],
   "routes": [
     {
-      "src": "(.*)",
-      "dest": "run.py"
+      "src": "/(.*)",
+      "dest": "/"
     }
   ]
 }

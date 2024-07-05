@@ -159,3 +159,4 @@ replit.nix
 
 # VsCode
 .vscode/*
+.vercel
