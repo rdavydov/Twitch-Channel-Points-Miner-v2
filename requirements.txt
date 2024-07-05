@@ -11,6 +11,5 @@ irc
 pandas
 pytz
 validators
-newrelic
 os
 sentry_sdk
