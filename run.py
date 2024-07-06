@@ -13,7 +13,7 @@ from TwitchChannelPointsMiner.classes.Settings import Priority, Events, Follower
 from TwitchChannelPointsMiner.classes.entities.Bet import Strategy, BetSettings, Condition, OutcomeKeys,FilterCondition, DelayMode
 from TwitchChannelPointsMiner.classes.entities.Streamer import Streamer, StreamerSettings
 import keep_alive,os
-
+# import sentry_sdk
 
 
 
@@ -26,15 +26,15 @@ chatID = os.getenv('ChatID')
 telegramToken = os.getenv('TelegramToken')
 sentryID = os.getenv('SentryID')
 
-sentry_sdk.init(
-    dsn=sentryID,
+# sentry_sdk.init(
+#    dsn=sentryID,
     # Set traces_sample_rate to 1.0 to capture 100%
     # of transactions for performance monitoring.
-    traces_sample_rate=1.0,
+#    traces_sample_rate=1.0,
     # Set profiles_sample_rate to 1.0 to profile 100%
     # of sampled transactions.
     # We recommend adjusting this value in production.
-    profiles_sample_rate=1.0,)
+ #   profiles_sample_rate=1.0,)
 
 twitch_miner = TwitchChannelPointsMiner(
     username=user,
