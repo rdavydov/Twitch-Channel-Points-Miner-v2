@@ -12,12 +12,12 @@ from TwitchChannelPointsMiner.classes.Pushover import Pushover
 from TwitchChannelPointsMiner.classes.Settings import Priority, Events, FollowersOrder
 from TwitchChannelPointsMiner.classes.entities.Bet import Strategy, BetSettings, Condition, OutcomeKeys,FilterCondition, DelayMode
 from TwitchChannelPointsMiner.classes.entities.Streamer import Streamer, StreamerSettings
-import keep_alive,os
+# import keep_alive,os
 # import sentry_sdk
 
 
 
-keep_alive.keep_alive()
+#keep_alive.keep_alive()
 
 user = os.getenv('User')
 password = os.getenv('Password')
@@ -209,7 +209,9 @@ twitch_miner = TwitchChannelPointsMiner(
     )
 )
 
-twitch_miner.analytics(host="0.0.0.0", port=5050, refresh=36000, days_ago=30)  # Start the Analytics web-server
+myPort = process.env.PORT || 5050
+
+twitch_miner.analytics(host="0.0.0.0", port=myPort, refresh=36000, days_ago=30)  # Start the Analytics web-server
 
 
 twitch_miner.mine(
