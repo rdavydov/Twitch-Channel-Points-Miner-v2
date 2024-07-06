@@ -12,7 +12,8 @@ from TwitchChannelPointsMiner.classes.Pushover import Pushover
 from TwitchChannelPointsMiner.classes.Settings import Priority, Events, FollowersOrder
 from TwitchChannelPointsMiner.classes.entities.Bet import Strategy, BetSettings, Condition, OutcomeKeys,FilterCondition, DelayMode
 from TwitchChannelPointsMiner.classes.entities.Streamer import Streamer, StreamerSettings
-# import keep_alive,os
+import os
+# import keep_alive
 # import sentry_sdk
 
 
@@ -24,7 +25,7 @@ password = os.getenv('Password')
 webHook = os.getenv('WebHook')
 chatID = os.getenv('ChatID')
 telegramToken = os.getenv('TelegramToken')
-sentryID = os.getenv('SentryID')
+# sentryID = os.getenv('SentryID')
 
 # sentry_sdk.init(
 #    dsn=sentryID,
