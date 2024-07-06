@@ -1,2 +1,2 @@
-worker: python run.py
-web: python app.py
+worker: python run.py $PORT
+web: python app.py $PORT
