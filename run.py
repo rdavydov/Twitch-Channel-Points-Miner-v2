@@ -209,9 +209,8 @@ twitch_miner = TwitchChannelPointsMiner(
     )
 )
 
-myPort = process.env.PORT || 5050
 
-twitch_miner.analytics(host="0.0.0.0", port=myPort, refresh=36000, days_ago=30)  # Start the Analytics web-server
+twitch_miner.analytics(host="0.0.0.0", port=process.env.PORT, refresh=36000, days_ago=30)  # Start the Analytics web-server
 
 
 twitch_miner.mine(
