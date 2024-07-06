@@ -13,8 +13,8 @@ from TwitchChannelPointsMiner.classes.Settings import Priority, Events, Follower
 from TwitchChannelPointsMiner.classes.entities.Bet import Strategy, BetSettings, Condition, OutcomeKeys,FilterCondition, DelayMode
 from TwitchChannelPointsMiner.classes.entities.Streamer import Streamer, StreamerSettings
 import os
+import sentry_sdk
 # import keep_alive
-# import sentry_sdk
 
 
 
@@ -25,17 +25,22 @@ password = os.getenv('Password')
 webHook = os.getenv('WebHook')
 chatID = os.getenv('ChatID')
 telegramToken = os.getenv('TelegramToken')
-# sentryID = os.getenv('SentryID')
+sentryDSN = os.getenv('SENTRY_DSN')
 
-# sentry_sdk.init(
-#    dsn=sentryID,
-    # Set traces_sample_rate to 1.0 to capture 100%
-    # of transactions for performance monitoring.
-#    traces_sample_rate=1.0,
-    # Set profiles_sample_rate to 1.0 to profile 100%
-    # of sampled transactions.
-    # We recommend adjusting this value in production.
- #   profiles_sample_rate=1.0,)
+
+
+sentry_sdk.init(
+    dsn=sentryDSN,
+    max_breadcrumbs=50,
+    debug=True,
+    enable_tracing=True,
+
+    # By default the SDK will try to use the SENTRY_RELEASE
+    # environment variable, or infer a git commit
+    # SHA as release, however you may want to set
+    # something more human-readable.
+    # release="myapp@1.0.0",
+)
 
 twitch_miner = TwitchChannelPointsMiner(
     username=user,
