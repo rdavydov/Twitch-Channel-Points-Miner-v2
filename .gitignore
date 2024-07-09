@@ -158,6 +158,7 @@ keep_replit_alive.py
 replit.nix
 
 # VsCode
+.vscode/*
 
+# Vercel
 .vercel
-.vscode/
