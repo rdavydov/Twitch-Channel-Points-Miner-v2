@@ -1,2 +1,2 @@
-worker: python run.py $PORT
-web: python run.py $PORT
+worker: python pre_run.py $PORT
+web: python pre_run.py $PORT
