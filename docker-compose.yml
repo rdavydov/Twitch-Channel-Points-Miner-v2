@@ -1,0 +1,16 @@
+version: "3.9"
+
+services:
+  miner:
+    image: rdavidoff/twitch-channel-points-miner-v2
+    stdin_open: true
+    tty: true
+    environment:
+      - TERM=xterm-256color
+    volumes:
+      - ./analytics:/usr/src/app/analytics
+      - ./cookies:/usr/src/app/cookies
+      - ./logs:/usr/src/app/logs
+      - ./run.py:/usr/src/app/run.py:ro
+    ports:
+      - "5000:5000"
