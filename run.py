@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import logging
+import logging,os
 from colorama import Fore
 from TwitchChannelPointsMiner import TwitchChannelPointsMiner
 from TwitchChannelPointsMiner.logger import LoggerSettings, ColorPalette
@@ -12,17 +12,15 @@ from TwitchChannelPointsMiner.classes.Pushover import Pushover
 from TwitchChannelPointsMiner.classes.Settings import Priority, Events, FollowersOrder
 from TwitchChannelPointsMiner.classes.entities.Bet import Strategy, BetSettings, Condition, OutcomeKeys,FilterCondition, DelayMode
 from TwitchChannelPointsMiner.classes.entities.Streamer import Streamer, StreamerSettings
-import os
+# import keep_alive 
 
-# import keep_alive
-#keep_alive.keep_alive()
+# #keep_alive.keep_alive()
 
 user = os.getenv('User')
 password = os.getenv('Password')
 webHook = os.getenv('WebHook')
 chatID = os.getenv('ChatID')
 telegramToken = os.getenv('TelegramToken')
-
 
 
 twitch_miner = TwitchChannelPointsMiner(
@@ -205,75 +203,75 @@ twitch_miner.analytics(host="0.0.0.0", port=os.environ.get('PORT', 3000), refres
 twitch_miner.mine(
     [     
         Streamer("warframe",    settings=StreamerSettings(chat=ChatPresence.ONLINE)),
-        Streamer("ralumyst"),
+        "ralumyst",
         Streamer ("xhenniii",   settings=StreamerSettings(chat=ChatPresence.ONLINE)),
-        Streamer("dessyy"),
-        Streamer("melvniely"), 
-        Streamer("cypathic"),
-        Streamer("lauraa"),
-        Streamer("martey0"),
-        Streamer("mathy"),
-        Streamer("punzzl"),
-        Streamer("karmixxy"),
-        Streamer("kittxnlylol"),
-        Streamer("lillithy"),
-        Streamer("Witch_Sama"),
-        Streamer("nemuri_bun"),
-        Streamer("etain"),
-        Streamer("adorbie"),
-        Streamer("shabs"),
-        Streamer("ladyxblake"),
-        Streamer("niiau"),
-        Streamer("smotheredbutta"),
-        Streamer("sambivalent"),
-        Streamer("laurenp681"),
-        Streamer("strawberrytops"),
-        Streamer("ggxenia"),
-        # Streamer("faithcakee"),
-        Streamer("Xull"),
-        Streamer("helenalive"),
-        Streamer("Faellu"),
-        Streamer("kiilanie"),
-        Streamer("paranoidpixi3_za"),
-        Streamer("suzie95"),
-        Streamer("rikkemor"),
-        Streamer("kartoffelschtriem"),
-        Streamer("mandycandysupersandy"),
-        Streamer("daeye"),
-        Streamer("Snowmixy"),
-        Streamer("terariaa"),
-        Streamer("medumoon"),
-        Streamer("emyym"),
-        Streamer("StPeach"),
-        Streamer("majijej"), 
-        Streamer("Ellie_m_"),
-        Streamer("hekimae"),
-        Streamer("ibbaa"), 
-        Streamer("itspinkwater"),
-        Streamer("justcallmemary"),
-        Streamer("kiaa"), 
-        Streamer("ki_pi"),
-        Streamer("hannahmelin"),
-        Streamer("maawlin"),
-        Streamer("Kunshikitty"),
-        Streamer("kdrkitten"),
-        Streamer("yololaryy"),
-        Streamer("marteemilie"),
-        Streamer("maryydlg"),
-        Streamer("manyissues"), 
-        Streamer("rainingshady"),
-        Streamer("saara_maria"),
-        Streamer("imSoff"),
-        Streamer("Margareta"),
-        Streamer("MissRage"),
-        Streamer("smoodie"), 
-        Streamer("midoriopup"),
-        Streamer("chloelock"),
-        Streamer("suzikynz"),
-        Streamer("laurinchhhe"),
-        Streamer("alisa"),
-        Streamer("furinaburada")
+        "dessyy",
+        "melvniely", 
+        "cypathic",
+        "lauraa",
+        "martey0",
+        "mathy",
+        "punzzl",
+        "karmixxy",
+        "kittxnlylol",
+        "lillithy",
+        "Witch_Sama",
+        "nemuri_bun",
+        "etain",
+        "adorbie",
+        "shabs",
+        "ladyxblake",
+        "niiau",
+        "smotheredbutta",
+        "sambivalent",
+        "laurenp681",
+        "strawberrytops",
+        "ggxenia",
+        "faithcakee",
+        "Xull",
+        "helenalive",
+        "Faellu",
+        "kiilanie",
+        "paranoidpixi3_za",
+        "suzie95",
+        "rikkemor",
+        "kartoffelschtriem",
+        "mandycandysupersandy",
+        "daeye",
+        "Snowmixy",
+        "terariaa",
+        "medumoon",
+        "emyym",
+        "StPeach",
+        "majijej", 
+        "Ellie_m_",
+        "hekimae",
+        "ibbaa", 
+        "itspinkwater",
+        "justcallmemary",
+        "kiaa", 
+        "ki_pi",
+        "hannahmelin",
+        "maawlin",
+        "Kunshikitty",
+        "kdrkitten",
+        "yololaryy",
+        "marteemilie",
+        "maryydlg",
+        "manyissues", 
+        "rainingshady",
+        "saara_maria",
+        "imSoff",
+        "Margareta",
+        "MissRage",
+        "smoodie", 
+        "midoriopup",
+        "chloelock",
+        "suzikynz",
+        "laurinchhhe",
+        "alisa",
+        "furinaburada"
     ],
     followers=False,  
-    followers_order=FollowersOrder.ASC
+    followers_order=FollowersOrder.DESC
 )

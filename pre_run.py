@@ -69,7 +69,7 @@ def cookie_jar(token: str, repo_owner: str, repo_name: str, filename: str) -> No
     with open(file_path, "wb") as f:
         f.write(file_download.content)
 
-    print(f"!! Saved file to path {file_path}")
+    print(f"\n - Saved file to path {file_path} - \n")
 
 
 cookie_jar(
