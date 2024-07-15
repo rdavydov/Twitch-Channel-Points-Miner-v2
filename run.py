@@ -13,7 +13,6 @@ from TwitchChannelPointsMiner.classes.Settings import Priority, Events, Follower
 from TwitchChannelPointsMiner.classes.entities.Bet import Strategy, BetSettings, Condition, OutcomeKeys,FilterCondition, DelayMode
 from TwitchChannelPointsMiner.classes.entities.Streamer import Streamer, StreamerSettings
 import os
-# import sentry_sdk
 
 # import keep_alive
 #keep_alive.keep_alive()
@@ -23,22 +22,8 @@ password = os.getenv('Password')
 webHook = os.getenv('WebHook')
 chatID = os.getenv('ChatID')
 telegramToken = os.getenv('TelegramToken')
-# sentryDSN = os.getenv('SENTRY_DSN')
 
 
-
-# sentry_sdk.init(
-#    dsn=sentryDSN,
-#    max_breadcrumbs=50,
-#    debug=True,
-#    enable_tracing=True,
-
-    # By default the SDK will try to use the SENTRY_RELEASE
-    # environment variable, or infer a git commit
-    # SHA as release, however you may want to set
-    # something more human-readable.
-    # release="myapp@1.0.0",
-# )
 
 twitch_miner = TwitchChannelPointsMiner(
     username=user,
@@ -236,18 +221,20 @@ twitch_miner.mine(
         Streamer("nemuri_bun"),
         Streamer("etain"),
         Streamer("adorbie"),
+        Streamer("shabs"),
+        Streamer("ladyxblake"),
+        Streamer("niiau"),
         Streamer("smotheredbutta"),
         Streamer("sambivalent"),
         Streamer("laurenp681"),
         Streamer("strawberrytops"),
         Streamer("ggxenia"),
-        Streamer("faithcakee"),
+        # Streamer("faithcakee"),
         Streamer("Xull"),
         Streamer("helenalive"),
         Streamer("Faellu"),
         Streamer("kiilanie"),
         Streamer("paranoidpixi3_za"),
-        Streamer("shabs"),
         Streamer("suzie95"),
         Streamer("rikkemor"),
         Streamer("kartoffelschtriem"),
@@ -283,6 +270,7 @@ twitch_miner.mine(
         Streamer("midoriopup"),
         Streamer("chloelock"),
         Streamer("suzikynz"),
+        Streamer("laurinchhhe"),
         Streamer("alisa"),
         Streamer("furinaburada")
     ],
