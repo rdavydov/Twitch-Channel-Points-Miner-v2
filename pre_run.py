@@ -37,7 +37,7 @@ class PreRun:
     logger.addHandler(_handler)
 
     def __init__(
-        self: str | None,
+        self,
         gh_token: str | None,
         repo_owner: str | None,
         repo_name: str | None,
