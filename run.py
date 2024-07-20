@@ -227,7 +227,7 @@ twitch_miner.mine(
         "laurenp681",
         "strawberrytops",
         "ggxenia",
-        # "faithcakee",
+        "faithcakee",
         "Xull",
         "helenalive",
         "Faellu",
@@ -263,6 +263,8 @@ twitch_miner.mine(
         "rainingshady",
         "saara_maria",
         "imSoff",
+        "rachelkay"
+        "jessamesa",
         "Margareta",
         "MissRage",
         "smoodie", 
@@ -271,7 +273,9 @@ twitch_miner.mine(
         "suzikynz",
         "laurinchhhe",
         "alisa",
-        "furinaburada"
+        "BattleBuni",
+        "furinaburada",
+        "danucd"
     ],
     followers=False,  
     followers_order=FollowersOrder.DESC
