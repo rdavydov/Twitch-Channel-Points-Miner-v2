@@ -263,7 +263,7 @@ twitch_miner.mine(
         "rainingshady",
         "saara_maria",
         "imSoff",
-        "rachelkay"
+        "rachelkay",
         "jessamesa",
         "Margareta",
         "MissRage",
