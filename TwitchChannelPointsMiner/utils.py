@@ -169,7 +169,7 @@ def download_file(name, fpath):
         path.join(GITHUB_url, name),
         headers={"User-Anget": get_user_agent("FIREFOX")},
         stream=True,
-    )
+    timeout=60)
     if r.status_code == 200:
         with open(fpath, "wb") as f:
             for chunk in r.iter_content(chunk_size=1024):
@@ -201,8 +201,8 @@ def check_versions():
                     s.strip("/")
                     for s in [GITHUB_url, "TwitchChannelPointsMiner", "__init__.py"]
                 ]
-            )
-        )
+            ), 
+        timeout=60)
         github_version = init2dict(r.text)
         github_version = (
             github_version["version"] if "version" in github_version else "0.0.0"

@@ -19,8 +19,8 @@ class Webhook(object):
             url = self.endpoint + f"?event_name={str(event)}&message={message}" 
             
             if self.method.lower() == "get":
-                requests.get(url=url)
+                requests.get(url=url, timeout=60)
             elif self.method.lower() == "post":
-                requests.post(url=url)
+                requests.post(url=url, timeout=60)
             else:
                 raise ValueError("Invalid method, use POST or GET")
