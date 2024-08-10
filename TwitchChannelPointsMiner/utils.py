@@ -5,12 +5,12 @@ import time
 from copy import deepcopy
 from datetime import datetime, timezone
 from os import path
-from random import randrange
 
 import requests
 from millify import millify
 
 from TwitchChannelPointsMiner.constants import USER_AGENTS, GITHUB_url
+import secrets
 
 
 def _millify(input, precision=2):
@@ -44,7 +44,7 @@ def server_time(message_data):
 def create_nonce(length=30) -> str:
     nonce = ""
     for i in range(length):
-        char_index = randrange(0, 10 + 26 + 26)
+        char_index = secrets.SystemRandom().randrange(0, 10 + 26 + 26)
         if char_index < 10:
             char = chr(ord("0") + char_index)
         elif char_index < 10 + 26:

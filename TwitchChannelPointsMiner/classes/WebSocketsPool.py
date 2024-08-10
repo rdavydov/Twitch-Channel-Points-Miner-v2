@@ -1,6 +1,5 @@
 import json
 import logging
-import random
 import time
 # import os
 from threading import Thread, Timer
@@ -18,6 +17,7 @@ from TwitchChannelPointsMiner.utils import (
     get_streamer_index,
     internet_connection_available,
 )
+import secrets
 
 logger = logging.getLogger(__name__)
 
@@ -103,7 +103,7 @@ class WebSocketsPool:
                 # Probably this ws will be closed very soon with ws.is_closed = True
                 if ws.is_reconnecting is False:
                     ws.ping()  # We need ping for keep the connection alive
-                    time.sleep(random.uniform(25, 30))
+                    time.sleep(secrets.SystemRandom().uniform(25, 30))
 
                     if ws.elapsed_last_pong() > 5:
                         logger.info(
@@ -147,7 +147,7 @@ class WebSocketsPool:
                 time.sleep(30)
 
                 while internet_connection_available() is False:
-                    random_sleep = random.randint(1, 3)
+                    random_sleep = secrets.SystemRandom().randint(1, 3)
                     logger.warning(
                         f"#{ws.index} - No internet connection available! Retry after {random_sleep}m"
                     )

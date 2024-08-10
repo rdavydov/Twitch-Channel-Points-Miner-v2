@@ -1,11 +1,11 @@
 import copy
 from enum import Enum, auto
-from random import uniform
 
 from millify import millify
 
 #from TwitchChannelPointsMiner.utils import char_decision_as_index, float_round
 from TwitchChannelPointsMiner.utils import float_round
+import secrets
 
 
 class Strategy(Enum):
@@ -337,7 +337,7 @@ class Bet(object):
                 and self.decision["amount"]
                 >= self.outcomes[index][OutcomeKeys.TOP_POINTS]
             ):
-                reduce_amount = uniform(1, 5)
+                reduce_amount = secrets.SystemRandom().uniform(1, 5)
                 self.decision["amount"] = (
                     self.outcomes[index][OutcomeKeys.TOP_POINTS] - reduce_amount
                 )

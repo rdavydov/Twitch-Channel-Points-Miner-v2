@@ -2,7 +2,6 @@
 
 import logging
 import os
-import random
 import signal
 import sys
 import threading
@@ -30,6 +29,7 @@ from TwitchChannelPointsMiner.utils import (
     internet_connection_available,
     set_default_settings,
 )
+import secrets
 
 # Suppress:
 #   - chardet.charsetprober - [feed]
@@ -262,7 +262,7 @@ class TwitchChannelPointsMiner:
             )
             for username in streamers_name:
                 if username in streamers_name:
-                    time.sleep(random.uniform(0.3, 0.7))
+                    time.sleep(secrets.SystemRandom().uniform(0.3, 0.7))
                     try:
                         streamer = (
                             streamers_dict[username]
@@ -295,7 +295,7 @@ class TwitchChannelPointsMiner:
             # 2. Check if streamers are online
             # 3. DEACTIVATED: Check if the user is a moderator. (was used before the 5th of April 2021 to deactivate predictions)
             for streamer in self.streamers:
-                time.sleep(random.uniform(0.3, 0.7))
+                time.sleep(secrets.SystemRandom().uniform(0.3, 0.7))
                 self.twitch.load_channel_points_context(streamer)
                 self.twitch.check_streamer_online(streamer)
                 # self.twitch.viewer_is_mod(streamer)
@@ -384,7 +384,7 @@ class TwitchChannelPointsMiner:
 
             refresh_context = time.time()
             while self.running:
-                time.sleep(random.uniform(20, 60))
+                time.sleep(secrets.SystemRandom().uniform(20, 60))
                 # Do an external control for WebSocket. Check if the thread is running
                 # Check if is not None because maybe we have already created a new connection on array+1 and now index is None
                 for index in range(0, len(self.ws_pool.ws)):
