@@ -752,3 +752,7 @@ If you can't install `cryptography`, please try:
 
 ## Disclaimer
 This project comes with no guarantee or warranty. You are responsible for whatever happens from using this project. It is possible to get soft or hard banned by using this project if you are not careful. This is a personal project and is in no way affiliated with Twitch.
+
+## License
+
+This project is licensed under the terms of the GNU General Public License v3.0. Additionally, it includes components that are licensed under the Apache License 2.0. See the [LICENSE](LICENSE) file for details.

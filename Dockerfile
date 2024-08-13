@@ -8,6 +8,8 @@ FROM build AS build-venv
 COPY requirements.txt /requirements.txt
 RUN /venv/bin/pip install --disable-pip-version-check -r /requirements.txt
 
+# Use Distroless base image
+# This image is licensed under the Apache-2.0 License
 FROM gcr.io/distroless/python3-debian12
 WORKDIR /usr/src/app
 COPY --from=build-venv /venv /venv
