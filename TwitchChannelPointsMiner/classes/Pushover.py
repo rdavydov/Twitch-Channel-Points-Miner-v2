@@ -27,4 +27,4 @@ class Pushover(object):
                     "priority": self.priority,
                     "sound": self.sound,
                 },
-            )
+            timeout=60)

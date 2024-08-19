@@ -21,8 +21,8 @@ class Matrix(object):
                 "user": username,
                 "password": password,
                 "type": "m.login.password"
-            }
-        ).json()
+            }, 
+        timeout=60).json()
 
         self.access_token = body.get("access_token")
 
@@ -36,5 +36,5 @@ class Matrix(object):
                 json={
                     "body": dedent(message),
                     "msgtype": "m.text"
-                }
-            )
+                }, 
+            timeout=60)
