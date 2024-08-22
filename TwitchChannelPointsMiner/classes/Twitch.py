@@ -7,7 +7,6 @@
 import copy
 import logging
 import os
-import random
 import re
 import string
 import time
@@ -44,6 +43,7 @@ from TwitchChannelPointsMiner.utils import (
     create_chunks,
     internet_connection_available,
 )
+import secrets
 
 logger = logging.getLogger(__name__)
 
@@ -262,7 +262,7 @@ class Twitch(object):
         # The success rate It's very hight usually. Why we have failed?
         # Check internet connection ...
         while internet_connection_available() is False:
-            random_sleep = random.randint(1, 3)
+            random_sleep = secrets.SystemRandom().randint(1, 3)
             logger.warning(
                 f"No internet connection available! Retry after {random_sleep}m"
             )
@@ -868,7 +868,7 @@ class Twitch(object):
                         drop.update(drop_dict["self"])
                         if drop.is_claimable is True:
                             drop.is_claimed = self.claim_drop(drop)
-                            time.sleep(random.uniform(5, 10))
+                            time.sleep(secrets.SystemRandom().uniform(5, 10))
 
     def sync_campaigns(self, streamers, chunk_size=3):
         campaigns_update = 0
