@@ -77,7 +77,7 @@ class WebSocketsPool:
                     sslopt={"cert_reqs": ssl.CERT_NONE}
                 )
             )
-            logger.warn("SSL certificate verification is disabled! Be aware!")
+            logger.warning("SSL certificate verification is disabled! Be aware!")
         else:
             thread_ws = Thread(target=lambda: self.ws[index].run_forever())
         thread_ws.daemon = True
