@@ -30,6 +30,7 @@ from TwitchChannelPointsMiner.utils import (
     set_default_settings,
 )
 import secrets
+from typing import Optional
 
 # Suppress:
 #   - chardet.charsetprober - [feed]
@@ -80,12 +81,13 @@ class TwitchChannelPointsMiner:
         disable_ssl_cert_verification: bool = False,
         disable_at_in_nickname: bool = False,
         # Settings for logging and selenium as you can see.
-        priority: list = [Priority.STREAK, Priority.DROPS, Priority.ORDER],
+        priority: Optional[list] = None,
         # This settings will be global shared trought Settings class
         logger_settings: LoggerSettings = LoggerSettings(),
         # Default values for all streamers
         streamer_settings: StreamerSettings = StreamerSettings(),
     ):
+        priority = [Priority.STREAK, Priority.DROPS, Priority.ORDER] if priority is None else priority
         # Fixes TypeError: 'NoneType' object is not subscriptable
         if not username or username == "your-twitch-username":
             logger.error(
@@ -203,20 +205,24 @@ class TwitchChannelPointsMiner:
 
     def mine(
         self,
-        streamers: list = [],
-        blacklist: list = [],
+        streamers: Optional[list] = None,
+        blacklist: Optional[list] = None,
         followers: bool = False,
         followers_order: FollowersOrder = FollowersOrder.ASC,
     ):
+        streamers = [] if streamers is None else streamers
+        blacklist = [] if blacklist is None else blacklist
         self.run(streamers=streamers, blacklist=blacklist, followers=followers)
 
     def run(
         self,
-        streamers: list = [],
-        blacklist: list = [],
+        streamers: Optional[list] = None,
+        blacklist: Optional[list] = None,
         followers: bool = False,
         followers_order: FollowersOrder = FollowersOrder.ASC,
     ):
+        streamers = [] if streamers is None else streamers
+        blacklist = [] if blacklist is None else blacklist
         if self.running:
             logger.error("You can't start multiple sessions of this instance!")
         else:
