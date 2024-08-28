@@ -203,6 +203,9 @@ twitch_miner.analytics(host="0.0.0.0", port=os.environ.get('PORT', 5050), refres
 twitch_miner.mine(
     [     
         Streamer("warframe",    settings=StreamerSettings(chat=ChatPresence.ONLINE)),
+        Streamer("LadyTheLaddy",    settings=StreamerSettings(chat=ChatPresence.ONLINE)),
+        Streamer("kyaiiyt",    settings=StreamerSettings(chat=ChatPresence.ONLINE)),
+        Streamer("VVhite_Angel",    settings=StreamerSettings(chat=ChatPresence.ONLINE)),
         "ralumyst",
         Streamer ("xhenniii",   settings=StreamerSettings(chat=ChatPresence.ONLINE)),
         "dessyy",
