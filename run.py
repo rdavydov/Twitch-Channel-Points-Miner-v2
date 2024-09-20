@@ -261,6 +261,7 @@ twitch_miner.mine(
         "ki_pi",
         "hannahmelin",
         "maawlin",
+        "hannahmelin",
         "Kunshikitty",
         "kdrkitten",
         "Ellie_m_",
