@@ -219,6 +219,7 @@ twitch_miner.mine(
         "Faellu",
         "kittxnlylol",
         "helenalive",
+        "jenna",
         "faithcakee",
         "StPeach",
         "Xull",
