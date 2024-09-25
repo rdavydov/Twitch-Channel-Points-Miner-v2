@@ -269,7 +269,7 @@ twitch_miner.mine(
         "marteemilie",
         "maryydlg",
         "manyissues",
-        "LadyKandice" 
+        "LadyKandice", 
         "rainingshady",
         "sambivalent",
         "saara_maria",
