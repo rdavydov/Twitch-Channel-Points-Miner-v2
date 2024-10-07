@@ -22,6 +22,7 @@ class StreamerSettings(object):
         "claim_drops",
         "claim_moments",
         "watch_streak",
+        "community_goals",
         "bet",
         "chat",
     ]
@@ -33,6 +34,7 @@ class StreamerSettings(object):
         claim_drops: bool = None,
         claim_moments: bool = None,
         watch_streak: bool = None,
+        community_goals: bool = None,
         bet: BetSettings = None,
         chat: ChatPresence = None,
     ):
@@ -41,6 +43,7 @@ class StreamerSettings(object):
         self.claim_drops = claim_drops
         self.claim_moments = claim_moments
         self.watch_streak = watch_streak
+        self.community_goals = community_goals
         self.bet = bet
         self.chat = chat
 
@@ -54,13 +57,15 @@ class StreamerSettings(object):
         ]:
             if getattr(self, name) is None:
                 setattr(self, name, True)
+        if self.community_goals is None:
+            self.community_goals = False
         if self.bet is None:
             self.bet = BetSettings()
         if self.chat is None:
             self.chat = ChatPresence.ONLINE
 
     def __repr__(self):
-        return f"BetSettings(make_predictions={self.make_predictions}, follow_raid={self.follow_raid}, claim_drops={self.claim_drops}, claim_moments={self.claim_moments}, watch_streak={self.watch_streak}, bet={self.bet}, chat={self.chat})"
+        return f"BetSettings(make_predictions={self.make_predictions}, follow_raid={self.follow_raid}, claim_drops={self.claim_drops}, claim_moments={self.claim_moments}, watch_streak={self.watch_streak}, community_goals={self.community_goals}, bet={self.bet}, chat={self.chat})"
 
 
 class Streamer(object):
@@ -73,6 +78,7 @@ class Streamer(object):
         "online_at",
         "offline_at",
         "channel_points",
+        "community_goals",
         "minute_watched_requests",
         "viewer_is_mod",
         "activeMultipliers",
@@ -93,6 +99,7 @@ class Streamer(object):
         self.online_at = 0
         self.offline_at = 0
         self.channel_points = 0
+        self.community_goals = {}
         self.minute_watched_requests = None
         self.viewer_is_mod = False
         self.activeMultipliers = None
@@ -149,9 +156,9 @@ class Streamer(object):
         )
 
     def print_history(self):
-        return ", ".join(
+        return "; ".join(
             [
-                f"{key}({self.history[key]['counter']} times, {_millify(self.history[key]['amount'])} gained)"
+                f"{key} ({self.history[key]['counter']} times, {_millify(self.history[key]['amount'])} gained)"
                 for key in sorted(self.history)
                 if self.history[key]["counter"] != 0
             ]
@@ -211,7 +218,11 @@ class Streamer(object):
             primary_color = (
                 "#45c1ff"  # blue #45c1ff yellow #ffe045 green #36b535 red #ff4545
                 if event_type == "WATCH_STREAK"
-                else ("#ffe045" if event_type == "PREDICTION_MADE" else ("#36b535" if event_type == "WIN" else "#ff4545"))
+                else (
+                    "#ffe045"
+                    if event_type == "PREDICTION_MADE"
+                    else ("#36b535" if event_type == "WIN" else "#ff4545")
+                )
             )
             data = {
                 "borderColor": primary_color,
@@ -237,13 +248,12 @@ class Streamer(object):
                 data.update({"z": event_type.replace("_", " ").title()})
 
         fname = os.path.join(Settings.analytics_path, f"{self.username}.json")
-        temp_fname = fname + '.temp'  # Temporary file name
+        temp_fname = fname + ".temp"  # Temporary file name
 
         with self.mutex:
             # Create and write to the temporary file
             with open(temp_fname, "w") as temp_file:
-                json_data = json.load(
-                    open(fname, "r")) if os.path.isfile(fname) else {}
+                json_data = json.load(open(fname, "r")) if os.path.isfile(fname) else {}
                 if key not in json_data:
                     json_data[key] = []
                 json_data[key].append(data)
@@ -283,3 +293,9 @@ class Streamer(object):
                     self.leave_chat()
                 elif self.settings.chat == ChatPresence.OFFLINE:
                     self.__join_chat()
+
+    def update_community_goal(self, community_goal):
+        self.community_goals[community_goal.goal_id] = community_goal
+
+    def delete_community_goal(self, goal_id):
+        self.community_goals.pop(goal_id)

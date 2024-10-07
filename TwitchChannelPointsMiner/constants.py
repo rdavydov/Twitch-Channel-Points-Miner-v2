@@ -209,3 +209,21 @@ class GQLOperations:
             }
         },
     }
+    UserPointsContribution = {
+        "operationName": "UserPointsContribution",
+        "extensions": {
+            "persistedQuery": {
+                "version": 1,
+                "sha256Hash": "23ff2c2d60708379131178742327ead913b93b1bd6f665517a6d9085b73f661f"
+            }
+        }
+    }
+    ContributeCommunityPointsCommunityGoal = {
+        "operationName": "ContributeCommunityPointsCommunityGoal",
+        "extensions": {
+            "persistedQuery": {
+                "version": 1,
+                "sha256Hash": "5774f0ea5d89587d73021a2e03c3c44777d903840c608754a1be519f51e37bb6"
+            }
+        }
+    }

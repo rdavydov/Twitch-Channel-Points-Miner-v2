@@ -167,7 +167,7 @@ def create_chunks(lst, n):
 def download_file(name, fpath):
     r = requests.get(
         path.join(GITHUB_url, name),
-        headers={"User-Anget": get_user_agent("FIREFOX")},
+        headers={"User-Agent": get_user_agent("FIREFOX")},
         stream=True,
     timeout=60)
     if r.status_code == 200:

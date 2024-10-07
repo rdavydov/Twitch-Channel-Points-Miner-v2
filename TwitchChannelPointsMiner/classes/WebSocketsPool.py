@@ -7,6 +7,7 @@ from threading import Thread, Timer
 
 from dateutil import parser
 
+from TwitchChannelPointsMiner.classes.entities.CommunityGoal import CommunityGoal
 from TwitchChannelPointsMiner.classes.entities.EventPrediction import EventPrediction
 from TwitchChannelPointsMiner.classes.entities.Message import Message
 from TwitchChannelPointsMiner.classes.entities.Raid import Raid
@@ -399,6 +400,25 @@ class WebSocketsPool:
                                         "PREDICTION_MADE",
                                         f"Decision: {event_prediction.bet.decision['choice']} - {event_prediction.title}",
                                     )
+                    elif message.topic == "community-points-channel-v1":
+                        if message.type == "community-goal-created":
+                            # TODO Untested, hard to find this happening live
+                            ws.streamers[streamer_index].add_community_goal(
+                                CommunityGoal.from_pubsub(message.data["community_goal"])
+                            )
+                        elif message.type == "community-goal-updated":
+                            ws.streamers[streamer_index].update_community_goal(
+                                CommunityGoal.from_pubsub(message.data["community_goal"])
+                            )
+                        elif message.type == "community-goal-deleted":
+                            # TODO Untested, not sure what the message format for this is,
+                            #      https://github.com/sammwyy/twitch-ps/blob/master/main.js#L417
+                            #      suggests that it should be just the entire, now deleted, goal model
+                            ws.streamers[streamer_index].delete_community_goal(message.data["community_goal"]["id"])
+
+                        if message.type in ["community-goal-updated", "community-goal-created"]:
+                            ws.twitch.contribute_to_community_goals(ws.streamers[streamer_index])
+
                 except Exception:
                     logger.error(
                         f"Exception raised for topic: {message.topic} and message: {message}",
