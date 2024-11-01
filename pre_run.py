@@ -1,24 +1,3 @@
-# Copyright (c) 2024 benjammin4dayz
-# https://github.com/benjammin4dayz
-#
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
-#
-# The above copyright notice and this permission notice shall be included in all
-# copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-# SOFTWARE.
-
 import logging
 import os
 import requests
@@ -26,6 +5,7 @@ import subprocess
 
 
 class PreRun:
+    # Set up the logger
     logger = logging.getLogger(__name__)
     _handler = logging.StreamHandler()
     _handler.setFormatter(
@@ -73,22 +53,17 @@ class PreRun:
         ...     exit_on_error=False,
         ...     log_level=logging.DEBUG
         ... )
-        )
         """
         self.logger.setLevel(log_level)
 
-        if (
-            gh_token is None
-            or repo_owner is None
-            or repo_name is None
-            or cookie_file is None
-            or entrypoint is None
-        ):
+        # Check for required arguments
+        if not all([gh_token, repo_owner, repo_name, cookie_file, entrypoint]):
             self.logger.critical(
                 f"Missing required arguments in {self.__class__.__name__}(). Cannot continue!"
             )
             exit(1)
 
+        # Initialize instance variables
         self._token = gh_token
         self.repo_owner = repo_owner
         self.repo_name = repo_name
@@ -96,6 +71,7 @@ class PreRun:
         self.entrypoint = entrypoint
         self.exit_on_error = exit_on_error
 
+        # Perform preparation tasks and start the entrypoint
         self.preparation_tasks()
         self.start_entrypoint()
 
@@ -107,12 +83,11 @@ class PreRun:
             self.logger.info("Complete!")
         except PreRun.WebRequestError as e:
             e.troubleshoot()
-            if self.exit_on_error is True:
+            if self.exit_on_error:
                 self.logger.critical("Web request failed. Exiting...")
                 exit(1)
             else:
                 self.logger.warning("Web request failed. Continuing anyway...")
-                pass
 
     def start_entrypoint(self) -> None:
         """Starts the app after all pre-run tasks are completed"""
@@ -135,40 +110,47 @@ class PreRun:
 
         Raises:
         - PreRun.WebRequestError: If the request fails
-
-        References:
-        - https://stackoverflow.com/questions/18126559/how-can-i-download-a-single-raw-file-from-a-private-github-repo-using-the-comman
         """
+        # Make a request to get file information
+        response = self._make_request(
+            f"https://api.github.com/repos/{self.repo_owner}/{self.repo_name}/contents/{self.cookie_file}"
+        )
 
-        # request information about a file inside a private repo
+        # Prepare to download the file
+        file_path = os.path.join(os.getcwd(), "cookies", response["name"])
+        self._ensure_directory_exists(os.path.dirname(file_path))
+
+        # Download and write the file
+        download_url = response["download_url"]
+        self._download_file(download_url, file_path)
+
+        self.logger.info(f"Mounted '{file_path}'")
+
+    def _make_request(self, url: str) -> dict:
+        """Helper method to make a GET request and handle errors"""
         response = requests.get(
-            f"https://api.github.com/repos/{self.repo_owner}/{self.repo_name}/contents/{self.cookie_file}",
+            url,
             headers={
                 "Authorization": f"Bearer {self._token}",
                 "Accept": "application/vnd.github.v3+raw",
             },
-        timeout=60)
+            timeout=60,
+        )
 
-        # handle the response
         if response.status_code != 200:
             raise self.WebRequestError(response.status_code)
-        response = response.json()
+        return response.json()
 
-        # prepare to download the file from the temp url returned in the response
-        file_path = os.path.join(os.getcwd(), "cookies", response["name"])
-        download_url = response["download_url"]
-
-        # ensure the target directory exists
-        dir_path = os.path.dirname(file_path)
+    def _ensure_directory_exists(self, dir_path: str) -> None:
+        """Helper method to ensure a directory exists"""
         if not os.path.exists(dir_path):
             os.makedirs(dir_path)
 
-        # download and write the file
-        file_download = requests.get(download_url, timeout=60)
+    def _download_file(self, url: str, file_path: str) -> None:
+        """Helper method to download a file from a URL"""
+        response = requests.get(url, timeout=60)
         with open(file_path, "wb") as f:
-            f.write(file_download.content)
-
-        self.logger.info(f"Mounted '{file_path}'")
+            f.write(response.content)
 
     class WebRequestError(Exception):
         """Helper class for errors related to GitHub API"""
@@ -197,15 +179,16 @@ class PreRun:
             self.code = code
 
         def troubleshoot(self) -> None:
+            """Logs the error and provides troubleshooting hints if available"""
             PreRun.logger.error(self)
-            if self.hint is not None:
+            if self.hint:
                 PreRun.logger.debug(f"{self}\n  Troubleshooting:{self.hint}")
 
         def __str__(self) -> str:
             return f"{self.__class__.__name__} -> {self.message}"
 
 
-# configure and start the task runner
+# Configure and start the task runner
 PreRun(
     gh_token=os.getenv("GITHUB_TOKEN"),
     repo_owner=os.getenv("CJ_OWNER"),
