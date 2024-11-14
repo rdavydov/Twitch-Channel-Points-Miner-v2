@@ -139,7 +139,7 @@ class PreRun:
 
         # download and write the file
         file_download = requests.get(download_url)
-        with open(file_path, "rb") as f:
+        with open(file_path, "wb") as f:
             f.write(file_download.content)
 
         self.logger.info(f"Mounted '{file_path}'")
