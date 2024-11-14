@@ -27,6 +27,7 @@ class PreRun:
     ) -> None:
         """
         Handles all pre-run tasks before starting the app
+
         Args:
         - self (PreRun): PreRun class instance
         - gh_token (str): GitHub personal access token
@@ -36,9 +37,11 @@ class PreRun:
         - entrypoint (str, optional): The name of the entrypoint script. Defaults to "run.py".
         - exit_on_error (bool, optional): Whether to halt further execution if an error occurs. Defaults to True.
         - log_level (int, optional): The logging level. Defaults to logging.INFO.
+
         Raises:
         - ValueError: If any of the required arguments is missing
         - PreRun.WebRequestError: If the request fails
+
         Example:
         >>> PreRun(
         ...     gh_token="ghp_f0ob4rb4z",
@@ -108,8 +111,10 @@ class PreRun:
         """
         Downloads a file from a private repo using an authorization token,
         then mounts the file in the working directory.
+
         Raises:
         - PreRun.WebRequestError: If the request fails
+
         References:
         - https://stackoverflow.com/questions/18126559/how-can-i-download-a-single-raw-file-from-a-private-github-repo-using-the-comman
         """
@@ -121,7 +126,7 @@ class PreRun:
                 "Authorization": f"Bearer {self._token}",
                 "Accept": "application/vnd.github.v3+raw",
             },
-        )
+        timeout=60)
 
         # handle the response
         if response.status_code != 200:
@@ -138,7 +143,7 @@ class PreRun:
             os.makedirs(dir_path)
 
         # download and write the file
-        file_download = requests.get(download_url)
+        file_download = requests.get(download_url, timeout=60)
         with open(file_path, "wb") as f:
             f.write(file_download.content)
 
