@@ -146,20 +146,26 @@ class PreRun:
         file_download = requests.get(download_url, timeout=60)
         with open(file_path, "wb") as f:
             f.write(file_download.content)
-            
-        # unpickle the file with error handling
-        try:
-            with open(file_path, "rb") as f:
-                data = pickle.load(f)
-            
-            # print the data
-            print(data)
-            
-            # pickle the printed data
-            with open("data.pkl", "wb") as f:
-                pickle.dump(data, f)
-        except pickle.UnpicklingError:
-            print("Error: The downloaded file is not a valid pickle file.")
+
+        # verify the file size to ensure it was downloaded correctly
+        if os.path.getsize(file_path) == 0:
+            print("Error: The downloaded file is empty.")
+        else:
+            # unpickle the file with error handling
+            try:
+                with open(file_path, "rb") as f:
+                    data = pickle.load(f)
+                
+                # print the data
+                print(data)
+                
+                # pickle the printed data
+                with open("data.pkl", "wb") as f:
+                    pickle.dump(data, f)
+            except pickle.UnpicklingError:
+                print("Error: The downloaded file is not a valid pickle file.")
+            except Exception as e:
+                print(f"An unexpected error occurred: {e}")
 
         self.logger.info(f"Mounted '{file_path}'")
 
