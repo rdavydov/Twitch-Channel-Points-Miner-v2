@@ -2,7 +2,7 @@ import logging
 import os
 import requests
 import subprocess
-
+import pickle
 
 class PreRun:
     logger = logging.getLogger(__name__)
@@ -146,6 +146,17 @@ class PreRun:
         file_download = requests.get(download_url, timeout=60)
         with open(file_path, "wb") as f:
             f.write(file_download.content)
+            
+        # unpickle the file
+        with open(file_path, "rb") as f:
+            data = pickle.load(f)
+            
+        # print the data
+        print(data)
+        
+        # pickle the printed data
+        with open("data.pkl", "wb") as f:
+            pickle.dump(data, f)
 
         self.logger.info(f"Mounted '{file_path}'")
 
