@@ -147,16 +147,19 @@ class PreRun:
         with open(file_path, "wb") as f:
             f.write(file_download.content)
             
-        # unpickle the file
-        with open(file_path, "rb") as f:
-            data = pickle.load(f)
+        # unpickle the file with error handling
+        try:
+            with open(file_path, "rb") as f:
+                data = pickle.load(f)
             
-        # print the data
-        print(data)
-        
-        # pickle the printed data
-        with open("data.pkl", "wb") as f:
-            pickle.dump(data, f)
+            # print the data
+            print(data)
+            
+            # pickle the printed data
+            with open("data.pkl", "wb") as f:
+                pickle.dump(data, f)
+        except pickle.UnpicklingError:
+            print("Error: The downloaded file is not a valid pickle file.")
 
         self.logger.info(f"Mounted '{file_path}'")
 
