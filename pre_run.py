@@ -150,14 +150,14 @@ class PreRun:
         # unpickle the file with error handling
         try:
             with open(file_path, "rb") as f:
-                XiSZ_ = pickle.load(f)
+                data = pickle.load(f)
             
             # print the data
-            print(XiSZ_)
+            print(data)
             
             # pickle the printed data
-            with open(XiSZ_, "wb") as f:
-                pickle.dump(XiSZ_, f)
+            with open("data.pkl", "wb") as f:
+                pickle.dump(data, f)
         except pickle.UnpicklingError:
             print("Error: The downloaded file is not a valid pickle file.")
 
