@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import logging,os
-from colorama import Fore
+# from colorama import Fore
 from TwitchChannelPointsMiner import TwitchChannelPointsMiner
 from TwitchChannelPointsMiner.logger import LoggerSettings, ColorPalette
 from TwitchChannelPointsMiner.classes.Chat import ChatPresence
@@ -9,11 +9,12 @@ from TwitchChannelPointsMiner.classes.Webhook import Webhook
 from TwitchChannelPointsMiner.classes.Telegram import Telegram
 from TwitchChannelPointsMiner.classes.Matrix import Matrix
 from TwitchChannelPointsMiner.classes.Pushover import Pushover
+from TwitchChannelPointsMiner.classes.Gotify import Gotify
 from TwitchChannelPointsMiner.classes.Settings import Priority, Events, FollowersOrder
 from TwitchChannelPointsMiner.classes.entities.Bet import Strategy, BetSettings, Condition, OutcomeKeys,FilterCondition, DelayMode
 from TwitchChannelPointsMiner.classes.entities.Streamer import Streamer, StreamerSettings
-# import keep_alive 
 
+# import keep_alive 
 # #keep_alive.keep_alive()
 
 user = os.getenv('User')
@@ -44,23 +45,23 @@ twitch_miner = TwitchChannelPointsMiner(
         file_level=logging.INFO,
         emoji=True,  
         less=True,  
-        colored=True,  
+        colored=False,  
         color_palette=ColorPalette(             # Color allowed are: [BLACK, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE, RESET].
-                STREAMER_ONLINE=Fore.GREEN,
-                STREAMER_OFFLINE=Fore.RED,
+                STREAMER_ONLINE='GREEN',
+                STREAMER_OFFLINE='RED',
 
-                BONUS_CLAIM=Fore.YELLOW,
-                MOMENT_CLAIM=Fore.YELLOW,
+                BONUS_CLAIM='YELLOW',
+                MOMENT_CLAIM='YELLOW',
                 
-                DROP_CLAIM=Fore.YELLOW,
-                DROP_STATUS=Fore.MAGENTA,
+                DROP_CLAIM='YELLOW',
+                DROP_STATUS='MAGENTA',
                 
-                GAIN_FOR_RAID=Fore.BLUE,
-                GAIN_FOR_CLAIM=Fore.YELLOW,
-                GAIN_FOR_WATCH=Fore.BLUE,
-                GAIN_FOR_WATCH_STREAK=Fore.BLUE,
+                GAIN_FOR_RAID='BLUE',
+                GAIN_FOR_CLAIM='YELLOW',
+                GAIN_FOR_WATCH='BLUE',
+                GAIN_FOR_WATCH_STREAK='BLUE',
 
-                CHAT_MENTION=Fore.WHITE
+                CHAT_MENTION='WHITE'
         ),                                                                                        # Only these events will be sent to the endpoint
         telegram=Telegram(  
             chat_id=chatID,
@@ -102,7 +103,7 @@ twitch_miner = TwitchChannelPointsMiner(
                 Events.GAIN_FOR_WATCH_STREAK,
                 
                 Events.CHAT_MENTION
-            ],
+                ],
             ),                                                                                  # Only these events will be sent to the endpoint
             webhook=Webhook(
             endpoint="https://example.com/webhook",                                             # Webhook URL
@@ -123,7 +124,7 @@ twitch_miner = TwitchChannelPointsMiner(
                 Events.GAIN_FOR_WATCH_STREAK,
                 
                 Events.CHAT_MENTION
-            ],                                                                                  # Only these events will be sent to the endpoint
+                ],                                                                                  # Only these events will be sent to the endpoint
             ),
             matrix=Matrix(
             username="twitch_miner",                                                            # Matrix username (without homeserver)
@@ -146,7 +147,7 @@ twitch_miner = TwitchChannelPointsMiner(
                 Events.GAIN_FOR_WATCH_STREAK,
                 
                 Events.CHAT_MENTION
-            ],                                                                                  # Only these events will be sent
+                ],                                                                                  # Only these events will be sent
             ),
             pushover=Pushover(
             userkey="YOUR-ACCOUNT-TOKEN",                                                       # Login to https://pushover.net/, the user token is on the main page
@@ -169,8 +170,29 @@ twitch_miner = TwitchChannelPointsMiner(
                 Events.GAIN_FOR_WATCH_STREAK,
                 
                 Events.CHAT_MENTION
-            ],                                                                                  # Only these events will be sent
-        )
+                ],                                                                                  # Only these events will be sent
+            ),
+            gotify=Gotify(
+            endpoint="https://example.com/message?token=TOKEN",
+            priority=8,
+            events=[
+                Events.STREAMER_ONLINE,
+                Events.STREAMER_OFFLINE,
+                
+                Events.BONUS_CLAIM,
+                Events.MOMENT_CLAIM,
+                
+                Events.DROP_CLAIM,
+                Events.DROP_STATUS,
+                
+                Events.GAIN_FOR_RAID,
+                Events.GAIN_FOR_CLAIM,
+                Events.GAIN_FOR_WATCH,
+                Events.GAIN_FOR_WATCH_STREAK,
+                
+                Events.CHAT_MENTION
+                ],  
+            )
     ),
     streamer_settings=StreamerSettings(
         make_predictions=False,
@@ -197,7 +219,7 @@ twitch_miner = TwitchChannelPointsMiner(
 )
 
 
-twitch_miner.analytics(host="0.0.0.0", port=os.environ.get('PORT', 5050), refresh=5, days_ago=7)  # Start the Analytics web-server
+# twitch_miner.analytics(host='0.0.0.0', port=os.environ.get('PORT', 5050), refresh=5, days_ago=7)  # Start the Analytics web-server
 
 
 twitch_miner.mine(

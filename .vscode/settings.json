@@ -1,3 +1,6 @@
 {
-  "window.title": "${dirty}${activeEditorShort}${separator}${rootName}${separator}${profileName}${separator}${appName}${separator}[Branch: master]"
+  "window.title": "${dirty}${activeEditorShort}${separator}${rootName}${separator}${profileName}${separator}${appName}${separator}[Branch: master]",
+  "files.associations": {
+    "python.pythonPath": ".\\.venv\\Scripts\\python.exe"
+  }
 }
