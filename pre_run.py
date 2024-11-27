@@ -3,6 +3,7 @@ import os
 import requests
 import subprocess
 import pickle
+import base64
 
 class PreRun:
     logger = logging.getLogger(__name__)
@@ -25,35 +26,6 @@ class PreRun:
         exit_on_error: bool = True,
         log_level: int = logging.INFO,
     ) -> None:
-        """
-        Handles all pre-run tasks before starting the app
-
-        Args:
-        - self (PreRun): PreRun class instance
-        - gh_token (str): GitHub personal access token
-        - repo_owner (str): GitHub username of the repository owner
-        - repo_name (str): Name of the GitHub repository
-        - cookie_file (str): The name of the cookie file to be downloaded
-        - entrypoint (str, optional): The name of the entrypoint script. Defaults to "run.py".
-        - exit_on_error (bool, optional): Whether to halt further execution if an error occurs. Defaults to True.
-        - log_level (int, optional): The logging level. Defaults to logging.INFO.
-
-        Raises:
-        - ValueError: If any of the required arguments is missing
-        - PreRun.WebRequestError: If the request fails
-
-        Example:
-        >>> PreRun(
-        ...     gh_token="ghp_f0ob4rb4z",
-        ...     repo_owner="foo",
-        ...     repo_name="bar",
-        ...     cookie_file="baz.pkl",
-        ...     entrypoint="main.py",
-        ...     exit_on_error=False,
-        ...     log_level=logging.DEBUG
-        ... )
-        )
-        """
         self.logger.setLevel(log_level)
 
         if (
@@ -79,7 +51,6 @@ class PreRun:
         self.start_entrypoint()
 
     def preparation_tasks(self) -> None:
-        """Performs pre-run tasks before starting the app"""
         self.logger.info("Started...")
         try:
             self.cookie_jar()
@@ -94,7 +65,6 @@ class PreRun:
                 pass
 
     def start_entrypoint(self) -> None:
-        """Starts the app after all pre-run tasks are completed"""
         self.logger.info("Starting app...")
         try:
             subprocess.run(
@@ -108,60 +78,41 @@ class PreRun:
             exit(1)
 
     def cookie_jar(self) -> None:
-        """
-        Downloads a file from a private repo using an authorization token,
-        then mounts the file in the working directory.
-
-        Raises:
-        - PreRun.WebRequestError: If the request fails
-
-        References:
-        - https://stackoverflow.com/questions/18126559/how-can-i-download-a-single-raw-file-from-a-private-github-repo-using-the-comman
-        """
-
-        # request information about a file inside a private repo
         response = requests.get(
             f"https://api.github.com/repos/{self.repo_owner}/{self.repo_name}/contents/{self.cookie_file}",
             headers={
                 "Authorization": f"Bearer {self._token}",
                 "Accept": "application/vnd.github.v3+raw",
             },
-        timeout=60)
+            timeout=60)
 
-        # handle the response
         if response.status_code != 200:
             raise self.WebRequestError(response.status_code)
         response = response.json()
 
-        # prepare to download the file from the temp url returned in the response
         file_path = os.path.join(os.getcwd(), "cookies", response["name"])
         download_url = response["download_url"]
 
-        # ensure the target directory exists
         dir_path = os.path.dirname(file_path)
         if not os.path.exists(dir_path):
             os.makedirs(dir_path)
 
-        # download and write the file
         file_download = requests.get(download_url, timeout=60)
         with open(file_path, "wb") as f:
             f.write(file_download.content)
 
-        # verify the file size to ensure it was downloaded correctly
         if os.path.getsize(file_path) == 0:
             print("Error: The downloaded file is empty.")
         else:
-            # unpickle the file with error handling
             try:
                 with open(file_path, "rb") as f:
                     data = pickle.load(f)
                 
-                # print the data
-                print(data)
-                
-                # pickle the printed data
-                with open("data.pkl", "wb") as f:
-                    pickle.dump(data, f)
+                if self.validate_cookies(data):
+                    encoded_cookies = base64.b64encode(pickle.dumps(data)).decode('utf-8')
+                    os.environ["VALIDATED_COOKIES"] = encoded_cookies
+                else:
+                    print("Error: The downloaded file contains invalid data.")
             except pickle.UnpicklingError:
                 print("Error: The downloaded file is not a valid pickle file.")
             except Exception as e:
@@ -169,9 +120,11 @@ class PreRun:
 
         self.logger.info(f"Mounted '{file_path}'")
 
-    class WebRequestError(Exception):
-        """Helper class for errors related to GitHub API"""
+    def validate_cookies(self, data) -> bool:
+        required_keys = {"auth-token", "persistent"}
+        return all(key in data for key in required_keys)
 
+    class WebRequestError(Exception):
         def __init__(self, code: int) -> None:
             __sep = "\n     \U00002713 "
             if code == 401:
@@ -204,7 +157,6 @@ class PreRun:
             return f"{self.__class__.__name__} -> {self.message}"
 
 
-# configure and start the task runner
 PreRun(
     gh_token=os.getenv("GITHUB_TOKEN"),
     repo_owner=os.getenv("CJ_OWNER"),

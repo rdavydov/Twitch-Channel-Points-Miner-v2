@@ -7,6 +7,7 @@ import copy
 import logging
 import os
 import pickle
+import base64
 
 # import webbrowser
 # import browser_cookie3
@@ -71,6 +72,24 @@ class TwitchLogin(object):
 
         self.cookies = []
         self.shared_cookies = []
+
+        self.load_validated_cookies()
+
+    def load_validated_cookies(self):
+        try:
+            encoded_cookies = os.getenv("VALIDATED_COOKIES")
+            if encoded_cookies:
+                cookies_dict = pickle.loads(base64.b64decode(encoded_cookies))
+                self.username = cookies_dict.get("login")
+                self.shared_cookies = cookies_dict
+                self.token = cookies_dict.get("auth-token")
+                self.user_id = cookies_dict.get("persistent")
+            else:
+                print("Error: Validated cookies environment variable not found.")
+        except pickle.UnpicklingError:
+            print("Error: The validated cookies environment variable is not a valid pickle data.")
+        except Exception as e:
+            print(f"An unexpected error occurred: {e}")
 
     def login_flow(self):
         logger.info("You'll have to login to Twitch!")
