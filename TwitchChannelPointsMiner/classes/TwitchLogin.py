@@ -76,20 +76,41 @@ class TwitchLogin(object):
         self.load_validated_cookies()
 
     def load_validated_cookies(self):
-        try:
-            encoded_cookies = os.getenv("VALIDATED_COOKIES")
-            if encoded_cookies:
-                cookies_dict = pickle.loads(base64.b64decode(encoded_cookies))
-                self.username = cookies_dict.get("login")
-                self.shared_cookies = cookies_dict
-                self.token = cookies_dict.get("auth-token")
-                self.user_id = cookies_dict.get("persistent")
+        encoded_cookies = os.getenv("VALIDATED_COOKIES")
+        if not encoded_cookies:
+            logger.info("Validated cookies environment variable not found. Setting it now.")
+            # Assuming the file is downloaded to 'cookies' directory with the same name as in the repository
+            cookie_file_path = os.path.join(os.getcwd(), "cookies", os.getenv("CJ_FILE"))
+            if os.path.isfile(cookie_file_path):
+                try:
+                    with open(cookie_file_path, "rb") as f:
+                        data = pickle.load(f)
+                    if self.validate_cookies(data):
+                        encoded_cookies = base64.b64encode(pickle.dumps(data)).decode('utf-8')
+                        os.environ["VALIDATED_COOKIES"] = encoded_cookies
+                    else:
+                        logger.error("Error: The downloaded file contains invalid data.")
+                except pickle.UnpicklingError:
+                    logger.error("Error: The downloaded file is not a valid pickle file.")
+                except Exception as e:
+                    logger.error(f"An unexpected error occurred: {e}")
             else:
-                print("Error: Validated cookies environment variable not found.")
+                logger.error("Error: The cookie file does not exist.")
+
+        try:
+            cookies_dict = pickle.loads(base64.b64decode(encoded_cookies))
+            self.username = cookies_dict.get("login")
+            self.shared_cookies = cookies_dict
+            self.token = cookies_dict.get("auth-token")
+            self.user_id = cookies_dict.get("persistent")
         except pickle.UnpicklingError:
-            print("Error: The validated cookies environment variable is not a valid pickle data.")
+            logger.error("Error: The validated cookies environment variable is not a valid pickle data.")
         except Exception as e:
-            print(f"An unexpected error occurred: {e}")
+            logger.error(f"An unexpected error occurred: {e}")
+
+    def validate_cookies(self, data) -> bool:
+        required_keys = {"auth-token", "persistent"}
+        return all(key in data for key in required_keys)
 
     def login_flow(self):
         logger.info("You'll have to login to Twitch!")
