@@ -276,6 +276,7 @@ twitch_miner.mine(
         "medumoon",
         "majijej", 
         "hekimae",
+        "loosh_",
         "chloelock",
         "ibbaa", 
         "itspinkwater",
