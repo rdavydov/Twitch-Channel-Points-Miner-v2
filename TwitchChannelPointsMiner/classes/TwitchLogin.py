@@ -339,22 +339,22 @@ class TwitchLogin(object):
         self.login_check_result = self.__set_user_id()
         return self.login_check_result
 
-def save_cookies(self, cookies_file):
-    logger.info(f"Saving cookies to your computer at {cookies_file}..")
-    cookies_dict = self.session.cookies.get_dict()
-    # print(f"cookies_dict2pickle: {cookies_dict}")
-    cookies_dict["auth-token"] = self.token
-    if "persistent" not in cookies_dict:  # saving user id cookies
-        cookies_dict["persistent"] = self.user_id
+    def save_cookies(self, cookies_file):
+        logger.info("Saving cookies to your computer..")
+        cookies_dict = self.session.cookies.get_dict()
+        # print(f"cookies_dict2pickle: {cookies_dict}")
+        cookies_dict["auth-token"] = self.token
+        if "persistent" not in cookies_dict:  # saving user id cookies
+            cookies_dict["persistent"] = self.user_id
 
-    # old way saves only 'auth-token' and 'persistent'
-    self.cookies = []
-    # cookies_dict = self.shared_cookies
-    # print(f"cookies_dict2pickle: {cookies_dict}")
-    for cookie_name, value in cookies_dict.items():
-        self.cookies.append({"name": cookie_name, "value": value})
-    # print(f"cookies2pickle: {self.cookies}")
-    pickle.dump(self.cookies, open(cookies_file, "wb"))
+        # old way saves only 'auth-token' and 'persistent'
+        self.cookies = []
+        # cookies_dict = self.shared_cookies
+        # print(f"cookies_dict2pickle: {cookies_dict}")
+        for cookie_name, value in cookies_dict.items():
+            self.cookies.append({"name": cookie_name, "value": value})
+        # print(f"cookies2pickle: {self.cookies}")
+        pickle.dump(self.cookies, open(cookies_file, "wb"))
 
     def get_cookie_value(self, key):
         for cookie in self.cookies:
