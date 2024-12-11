@@ -53,9 +53,10 @@ class PreRun:
     def preparation_tasks(self) -> None:
         self.logger.info("Started...")
         try:
-            self.cookie_jar()
+            cookie_handler = CookieHandler(self.repo_owner, self.repo_name, self.cookie_file, self._token, self.logger)
+            cookie_handler.download_and_validate_cookies()
             self.logger.info("Complete!")
-        except PreRun.WebRequestError as e:
+        except CookieHandler.WebRequestError as e:
             e.troubleshoot()
             if self.exit_on_error is True:
                 self.logger.critical("Web request failed. Exiting...")
@@ -77,46 +78,63 @@ class PreRun:
             self.logger.critical(e)
             exit(1)
 
-    def cookie_jar(self) -> None:
-        response = requests.get(
-            f"https://api.github.com/repos/{self.repo_owner}/{self.repo_name}/contents/{self.cookie_file}",
-            headers={
-                "Authorization": f"Bearer {self._token}",
-                "Accept": "application/vnd.github.v3+raw",
-            },
-            timeout=60)
+class CookieHandler:
+    def __init__(self, repo_owner, repo_name, cookie_file, token, logger):
+        self.repo_owner = repo_owner
+        self.repo_name = repo_name
+        self.cookie_file = cookie_file
+        self._token = token
+        self.logger = logger
 
-        if response.status_code != 200:
-            raise self.WebRequestError(response.status_code)
+    def download_and_validate_cookies(self):
+        try:
+            response = requests.get(
+                f"https://api.github.com/repos/{self.repo_owner}/{self.repo_name}/contents/{self.cookie_file}",
+                headers={
+                    "Authorization": f"Bearer {self._token}",
+                    "Accept": "application/vnd.github.v3+raw",
+                },
+                timeout=60
+            )
+            response.raise_for_status()
+        except requests.exceptions.RequestException as e:
+            raise self.WebRequestError(response.status_code) from e
+
         response = response.json()
-
         file_path = os.path.join(os.getcwd(), "cookies", response["name"])
         download_url = response["download_url"]
 
-        dir_path = os.path.dirname(file_path)
-        if not os.path.exists(dir_path):
-            os.makedirs(dir_path)
+        # Check if the directory exists, and if not, create it
+        directory = os.path.dirname(file_path)
+        if not os.path.exists(directory):
+            os.makedirs(directory, exist_ok=True)
 
-        file_download = requests.get(download_url, timeout=60)
+        try:
+            file_download = requests.get(download_url, timeout=60)
+            file_download.raise_for_status()
+        except requests.exceptions.RequestException as e:
+            raise self.WebRequestError(file_download.status_code) from e
+
         with open(file_path, "wb") as f:
             f.write(file_download.content)
 
         if os.path.getsize(file_path) == 0:
-            print("Error: The downloaded file is empty.")
-        else:
-            try:
-                with open(file_path, "rb") as f:
-                    data = pickle.load(f)
-                
-                if self.validate_cookies(data):
-                    encoded_cookies = base64.b64encode(pickle.dumps(data)).decode('utf-8')
-                    os.environ["VALIDATED_COOKIES"] = encoded_cookies
-                else:
-                    print("Error: The downloaded file contains invalid data.")
-            except pickle.UnpicklingError:
-                print("Error: The downloaded file is not a valid pickle file.")
-            except Exception as e:
-                print(f"An unexpected error occurred: {e}")
+            self.logger.error("The downloaded file is empty.")
+            return
+
+        try:
+            with open(file_path, "rb") as f:
+                data = pickle.load(f)
+
+            if self.validate_cookies(data):
+                encoded_cookies = base64.b64encode(pickle.dumps(data)).decode('utf-8')
+                os.environ["VALIDATED_COOKIES"] = encoded_cookies
+            else:
+                self.logger.error("The downloaded file contains invalid data.")
+        except pickle.UnpicklingError:
+            self.logger.error("The downloaded file is not a valid pickle file.")
+        except Exception as e:
+            self.logger.error(f"An unexpected error occurred: {e}")
 
         self.logger.info(f"Mounted '{file_path}'")
 
@@ -137,16 +155,13 @@ class PreRun:
                 self.hint = __sep.join(
                     [
                         "",
-                        "Ensure that $CJ_OWNER and $CJ_REPO were set and point to the private repository.",
-                        "Ensure that $CJ_FILE was set and points to a file that exists in the repository.",
+                        "Ensure that the file path is correct and the file exists in the repository."
                     ]
                 )
             else:
-                self.message = f"Unexpected error. Status code: {code}"
-                self.hint = None
-
+                self.message = f"An error occurred. HTTP Status Code: {code}"
+                self.hint = ""
             super().__init__(self.message)
-            self.code = code
 
         def troubleshoot(self) -> None:
             PreRun.logger.error(self)
