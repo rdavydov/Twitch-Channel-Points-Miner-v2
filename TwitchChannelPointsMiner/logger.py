@@ -143,6 +143,11 @@ class FileFormatter(logging.Formatter):
             dt = datetime.fromtimestamp(record.created)
         return dt.strftime(datefmt or self.default_time_format)
 
+    def format(self, record):
+        # Add Twitch.tv link
+        record.msg += f" - https://www.twitch.tv/{record.name}"
+        return super().format(record)
+
 
 class GlobalFormatter(logging.Formatter):
     def __init__(self, *, fmt, settings: LoggerSettings, datefmt=None):
@@ -198,10 +203,13 @@ class GlobalFormatter(logging.Formatter):
             self.pushover(record)
             self.gotify(record)
 
-            if self.settings.colored is True:
-                record.msg = (
-                    f"{self.settings.color_palette.get(record.event)}{record.msg}"
-                )
+        # Add Twitch.tv link
+        record.msg += f" - https://www.twitch.tv/{record.name}"
+
+        if self.settings.colored is True:
+            record.msg = (
+                f"{self.settings.color_palette.get(record.event)}{record.msg}"
+            )
 
         return super().format(record)
 
@@ -338,7 +346,7 @@ def configure_loggers(username, settings):
 
         file_handler.setFormatter(
             FileFormatter(
-                fmt="%(asctime)s - %(levelname)s - %(name)s - [%(funcName)s]: %(message)s - https://www.twitch.tv/%(name)s",
+                fmt="%(asctime)s - %(levelname)s - %(name)s - [%(funcName)s]: %(message)s",
                 datefmt="%d/%m/%y %H:%M:%S",
                 settings=settings
             )

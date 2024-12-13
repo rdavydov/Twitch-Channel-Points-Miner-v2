@@ -35,15 +35,15 @@ twitch_miner = TwitchChannelPointsMiner(
     ],
     enable_analytics=True,
     disable_ssl_cert_verification=False,        # Set to True at your own risk and only to fix SSL: CERTIFICATE_VERIFY_FAILED error
-    disable_at_in_nickname=False,               # Set to True if you want to check for your nickname mentions in the chat even without @ sign
+    disable_at_in_nickname=True,               # Set to True if you want to check for your nickname mentions in the chat even without @ sign
     logger_settings=LoggerSettings(
         save=True,  
         console_level=logging.INFO,
-        console_username=False,
+        console_username=True,
         auto_clear=True,                        # Create a file rotation handler with interval = 1D and backupCount = 7 if True (default)
         time_zone="Europe/Berlin",              # Set a specific time zone for console and file loggers. Use tz database names. Example: "America/Denver"
         file_level=logging.INFO,
-        emoji=True,  
+        emoji=False,  
         less=True,  
         colored=False,  
         color_palette=ColorPalette(             # Color allowed are: [BLACK, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE, RESET].
