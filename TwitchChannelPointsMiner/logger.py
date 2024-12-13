@@ -338,7 +338,7 @@ def configure_loggers(username, settings):
 
         file_handler.setFormatter(
             FileFormatter(
-                fmt="%(asctime)s - %(levelname)s - %(name)s - [%(funcName)s]: %(message)s",
+                fmt="%(asctime)s - %(levelname)s - %(name)s - [%(funcName)s]: %(message)s - https://www.twitch.tv/%(name)s",
                 datefmt="%d/%m/%y %H:%M:%S",
                 settings=settings
             )
