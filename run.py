@@ -39,7 +39,7 @@ twitch_miner = TwitchChannelPointsMiner(
     logger_settings=LoggerSettings(
         save=True,  
         console_level=logging.INFO,
-        console_username=True,
+        console_username=False,
         auto_clear=True,                        # Create a file rotation handler with interval = 1D and backupCount = 7 if True (default)
         time_zone="Europe/Berlin",              # Set a specific time zone for console and file loggers. Use tz database names. Example: "America/Denver"
         file_level=logging.INFO,
