@@ -11,16 +11,22 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 
+from TwitchChannelPointsMiner.classes import PubSub
 from TwitchChannelPointsMiner.classes.Chat import ChatPresence, ThreadChat
 from TwitchChannelPointsMiner.classes.entities.PubsubTopic import PubsubTopic
 from TwitchChannelPointsMiner.classes.entities.Streamer import (
     Streamer,
     StreamerSettings,
 )
+from TwitchChannelPointsMiner.classes.event_prediction.ManagerFactory import (
+    EventPredictionManagerFactory,
+    EventPredictionManagerFactoryBase,
+)
 from TwitchChannelPointsMiner.classes.Exceptions import StreamerDoesNotExistException
 from TwitchChannelPointsMiner.classes.Settings import FollowersOrder, Priority, Settings
 from TwitchChannelPointsMiner.classes.Twitch import Twitch
 from TwitchChannelPointsMiner.classes.WebSocketsPool import WebSocketsPool
+from TwitchChannelPointsMiner.JSONDictDecoder import JSONDictDecoder
 from TwitchChannelPointsMiner.logger import LoggerSettings, configure_loggers
 from TwitchChannelPointsMiner.utils import (
     _millify,
@@ -59,7 +65,8 @@ class TwitchChannelPointsMiner:
         "disable_at_in_nickname",
         "priority",
         "streamers",
-        "events_predictions",
+        "event_prediction_manager_factory",
+        "json_decoder",
         "minute_watcher_thread",
         "sync_campaigns_thread",
         "ws_pool",
@@ -85,6 +92,10 @@ class TwitchChannelPointsMiner:
         logger_settings: LoggerSettings = LoggerSettings(),
         # Default values for all streamers
         streamer_settings: StreamerSettings = StreamerSettings(),
+        # Event Prediction Manager factory
+        event_prediction_manager_factory: EventPredictionManagerFactoryBase = EventPredictionManagerFactory(),
+        # JSON decoder
+        json_decoder: JSONDictDecoder = None,
     ):
         # Fixes TypeError: 'NoneType' object is not subscriptable
         if not username or username == "your-twitch-username":
@@ -143,10 +154,9 @@ class TwitchChannelPointsMiner:
         self.priority = priority if isinstance(priority, list) else [priority]
 
         self.streamers: list[Streamer] = []
-        self.events_predictions = {}
         self.minute_watcher_thread = None
         self.sync_campaigns_thread = None
-        self.ws_pool = None
+        self.ws_pool: WebSocketsPool | None = None
 
         self.session_id = str(uuid.uuid4())
         self.running = False
@@ -155,6 +165,12 @@ class TwitchChannelPointsMiner:
 
         self.logs_file, self.queue_listener = configure_loggers(
             self.username, logger_settings
+        )
+        self.event_prediction_manager_factory = event_prediction_manager_factory
+        self.json_decoder = (
+            json_decoder
+            if json_decoder
+            else JSONDictDecoder().with_decoders(PubSub.additional_decoders)
         )
 
         # Check for the latest version of the script
@@ -334,10 +350,15 @@ class TwitchChannelPointsMiner:
             self.minute_watcher_thread.name = "Minute watcher"
             self.minute_watcher_thread.start()
 
+            prediction_manager = self.event_prediction_manager_factory.produce(
+                self.twitch.place_bet
+            )
+
             self.ws_pool = WebSocketsPool(
                 twitch=self.twitch,
                 streamers=self.streamers,
-                events_predictions=self.events_predictions,
+                prediction_manager=prediction_manager,
+                json_decoder=self.json_decoder,
             )
 
             # Subscribe to community-points-user. Get update for points spent or gains
@@ -415,7 +436,7 @@ class TwitchChannelPointsMiner:
     def end(self, signum, frame):
         if not self.running:
             return
-        
+
         logger.info("CTRL+C Detected! Please wait just a moment!")
 
         for streamer in self.streamers:
@@ -465,27 +486,36 @@ class TwitchChannelPointsMiner:
             extra={"emoji": ":hourglass:"},
         )
 
-        if not Settings.logger.less and self.events_predictions != {}:
+        if not Settings.logger.less and any(
+            len(streamer.event_predictions) > 0 for streamer in self.streamers
+        ):
             print("")
-            for event_id in self.events_predictions:
-                event = self.events_predictions[event_id]
-                if (
-                    event.bet_confirmed is True
-                    and event.streamer.settings.make_predictions is True
-                ):
-                    logger.info(
-                        f"{event.streamer.settings.bet}",
-                        extra={"emoji": ":wrench:"},
-                    )
-                    if event.streamer.settings.bet.filter_condition is not None:
-                        logger.info(
-                            f"{event.streamer.settings.bet.filter_condition}",
-                            extra={"emoji": ":pushpin:"},
+            if self.ws_pool is not None:
+                for streamer, event in sorted(
+                    (
+                        (streamer, event)
+                        for streamer in filter(
+                            lambda streamer: streamer.settings.make_predictions,
+                            self.streamers,
                         )
-                    logger.info(
-                        f"{event.print_recap()}",
-                        extra={"emoji": ":bar_chart:"},
-                    )
+                        for event in streamer.event_predictions.values()
+                    ),
+                    key=lambda pair: pair[1].created_at,
+                ):
+                    if event.prediction is not None:
+                        logger.info(
+                            f"{streamer.settings.bet}",
+                            extra={"emoji": ":wrench:"},
+                        )
+                        if streamer.settings.bet.filter_condition is not None:
+                            logger.info(
+                                f"{streamer.settings.bet.filter_condition}",
+                                extra={"emoji": ":pushpin:"},
+                            )
+                        logger.info(
+                            f"{event.recap()}",
+                            extra={"emoji": ":bar_chart:"},
+                        )
 
         print("")
         for streamer_index in range(0, len(self.streamers)):
@@ -494,19 +524,25 @@ class TwitchChannelPointsMiner:
                     self.streamers[streamer_index].channel_points
                     - self.original_streamers[streamer_index]
                 )
-                
+
                 from colorama import Fore
+
                 streamer_highlight = Fore.YELLOW
-                
+
                 streamer_gain = (
                     f"{streamer_highlight}{self.streamers[streamer_index]}{Fore.RESET}, Total Points Gained: {_millify(gained)}"
                     if Settings.logger.less
                     else f"{streamer_highlight}{repr(self.streamers[streamer_index])}{Fore.RESET}, Total Points Gained (after farming - before farming): {_millify(gained)}"
                 )
-                
-                indent = ' ' * 25
-                streamer_history = '\n'.join(f"{indent}{history}" for history in self.streamers[streamer_index].print_history().split('; ')) 
-                
+
+                indent = " " * 25
+                streamer_history = "\n".join(
+                    f"{indent}{history}"
+                    for history in self.streamers[streamer_index]
+                    .print_history()
+                    .split("; ")
+                )
+
                 logger.info(
                     f"{streamer_gain}\n{streamer_history}",
                     extra={"emoji": ":moneybag:"},
