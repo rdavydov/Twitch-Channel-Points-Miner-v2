@@ -17,15 +17,15 @@ from TwitchChannelPointsMiner.classes.entities.Streamer import Streamer, Streame
 # import keep_alive 
 # #keep_alive.keep_alive()
 
-user = os.getenv('User')
-password = os.getenv('Password')
-webHook = os.getenv('WebHook')
-chatID = os.getenv('ChatID')
-telegramToken = os.getenv('TelegramToken')
+user = os.getenv("USER")
+password = os.getenv('PASSWORD')
+webHook = os.getenv('WEBHOOK')
+chatID = os.getenv('CHATID')
+telegramToken = os.getenv('TELEGRAMTOKEN')
 
 
 twitch_miner = TwitchChannelPointsMiner(
-    username=user,
+    username="XiSZ_",
     password=password,  
     claim_drops_startup=True,  
     priority=[  
@@ -33,17 +33,17 @@ twitch_miner = TwitchChannelPointsMiner(
         Priority.DROPS,   
         Priority.ORDER  
     ],
-    enable_analytics=True,
+    enable_analytics=False,
     disable_ssl_cert_verification=False,        # Set to True at your own risk and only to fix SSL: CERTIFICATE_VERIFY_FAILED error
     disable_at_in_nickname=True,               # Set to True if you want to check for your nickname mentions in the chat even without @ sign
     logger_settings=LoggerSettings(
-        save=True,  
+        save=False,  
         console_level=logging.INFO,
         console_username=False,
         auto_clear=True,                        # Create a file rotation handler with interval = 1D and backupCount = 7 if True (default)
         time_zone="Europe/Berlin",              # Set a specific time zone for console and file loggers. Use tz database names. Example: "America/Denver"
         file_level=logging.INFO,
-        emoji=True,  
+        emoji=False,  
         less=True,  
         colored=False,  
         color_palette=ColorPalette(             # Color allowed are: [BLACK, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE, RESET].
@@ -219,7 +219,9 @@ twitch_miner = TwitchChannelPointsMiner(
 )
 
 
-twitch_miner.analytics(host='0.0.0.0', port=os.environ.get('PORT', 5050), refresh=5, days_ago=7)  # Start the Analytics web-server
+# twitch_miner.analytics(host='0.0.0.0', port=os.environ.get('PORT', 5050), refresh=5, days_ago=7)  # Start the Analytics web-server
+
+# twitch_miner.analytics(host='127.0.0.1', port=5050 , refresh=5, days_ago=7)  # Start the Analytics web-server
 
 
 twitch_miner.mine(
@@ -237,27 +239,34 @@ twitch_miner.mine(
         "shabs",
         "punzzl",
         "mathy",
-        "lillithy",
-        "centane",
         "Faellu",
-        # "kittxnlylol",
+        "kittxnlylol",
+        "yourluckyclover",
+        "StPeach",
+        "faithcakee",
+        "Xull",
+        "Vell",
         "helenalive",
         "jenna",
-        "faithcakee",
-        "StPeach",
-        "Xull",
         "notaestheticallyhannah",
+        "jilledwater",
+        "peachzie",
+        "jassie",
         "aryssa614",
-        "thepizzawaffle",
+        "shan",
         "avivasofia",
         "ggxenia", 
         "midoriopup",        
         "yololaryy",
+        "meowdalyn",
+        "ladyxblake",
+        "s0apy",
+        "strawbeariem1lk",
+        "mira004",
         "Witch_Sama",
         "nemuri_bun",
         "etain",
         "adorbie",
-        "ladyxblake",
         "niiau",
         "smotheredbutta",
         "laurenp681",
@@ -269,15 +278,21 @@ twitch_miner.mine(
         "daeye",
         "kiilanie",
         "paranoidpixi3_za",
+        "centane",
         "awkspewroo2",
         "Snowmixy",
         "al3xxandra",
+        "ashtronova",
         "terariaa",
         "emyym",
         "medumoon",
         "majijej", 
         "hekimae",
         "loosh_",
+        "ohKayBunny",
+        "shaekitty",
+        "laurenxburch",
+        "juliaburch",
         "chloelock",
         "ibbaa", 
         "itspinkwater",
@@ -304,12 +319,13 @@ twitch_miner.mine(
         "MissRage",
         "Siri",
         "smoodie", 
+        "lillithy",
         "suzikynz",
         "laurinchhhe",
         "alisa",
         "danucd",
         "BattleBuni",
-        "furinaburada"
+        "carolinestormi"
     ],
     followers=False,  
     followers_order=FollowersOrder.DESC

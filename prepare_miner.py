@@ -1,13 +1,42 @@
-import logging
 import os
+import logging
 import requests
 import subprocess
-
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
 load_dotenv()
 
+# Function to set environment variable if not already set
+def set_env_var(key):
+    value = os.getenv(key)
+    if value is None:
+        raise Exception(f'{key} environment variable is not defined. Set it in the .env file.')
+
+# Automatically check and set environment variables
+env_vars = ["USER", "PASSWORD", "WEBHOOK", "CHATID", "TELEGRAMTOKEN", "GITHUB_TOKEN", "CJ_OWNER", "CJ_REPO", "CJ_FILE"]
+for var in env_vars:
+    set_env_var(var)
+
+# Check for cookies directory
+cwd = os.getcwd()
+cookies_path = "cookies"
+if not os.path.exists(os.path.join(cwd, cookies_path)):
+    raise Exception("cookies directory does not exist")
+
+# Check for cookies file
+cookies_file = os.getenv("CJ_FILE")
+if cookies_file is None:
+    raise Exception('CJ_FILE environment variable is not defined. Set it with the following command: `export CJ_FILE="<filename>"`')
+
+# Fetch environment variables
+gh_token = os.getenv("GITHUB_TOKEN")
+repo_owner = os.getenv("CJ_OWNER")
+repo_name = os.getenv("CJ_REPO")
+
+# Check if any required environment variable is missing
+if not all([gh_token, repo_owner, repo_name, cookies_file]):
+    raise ValueError("Missing required environment variables. Cannot continue!")
 
 class PreRun:
     logger = logging.getLogger(__name__)
@@ -30,35 +59,6 @@ class PreRun:
         exit_on_error: bool = True,
         log_level: int = logging.INFO,
     ) -> None:
-        """
-        Handles all pre-run tasks before starting the app
-
-        Args:
-        - self (PreRun): PreRun class instance
-        - gh_token (str): GitHub personal access token
-        - repo_owner (str): GitHub username of the repository owner
-        - repo_name (str): Name of the GitHub repository
-        - cookie_file (str): The name of the cookie file to be downloaded
-        - entrypoint (str, optional): The name of the entrypoint script. Defaults to "run.py".
-        - exit_on_error (bool, optional): Whether to halt further execution if an error occurs. Defaults to True.
-        - log_level (int, optional): The logging level. Defaults to logging.INFO.
-
-        Raises:
-        - ValueError: If any of the required arguments is missing
-        - PreRun.WebRequestError: If the request fails
-
-        Example:
-        >>> PreRun(
-        ...     gh_token="ghp_f0ob4rb4z",
-        ...     repo_owner="foo",
-        ...     repo_name="bar",
-        ...     cookie_file="baz.pkl",
-        ...     entrypoint="main.py",
-        ...     exit_on_error=False,
-        ...     log_level=logging.DEBUG
-        ... )
-        )
-        """
         self.logger.setLevel(log_level)
 
         if (
@@ -84,10 +84,9 @@ class PreRun:
         self.start_entrypoint()
 
     def preparation_tasks(self) -> None:
-        """Performs pre-run tasks before starting the app"""
         self.logger.info("Started...")
         try:
-            self.download_cookie_file()
+            self.cookie_jar()
             self.logger.info("Complete!")
         except PreRun.WebRequestError as e:
             e.troubleshoot()
@@ -99,7 +98,6 @@ class PreRun:
                 pass
 
     def start_entrypoint(self) -> None:
-        """Starts the app after all pre-run tasks are completed"""
         self.logger.info("Starting app...")
         try:
             subprocess.run(
@@ -112,36 +110,27 @@ class PreRun:
             self.logger.critical(e)
             exit(1)
 
-    def download_cookie_file(self):
-        url = f"https://api.github.com/repos/{self.repo_owner}/{self.repo_name}/contents/{self.cookie_file}"
-        headers = {
-            "Authorization": f"Bearer {self._token}",
-            "Accept": "application/vnd.github.v3+raw",
-        }
+    def cookie_jar(self) -> None:
+        response = requests.get(
+            f"https://api.github.com/repos/{self.repo_owner}/{self.repo_name}/contents/{self.cookie_file}",
+            headers={
+                "Authorization": f"Bearer {self._token}",
+                "Accept": "application/vnd.github.v3+raw",
+            },
+            timeout=60
+        )
 
-        self.logger.info(f"Making request to URL: {url}")
-        self.logger.info(f"Using headers: {headers}")
-
-        response = requests.get(url, headers=headers, timeout=60)
-
-        # handle the response
         if response.status_code != 200:
-            self.logger.error(f"Request failed with status code: {response.status_code}")
-            self.logger.error(f"Response content: {response.content}")
             raise self.WebRequestError(response.status_code)
-
         response = response.json()
 
-        # prepare to download the file from the temp url returned in the response
         file_path = os.path.join(os.getcwd(), "cookies", response["name"])
         download_url = response["download_url"]
 
-        # ensure the target directory exists
         dir_path = os.path.dirname(file_path)
         if not os.path.exists(dir_path):
             os.makedirs(dir_path)
 
-        # download and write the file
         file_download = requests.get(download_url, timeout=60)
         with open(file_path, "wb") as f:
             f.write(file_download.content)
@@ -149,8 +138,6 @@ class PreRun:
         self.logger.info(f"Mounted '{file_path}'")
 
     class WebRequestError(Exception):
-        """Helper class for errors related to GitHub API"""
-
         def __init__(self, code: int) -> None:
             __sep = "\n     \U00002713 "
             if code == 401:
@@ -182,24 +169,13 @@ class PreRun:
         def __str__(self) -> str:
             return f"{self.__class__.__name__} -> {self.message}"
 
-
-# Fetch environment variables
-gh_token = os.getenv("GITHUB_TOKEN")
-repo_owner = os.getenv("CJ_OWNER")
-repo_name = os.getenv("CJ_REPO")
-cookie_file = os.getenv("CJ_FILE")
-
-# Check if any required environment variable is missing
-if not all([gh_token, repo_owner, repo_name, cookie_file]):
-    raise ValueError("Missing required environment variables. Cannot continue!")
-
 # configure and start the task runner
 PreRun(
     gh_token=gh_token,
     repo_owner=repo_owner,
     repo_name=repo_name,
-    cookie_file=cookie_file,
+    cookie_file=cookies_file,
     entrypoint="run.py",
-    exit_on_error=True,
-    log_level=logging.DEBUG,
+    exit_on_error=False,
+    log_level=logging.INFO,
 )
