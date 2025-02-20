@@ -488,7 +488,7 @@ class Twitch(object):
                             "isVod": False,
                             "vodID": "",
                             # "playerType": "site"
-                            "playerType": "picture-by-picture",
+                            "playerType": "frontpage",
                             "platform": "web",
                         }
 
