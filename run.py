@@ -23,11 +23,11 @@ pushover = None
 gotify = None
 
 # Telegram
-chat_id = int(os.environ.get("TELEGRAM_CHAT_ID"))
+chat_id = os.environ.get("TELEGRAM_CHAT_ID")
 token = os.environ.get("TELEGRAM_TOKEN")
 if chat_id and token:
     telegram = Telegram(
-        chat_id=chat_id,
+        chat_id=int(chat_id),
         token=token,
         events=[Events.STREAMER_ONLINE, Events.STREAMER_OFFLINE,
                 Events.BET_LOSE, Events.CHAT_MENTION],
