@@ -162,7 +162,7 @@ twitch_miner = TwitchChannelPointsMiner(
 )
 
 if os.environ.get("ENABLE_ANALYTICS", "False") == "True":
-    twitch_miner.analytics(host="127.0.0.1", port=5000, refresh=5, days_ago=7)
+    twitch_miner.analytics(host="0.0.0.0", port=5000, refresh=5, days_ago=7)
 
 # Load streamers from env
 streamer_usernames = os.environ.get("STREAMERS", "")
