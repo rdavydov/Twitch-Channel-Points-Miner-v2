@@ -106,7 +106,7 @@ if not bet_disabled:
         delay=float(os.environ.get("BET_DELAY", 6)),
         delay_mode=DelayMode[os.environ.get("BET_DELAY_MODE", "FROM_END")],
         filter_condition=FilterCondition(
-            by=OutcomeKeys[os.environ.get("FILTER_BY", "TOTAL_USERS")],
+            by=getattr(OutcomeKeys, os.environ.get("FILTER_BY", "TOTAL_USERS")),
             where=Condition[os.environ.get("FILTER_WHERE", "LTE")],
             value=int(os.environ.get("FILTER_VALUE", 800))
         )
