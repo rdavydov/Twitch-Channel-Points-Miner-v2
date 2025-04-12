@@ -19,6 +19,8 @@ This document describes all environment variables available to configure the Twi
 |-----------------------------|-------------------------------------------------------|-----------|
 | `CLAIM_DROPS_STARTUP`       | Auto-claim drops on startup                           | `False`   |
 | `ENABLE_ANALYTICS`          | Enable built-in analytics webserver                   | `False`   |
+| `ANALYTICS_HOST`            | IP address to bind the analytics webserver            | `127.0.0.1` |
+| `ANALYTICS_PORT`            | Port number for the analytics webserver               | `5000`    |
 | `DISABLE_SSL_VERIFY`        | Skip SSL certificate verification (not recommended)   | `False`   |
 | `DISABLE_AT_IN_NICKNAME`    | Detect mentions even without `@`                      | `False`   |
 | `STREAMERS`                 | Comma-separated list of streamer usernames to mine    | *(none)*  |
@@ -153,6 +155,10 @@ WEBHOOK_METHOD=POST
 MATRIX_USERNAME=myuser
 MATRIX_PASSWORD=mypassword
 MATRIX_ROOM_ID=!roomid:matrix.org
+
+ENABLE_ANALYTICS=True
+ANALYTICS_HOST=0.0.0.0
+ANALYTICS_PORT=80
 
 BET_DISABLED=False
 BET_STRATEGY=SMART
