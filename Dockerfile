@@ -1,35 +1,40 @@
-FROM python:3.8-slim-buster
-
+FROM python:3.13 as builder
 ARG BUILDX_QEMU_ENV
+WORKDIR /app
+COPY requirements.txt ./
+ENV CRYPTOGRAPHY_DONT_BUILD_RUST=1
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -qq -y --no-install-recommends \
+        gcc \
+        libffi-dev \
+        rustc \
+        zlib1g-dev \
+        libjpeg-dev \
+        libssl-dev \
+        libblas-dev \
+        liblapack-dev \
+        make \
+        cmake \
+        automake \
+        ninja-build \
+        g++ \
+        subversion \
+        python3-dev \
+        build-essential \
+    && pip install --upgrade pip setuptools wheel \
+    && if [ "${BUILDX_QEMU_ENV}" = "true" ] && [ "$(getconf LONG_BIT)" = "32" ]; then \
+           pip install -U cryptography==44.0.2; \
+       fi \
+    && pip install --no-cache-dir -r requirements.txt
 
-WORKDIR /usr/src/app
-
-COPY ./requirements.txt ./
-
-RUN apt-get update
-RUN DEBIAN_FRONTEND=noninteractive apt-get install -qq -y --fix-missing --no-install-recommends \
-    gcc \
-    libffi-dev \
-    rustc \
-    zlib1g-dev \
-    libjpeg-dev \
-    libssl-dev \
-    make \
-    automake \
-    g++ \
-    subversion \
-    python3-dev \
-  && if [ "${BUILDX_QEMU_ENV}" = "true" ] && [ "$(getconf LONG_BIT)" = "32" ]; then \
-        pip install -U cryptography==3.3.2; \
-     fi \
-  && pip install -r requirements.txt \
-  && pip cache purge \
-  && apt-get remove -y gcc rustc \
-  && apt-get autoremove -y \
-  && apt-get autoclean -y \
-  && apt-get clean -y \
-  && rm -rf /var/lib/apt/lists/* \
-  && rm -rf /usr/share/doc/*
-
-ADD ./TwitchChannelPointsMiner ./TwitchChannelPointsMiner
+FROM python:3.13-slim
+LABEL description="Docker image for Twitch Channel Points Miner v2"
+WORKDIR /app
+COPY --from=builder /usr/local/lib/python3.13/site-packages /usr/local/lib/python3.13/site-packages
+COPY ./TwitchChannelPointsMiner ./TwitchChannelPointsMiner
+COPY ./run.py ./run.py
+RUN groupadd -r miner && useradd -r -g miner miner
+RUN chown -R miner:miner /app
+USER miner
+EXPOSE 8080
 ENTRYPOINT [ "python", "run.py" ]
