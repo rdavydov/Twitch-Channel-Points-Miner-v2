@@ -1,0 +1,79 @@
+name: Bug report
+description: Create a report to help us improve
+labels: bug
+
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the bug
+      description: |
+        A clear and concise description of what the bug is.
+    validations:
+      required: true
+  - type: textarea
+    id: steps-to-reproduce
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Go to '...'
+        2. Click on '....'
+        3. Scroll down to '....'
+        4. See error
+    validations:
+      required: true
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected behavior
+      description: What do you expect to happen?
+    validations:
+      required: true
+  - type: input
+    id: operating-system
+    attributes:
+      label: Operating system
+      placeholder: Windows 11 Version 21H2 (OS Build 22000.1574)
+    validations:
+      required: true
+  - type: input
+    id: python-version
+    attributes:
+      label: Python version
+      placeholder: "3.11.1"
+    validations:
+      required: true
+  - type: input
+    id: miner-version
+    attributes:
+      label: Miner version
+      placeholder: "1.7.7"
+    validations:
+      required: true
+  - type: textarea
+    id: other-environment-info
+    attributes:
+      label: Other relevant software versions
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: |
+        How to provide a DEBUG log:
+        1. Set this in your runner script (`run.py`):
+        ```py
+        logger_settings=LoggerSettings(
+          save=True,
+          console_level=logging.INFO,
+          file_level=logging.DEBUG,
+          less=True,
+        ```
+        2. Start the miner, wait for the error, then stop the miner and post the contents of the log file (`logs\username.log`) to https://gist.github.com/ and post a link here.
+        3. Create another gist with your console output, just in case. Paste a link here as well.
+    validations:
+      required: true
+  - type: textarea
+    id: other-info
+    attributes:
+      label: Additional context
+      description: Add any other context about the problem here.

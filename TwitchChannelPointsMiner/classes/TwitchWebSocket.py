@@ -18,7 +18,7 @@ class TwitchWebSocket(WebSocketApp):
         self.is_closed = False
         self.is_opened = False
 
-        self.is_reconneting = False
+        self.is_reconnecting = False
         self.forced_close = False
 
         # Custom attribute

@@ -32,7 +32,8 @@ def float_round(number, ndigits=2):
 
 def server_time(message_data):
     return (
-        datetime.fromtimestamp(message_data["server_time"], timezone.utc).isoformat()
+        datetime.fromtimestamp(
+            message_data["server_time"], timezone.utc).isoformat()
         + "Z"
         if message_data is not None and "server_time" in message_data
         else datetime.fromtimestamp(time.time(), timezone.utc).isoformat() + "Z"
@@ -53,12 +54,17 @@ def create_nonce(length=30) -> str:
         nonce += char
     return nonce
 
+# for mobile-token
+
 
 def get_user_agent(browser: str) -> str:
-    try:
+    """try:
         return USER_AGENTS[platform.system()][browser]
     except KeyError:
-        return USER_AGENTS["Linux"]["FIREFOX"]
+        # return USER_AGENTS["Linux"]["FIREFOX"]
+        # return USER_AGENTS["Windows"]["CHROME"]"""
+    return USER_AGENTS["Android"]["TV"]
+    # return USER_AGENTS["Android"]["App"]
 
 
 def remove_emoji(string: str) -> str:
@@ -137,8 +143,8 @@ def set_default_settings(settings, defaults):
     )
 
 
-def char_decision_as_index(char):
-    return 0 if char == "A" else 1
+'''def char_decision_as_index(char):
+    return 0 if char == "A" else 1'''
 
 
 def internet_connection_available(host="8.8.8.8", port=53, timeout=3):
@@ -155,13 +161,13 @@ def percentage(a, b):
 
 
 def create_chunks(lst, n):
-    return [lst[i : (i + n)] for i in range(0, len(lst), n)]  # noqa: E203
+    return [lst[i: (i + n)] for i in range(0, len(lst), n)]  # noqa: E203
 
 
 def download_file(name, fpath):
     r = requests.get(
         path.join(GITHUB_url, name),
-        headers={"User-Anget": get_user_agent("FIREFOX")},
+        headers={"User-Agent": get_user_agent("FIREFOX")},
         stream=True,
     )
     if r.status_code == 200:

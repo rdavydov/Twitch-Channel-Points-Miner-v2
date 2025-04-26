@@ -1,7 +1,7 @@
 html,
 body {
     overflow-x: hidden;
-    overflow-y: hidden;
+    overflow-y: auto;
 }
 
 a {
@@ -52,4 +52,19 @@ a {
 
 ::-webkit-scrollbar-thumb:hover {
     background-color: #a8bbbf;
+}
+
+#log-content {
+    text-align: left;
+    white-space: pre-wrap;
+    max-height: 400px;
+    padding: 0;
+}
+
+#auto-update-log {
+    display: none;
+    background-color: transparent;
+    font-size: 20px;
+    padding: 0;
+    border-radius: 5px;
 }

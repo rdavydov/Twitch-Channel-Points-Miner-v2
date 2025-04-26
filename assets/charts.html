@@ -5,9 +5,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Twitch-Channel-Points-Miner-v2</title>
-    <link rel="icon" type="image/png" sizes="32x32" href="https://static.twitchcdn.net/assets/favicon-32-e29e246c157142c94346.png"><link rel="icon" type="image/png" sizes="16x16" href="https://static.twitchcdn.net/assets/favicon-16-52e571ffea063af7a7f4.png">
+    <link rel="icon" type="image/png" sizes="32x32"
+        href="https://static.twitchcdn.net/assets/favicon-32-e29e246c157142c94346.png">
+    <link rel="icon" type="image/png" sizes="16x16"
+        href="https://static.twitchcdn.net/assets/favicon-16-52e571ffea063af7a7f4.png">
 
-    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.42.0"></script>
     <script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.css" rel="stylesheet" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.6.1/css/bulma.css" rel="stylesheet" />
@@ -22,50 +25,86 @@
 
 <body style="height: 100vh;">
     <div class="container has-text-centered" style="height: 100vh;">
-        <div class="columns">
+        <div class="columns" id="header">
             <div class="column has-text-right">
-                <img style="margin-top: -20px;" width="600px" src="{{url_for('static', filename='banner.png')}}"
-                    alt="banner"></div>
+                <a href="https://github.com/rdavydov/Twitch-Channel-Points-Miner-v2" target="_blank"><img
+                        style="margin-top: -20px;" width="600px" src="{{url_for('static', filename='banner.png')}}"
+                        alt="banner"></a>
+            </div>
             <div class="column is-4 has-text-left" style="margin-top: 35px;">
-                <a href="https://github.com/Tkd-Alex/Twitch-Channel-Points-Miner-v2/blob/master/LICENSE">
-                    <img alt="License"
-                        src="https://img.shields.io/github/license/Tkd-Alex/Twitch-Channel-Points-Miner-v2" />
-                </a>
-                <br>
-                <a href="https://www.python.org/downloads/release/python-360/">
-                    <img alt="Python3" src="https://img.shields.io/badge/built%20for-Python≥3.6-red.svg?style=flat">
-                </a>
-                <br>
-                <a href="https://github.com/Tkd-Alex/Twitch-Channel-Points-Miner-v2/pulls">
-                    <img alt="PRsWelcome" src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat" />
-                </a>
-                <br>
-                <a href="https://github.com/Tkd-Alex/Twitch-Channel-Points-Miner-v2/stargazers">
-                    <img alt="GitHub Repo stars"
-                        src="https://img.shields.io/github/stars/Tkd-Alex/Twitch-Channel-Points-Miner-v2" />
-                </a>
-                <br>
-                <a href="https://github.com/Tkd-Alex/Twitch-Channel-Points-Miner-v2/issues?q=is%3Aissue+is%3Aclosed">
-                    <img alt="GitHub closed issues"
-                        src="https://img.shields.io/github/issues-closed/Tkd-Alex/Twitch-Channel-Points-Miner-v2">
-                </a>
-                <br>
-                <a href="https://github.com/Tkd-Alex/Twitch-Channel-Points-Miner-v2">
-                    <img alt="GitHub last commit"
-                        src="https://img.shields.io/github/last-commit/Tkd-Alex/Twitch-Channel-Points-Miner-v2" />
-                </a>
-                <br>
-
-                <br>
-                <a href="https://www.buymeacoffee.com/tkdalex" target="_blank">
-                    <img src="https://cdn.buymeacoffee.com/buttons/lato-yellow.png" alt="Buy Me A Coffee" height="5"
-                        width="138">
-                </a>
+                <table>
+                    <tr>
+                        <td><a href="https://github.com/Tkd-Alex" target="_blank">Tkd-Alex</a></td>
+                        <td><a href="https://github.com/rdavydov" target="_blank">rdavydov</a></td>
+                    </tr>
+                    <tr>
+                        <td><a href="https://github.com/Tkd-Alex/Twitch-Channel-Points-Miner-v2/blob/master/LICENSE">
+                                <img alt="License"
+                                    src="https://img.shields.io/github/license/Tkd-Alex/Twitch-Channel-Points-Miner-v2" /></a>
+                        </td>
+                        <td><a href="https://github.com/rdavydov/Twitch-Channel-Points-Miner-v2/blob/master/LICENSE">
+                                <img alt="License"
+                                    src="https://img.shields.io/github/license/rdavydov/Twitch-Channel-Points-Miner-v2" /></a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><a href="https://www.python.org/downloads/release/python-360/">
+                                <img alt="Python3"
+                                    src="https://img.shields.io/badge/built%20for-Python≥3.6-red.svg?style=flat"></a>
+                        </td>
+                        <td><a href="https://www.python.org/downloads/release/python-360/">
+                                <img alt="Python3"
+                                    src="https://img.shields.io/badge/built%20for-Python≥3.6-red.svg?style=flat"></a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><a href="https://github.com/Tkd-Alex/Twitch-Channel-Points-Miner-v2/pulls">
+                                <img alt="PRsWelcome"
+                                    src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat" /></a>
+                        </td>
+                        <td><a href="https://github.com/rdavydov/Twitch-Channel-Points-Miner-v2/pulls">
+                                <img alt="PRsWelcome"
+                                    src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat" /></a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><a href="https://github.com/Tkd-Alex/Twitch-Channel-Points-Miner-v2/stargazers">
+                                <img alt="GitHub Repo stars"
+                                    src="https://img.shields.io/github/stars/Tkd-Alex/Twitch-Channel-Points-Miner-v2" /></a>
+                        </td>
+                        <td><a href="https://github.com/rdavydov/Twitch-Channel-Points-Miner-v2/stargazers">
+                                <img alt="GitHub Repo stars"
+                                    src="https://img.shields.io/github/stars/rdavydov/Twitch-Channel-Points-Miner-v2" /></a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><a
+                                href="https://github.com/Tkd-Alex/Twitch-Channel-Points-Miner-v2/issues?q=is%3Aissue+is%3Aclosed">
+                                <img alt="GitHub closed issues"
+                                    src="https://img.shields.io/github/issues-closed/Tkd-Alex/Twitch-Channel-Points-Miner-v2"></a>
+                        </td>
+                        <td><a
+                                href="https://github.com/rdavydov/Twitch-Channel-Points-Miner-v2/issues?q=is%3Aissue+is%3Aclosed">
+                                <img alt="GitHub closed issues"
+                                    src="https://img.shields.io/github/issues-closed/rdavydov/Twitch-Channel-Points-Miner-v2"></a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><a href="https://github.com/Tkd-Alex/Twitch-Channel-Points-Miner-v2">
+                                <img alt="GitHub last commit"
+                                    src="https://img.shields.io/github/last-commit/Tkd-Alex/Twitch-Channel-Points-Miner-v2" /></a>
+                        </td>
+                        <td><a href="https://github.com/rdavydov/Twitch-Channel-Points-Miner-v2">
+                                <img alt="GitHub last commit"
+                                    src="https://img.shields.io/github/last-commit/rdavydov/Twitch-Channel-Points-Miner-v2" /></a>
+                        </td>
+                    </tr>
+                </table>
             </div>
         </div>
 
-        <div class="columns" style="margin-top: -30px">
-            <div class="column is-2 has-text-left">
+        <div class="columns">
+            <div class="column is-narrow has-text-center">
                 <div class="dropdown">
                     <div class="dropdown-trigger">
                         <button class="button" aria-haspopup="true" aria-controls="dropdown-menu">
@@ -89,6 +128,12 @@
                             <a href="#" class="dropdown-item" onClick="changeSortBy(this)">
                                 Points descending
                             </a>
+                            <a href="#" class="dropdown-item" onClick="changeSortBy(this)">
+                                Last activity ascending
+                            </a>
+                            <a href="#" class="dropdown-item" onClick="changeSortBy(this)">
+                                Last activity descending
+                            </a>
                         </div>
                     </div>
                 </div>
@@ -100,6 +145,11 @@
                 <input class="input" type="date" id="endDate">
             </div>
             <div class="column has-text-right" style="margin: auto">
+                <button id="auto-update-log">⏸️</button>
+                <label class="checkbox checkbox-label">
+                    Log
+                    <input type="checkbox" id="log">
+                </label>
                 <label class="checkbox checkbox-label">
                     Annotations
                     <input type="checkbox" checked="true" id="annotations">
@@ -108,16 +158,27 @@
                     Dark mode
                     <input type="checkbox" checked="true" id="dark-mode">
                 </label>
+                <label class="checkbox checkbox-label">
+                    Header
+                    <input type="checkbox" checked="true" id="toggle-header">
+                </label>
             </div>
         </div>
         <div class="columns">
-            <div class="column is-2">
+            <div class="column is-narrow">
                 <div class="tabs">
                     <ul id="streamers-list"></ul>
                 </div>
             </div>
             <div class="column">
                 <div class="box" id="chart" style="padding: 0.30rem;"></div>
+            </div>
+        </div>
+        <div class="columns">
+            <div class="column is-12">
+                <div class="box" id="log-box" style="padding: 0.30rem; display: none;">
+                    <pre id="log-content">In your run.py file set save=True in logger_settings to save logs to a file.&#10;&#13;</pre>
+                </div>
             </div>
         </div>
     </div>

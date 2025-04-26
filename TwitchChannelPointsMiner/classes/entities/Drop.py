@@ -3,6 +3,13 @@ from datetime import datetime
 from TwitchChannelPointsMiner.classes.Settings import Settings
 from TwitchChannelPointsMiner.utils import percentage
 
+def parse_datetime(datetime_str):
+    for fmt in ("%Y-%m-%dT%H:%M:%S.%fZ", "%Y-%m-%dT%H:%M:%SZ"):
+        try:
+            return datetime.strptime(datetime_str, fmt)
+        except ValueError:
+            continue
+    raise ValueError(f"time data '{datetime_str}' does not match format")
 
 class Drop(object):
     __slots__ = [
@@ -38,8 +45,8 @@ class Drop(object):
         self.is_printable = False
         self.percentage_progress = 0
 
-        self.end_at = datetime.strptime(dict["endAt"], "%Y-%m-%dT%H:%M:%SZ")
-        self.start_at = datetime.strptime(dict["startAt"], "%Y-%m-%dT%H:%M:%SZ")
+        self.end_at = parse_datetime(dict["endAt"])
+        self.start_at = parse_datetime(dict["startAt"])
         self.dt_match = self.start_at < datetime.now() < self.end_at
 
     def update(

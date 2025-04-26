@@ -54,7 +54,9 @@ class Stream(object):
         self.broadcast_id = broadcast_id
         self.title = title.strip()
         self.game = game
-        self.tags = tags
+        # #343 temporary workaround
+        self.tags = tags or []
+        # ------------------------
         self.viewers_count = viewers_count
 
         self.drops_tags = (
@@ -82,6 +84,9 @@ class Stream(object):
 
     def game_name(self):
         return None if self.game in [{}, None] else self.game["name"]
+    
+    def game_id(self):
+        return None if self.game in [{}, None] else self.game["id"]
 
     def update_required(self):
         return self.__last_update == 0 or self.update_elapsed() >= 120

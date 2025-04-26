@@ -3,6 +3,13 @@ from datetime import datetime
 from TwitchChannelPointsMiner.classes.entities.Drop import Drop
 from TwitchChannelPointsMiner.classes.Settings import Settings
 
+def parse_datetime(datetime_str):
+    for fmt in ("%Y-%m-%dT%H:%M:%S.%fZ", "%Y-%m-%dT%H:%M:%SZ"):
+        try:
+            return datetime.strptime(datetime_str, fmt)
+        except ValueError:
+            continue
+    raise ValueError(f"time data '{datetime_str}' does not match format")
 
 class Campaign(object):
     __slots__ = [
@@ -30,8 +37,8 @@ class Campaign(object):
         )
         self.in_inventory = False
 
-        self.end_at = datetime.strptime(dict["endAt"], "%Y-%m-%dT%H:%M:%SZ")
-        self.start_at = datetime.strptime(dict["startAt"], "%Y-%m-%dT%H:%M:%SZ")
+        self.end_at = parse_datetime(dict["endAt"])
+        self.start_at = parse_datetime(dict["startAt"])
         self.dt_match = self.start_at < datetime.now() < self.end_at
 
         self.drops = list(map(lambda x: Drop(x), dict["timeBasedDrops"]))

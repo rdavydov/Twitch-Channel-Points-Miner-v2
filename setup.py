@@ -17,18 +17,17 @@ metadata = dict(
 setuptools.setup(
     name="Twitch-Channel-Points-Miner-v2",
     version=metadata["version"],
-    author="Tkd-Alex (Alessandro Maggio)",
+    author="Tkd-Alex (Alessandro Maggio) and rdavydov (Roman Davydov)",
     author_email="alex.tkd.alex@gmail.com",
     description="A simple script that will watch a stream for you and earn the channel points.",
     license="GPLv3+",
     keywords="python bot streaming script miner twtich channel-points",
-    url="https://github.com/Tkd-Alex/Twitch-Channel-Points-Miner-v2",
+    url="https://github.com/rdavydov/Twitch-Channel-Points-Miner-v2",
     packages=setuptools.find_packages(),
     include_package_data=True,
     install_requires=[
         "requests",
         "websocket-client",
-        "browser_cookie3",
         "pillow",
         "python-dateutil",
         "emoji",
@@ -38,6 +37,7 @@ setuptools.setup(
         "flask",
         "irc",
         "pandas",
+        "pytz"
     ],
     long_description=read("README.md"),
     long_description_content_type="text/markdown",

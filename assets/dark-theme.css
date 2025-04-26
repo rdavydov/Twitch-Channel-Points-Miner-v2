@@ -1,6 +1,12 @@
-body {
+body, .dropdown *, .input {
     background: #343E59;
     color: #fff;
+}
+a {
+    color: #fff;
+}
+a:hover {
+    color: #f9826c;
 }
 .box {
     background-color: #2B2D3E;
@@ -26,4 +32,8 @@ body {
 }
 .checkbox:hover{
     color: #f9826c;
+}
+#log-content {
+    color: #fff;
+    background-color: #2B2D3E;
 }
