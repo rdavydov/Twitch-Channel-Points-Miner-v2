@@ -32,7 +32,6 @@ LABEL description="Docker image for Twitch Channel Points Miner v2"
 WORKDIR /app
 COPY --from=builder /usr/local/lib/python3.13/site-packages /usr/local/lib/python3.13/site-packages
 COPY ./TwitchChannelPointsMiner ./TwitchChannelPointsMiner
-COPY ./run.py ./run.py
 RUN groupadd -r miner && useradd -r -g miner miner
 RUN chown -R miner:miner /app
 USER miner
