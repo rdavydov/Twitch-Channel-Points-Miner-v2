@@ -35,5 +35,4 @@ COPY ./TwitchChannelPointsMiner ./TwitchChannelPointsMiner
 RUN groupadd -r miner && useradd -r -g miner miner
 RUN chown -R miner:miner /app
 USER miner
-EXPOSE 8080
 ENTRYPOINT [ "python", "run.py" ]
