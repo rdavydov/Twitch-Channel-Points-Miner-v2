@@ -30,7 +30,7 @@ USER_AGENTS = {
     }
 }
 
-GITHUB_USER = "gabrielscheffer"
+GITHUB_USER = "rdavydov"
 BRANCH = "master"
 GITHUB_url = (
     "https://raw.githubusercontent.com/"
