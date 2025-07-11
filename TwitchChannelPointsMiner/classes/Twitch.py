@@ -489,8 +489,8 @@ class Twitch(object):
                             "isLive": True,
                             "isVod": False,
                             "vodID": "",
-                            # "playerType": "site"
-                            "playerType": "picture-by-picture",
+                            "playerType": "site"
+                            # "playerType": "picture-by-picture",
                         }
 
                         # Get signature and value using the post_gql_request method
