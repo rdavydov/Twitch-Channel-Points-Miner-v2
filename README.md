@@ -266,7 +266,19 @@ twitch_miner = TwitchChannelPointsMiner(
             priority=8,
             events=[Events.STREAMER_ONLINE, Events.STREAMER_OFFLINE,
                     Events.BET_LOSE, Events.CHAT_MENTION], 
-        )
+        ),
+        hooks=[
+            Discord(
+                webhook_api="https://discord.com/api/webhooks/0123456789/0a1B2c3D4e5F6g7H8i9J",
+                events=[Events.GAIN_FOR_RAID, Events.GAIN_FOR_WATCH,
+                        Events.GAIN_FOR_CLAIM, Events.GAIN_FOR_WATCH_STREAK],
+            ),
+            Discord(
+                webhook_api="https://discord.com/api/webhooks/9876543210/78ad737ba0e951cdfbde",
+                events=[Events.BET_GENERAL, Events.BET_LOSE,
+                        Events.BET_WIN, Events.BET_REFUND],
+            )
+        ]                                                                             # Add any additional log hooks to this list, in this example 2 different discord webhooks get 2 different types of Events
     ),
     streamer_settings=StreamerSettings(
         make_predictions=True,                  # If you want to Bet / Make prediction
@@ -444,20 +456,25 @@ Available values are the following:
 You can combine all priority but keep in mind that use `ORDER` and `POINTS_ASCENDING` in the same settings doesn't make sense.
 
 ### LoggerSettings
-| Key             	| Type            	| Default                        	                                  | Description                                                                          	                                                                                                  |
-|-----------------	|-----------------	|-------------------------------------------------------------------- |------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `save`          	| bool            	| True                           	                                  | If you want to save logs in file (suggested)                                         	                                                                                                  |
-| `less`          	| bool            	| False                          	                                  | Reduce the logging format and message verbosity [#10](https://github.com/Tkd-Alex/Twitch-Channel-Points-Miner-v2/issues/10)                                                               |
-| `console_level` 	| level 	        | logging.INFO                   	                                  | Level of logs in terminal - Use logging.DEBUG for more helpful messages.             	                                                                                                  |
-| `console_username`| bool 	            | False                   	                                          | Adds a username to every log line in the console if True. [#602](https://github.com/Tkd-Alex/Twitch-Channel-Points-Miner-v2/issues/602)|
-| `time_zone`| str 	            | None                   	                                          | Set a specific time zone for console and file loggers. Use tz database names. Example: "America/Denver" https://github.com/rdavydov/Twitch-Channel-Points-Miner-v2/issues/205|
-| `file_level`    	| level 	        | logging.DEBUG                  	                                  | Level of logs in file save - If you think the log file it's too big, use logging.INFO 	                                                                                                  |
-| `emoji`         	| bool            	| For Windows is False else True 	                                  | On Windows, we have a problem printing emoji. Set to false if you have a problem      	                                                                                                  |
-| `colored`         | bool            	| True 	                                                              | If you want to print colored text [#45](https://github.com/Tkd-Alex/Twitch-Channel-Points-Miner-v2/issues/45) [#82](https://github.com/Tkd-Alex/Twitch-Channel-Points-Miner-v2/issues/82) |
-| `auto_clear`      | bool            	| True 	                                                              | Create a file rotation handler with interval = 1D and backupCount = 7 [#215](https://github.com/Tkd-Alex/Twitch-Channel-Points-Miner-v2/issues/215)                                       |
-| `color_palette`   | ColorPalette      | All messages are Fore.RESET except WIN and LOSE bet (GREEN and RED) | Create your custom color palette. Read more above.      	                                                                                                                              |
-| `telegram`        | Telegram          | None                                                                | (Optional) Receive Telegram updates for multiple events list [#233](https://github.com/Tkd-Alex/Twitch-Channel-Points-Miner-v2/issues/233)                                                           |
-| `discord`         | Discord          | None                                                                 | (Optional) Receive Discord updates for multiple events list [#320](https://github.com/Tkd-Alex/Twitch-Channel-Points-Miner-v2/issues/320)                                                           |
+| Key             	  | Type            | Default                                                             | Description                                                                                                                                                                               |
+|--------------------|-----------------|---------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `save`          	  | bool            | True                                                                | If you want to save logs in file (suggested)                                                                                                                                              |
+| `less`          	  | bool            | False                                                               | Reduce the logging format and message verbosity [#10](https://github.com/Tkd-Alex/Twitch-Channel-Points-Miner-v2/issues/10)                                                               |
+| `console_level` 	  | level           | logging.INFO                                                        | Level of logs in terminal - Use logging.DEBUG for more helpful messages.                                                                                                                  |
+| `console_username` | bool            | False                                                               | Adds a username to every log line in the console if True. [#602](https://github.com/Tkd-Alex/Twitch-Channel-Points-Miner-v2/issues/602)                                                   |
+| `time_zone`        | str             | None                                                                | Set a specific time zone for console and file loggers. Use tz database names. Example: "America/Denver" https://github.com/rdavydov/Twitch-Channel-Points-Miner-v2/issues/205             |
+| `file_level`    	  | level           | logging.DEBUG                                                       | Level of logs in file save - If you think the log file it's too big, use logging.INFO                                                                                                     |
+| `emoji`         	  | bool            | For Windows is False else True                                      | On Windows, we have a problem printing emoji. Set to false if you have a problem                                                                                                          |
+| `colored`          | bool            | True                                                                | If you want to print colored text [#45](https://github.com/Tkd-Alex/Twitch-Channel-Points-Miner-v2/issues/45) [#82](https://github.com/Tkd-Alex/Twitch-Channel-Points-Miner-v2/issues/82) |
+| `auto_clear`       | bool            | True                                                                | Create a file rotation handler with interval = 1D and backupCount = 7 [#215](https://github.com/Tkd-Alex/Twitch-Channel-Points-Miner-v2/issues/215)                                       |
+| `color_palette`    | ColorPalette    | All messages are Fore.RESET except WIN and LOSE bet (GREEN and RED) | Create your custom color palette. Read more above.                                                                                                                                        |
+| `telegram`         | Telegram        | None                                                                | (Optional) Receive Telegram updates for multiple events list [#233](https://github.com/Tkd-Alex/Twitch-Channel-Points-Miner-v2/issues/233)                                                |
+| `discord`          | Discord         | None                                                                | (Optional) Receive Discord updates for multiple events list [#320](https://github.com/Tkd-Alex/Twitch-Channel-Points-Miner-v2/issues/320)                                                 |
+| `webhook`          | Webhook         | None                                                                | (Optional) Receive Generic Webhook updates for multiple events list [#424](https://github.com/rdavydov/Twitch-Channel-Points-Miner-v2/pull/424)                                           |
+| `matrix`           | Matrix          | None                                                                | (Optional) Receive Matrix updates for multiple events list [#228](https://github.com/rdavydov/Twitch-Channel-Points-Miner-v2/pull/228)                                                    |
+| `pushover`         | Pushover        | None                                                                | (Optional) Receive Pushover updates for multiple events list [#151](https://github.com/rdavydov/Twitch-Channel-Points-Miner-v2/issues/151)                                                |
+| `gotify`           | Gotify          | None                                                                | (Optional) Receive Gotify updates for multiple events list [#585](https://github.com/rdavydov/Twitch-Channel-Points-Miner-v2/pull/585)                                                    |
+| `hooks`            | list[EventHook] | None                                                                | (Optional) Receive any of the above hook types (Telegram, Discord, etc...) updates for multiple events list [#704](https://github.com/rdavydov/Twitch-Channel-Points-Miner-v2/issues/704) |
 
 #### Color Palette
 Now you can customize the color of the terminal message. We have created a default ColorPalette that provide all the message with `DEFAULT (RESET)` color and the `BET_WIN` and `BET_LOSE` message `GREEN` and `RED` respectively. You can change the colors of all `Events` enum class. The colors allowed are all the Fore color from Colorama: `BLACK, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE, RESET.`
@@ -543,6 +560,41 @@ Webhook(
    events=[Events.STREAMER_ONLINE, Events.STREAMER_OFFLINE,
                     Events.BET_LOSE, Events.CHAT_MENTION],
 )
+```
+
+#### Hooks
+
+You can specify additional hooks in this list. The below example is just an example, you can add as many instances of
+any EventHook subclass (Telegram, Discord, Webhook, Matrix, Pushover, and Gotify) as you like. Additionally, you could
+just use this list, foregoing the named hooks.
+
+```python
+[
+    Telegram(
+        chat_id=123456789,
+        token="123456789:shfuihreuifheuifhiu34578347",
+        events=[Events.STREAMER_ONLINE, Events.STREAMER_OFFLINE,
+                        Events.BET_LOSE, Events.CHAT_MENTION],
+        disable_notification=True,
+    ),
+    Discord(
+        webhook_api="https://discord.com/api/webhooks/0123456789/0a1B2c3D4e5F6g7H8i9J",
+        events=[Events.STREAMER_ONLINE, Events.STREAMER_OFFLINE,
+                        Events.BET_LOSE, Events.CHAT_MENTION],
+    ),
+    Discord(
+        webhook_api="https://discord.com/api/webhooks/9876543210/78ad737ba0e951cdfbde",
+        events=[Events.BET_GENERAL, Events.BET_LOSE,
+                        Events.BET_WIN, Events.BET_REFUND],
+    ),
+    Webhook(
+        endpoint="https://example.com/webhook",
+        method="GET",
+        events=[Events.STREAMER_ONLINE, Events.STREAMER_OFFLINE,
+                        Events.BET_LOSE, Events.CHAT_MENTION],
+    )
+]
+
 ```
 
 

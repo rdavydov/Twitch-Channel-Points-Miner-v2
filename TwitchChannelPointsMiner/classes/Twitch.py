@@ -615,31 +615,16 @@ class Twitch(object):
                                                     "skip_discord": True,
                                                     "skip_webhook": True,
                                                     "skip_matrix": True,
-                                                    "skip_gotify": True
+                                                    "skip_gotify": True,
+                                                    "skip_pushover": True
                                                 },
                                             )
 
-                                        if Settings.logger.telegram is not None:
-                                            Settings.logger.telegram.send(
-                                                "\n".join(drop_messages),
-                                                Events.DROP_STATUS,
-                                            )
+                                        if len(Settings.logger.hooks) > 0:
+                                            combined_message = "\n".join(drop_messages)
+                                            for hook in Settings.logger.hooks:
+                                                hook.send(combined_message, Events.DROP_STATUS)
 
-                                        if Settings.logger.discord is not None:
-                                            Settings.logger.discord.send(
-                                                "\n".join(drop_messages),
-                                                Events.DROP_STATUS,
-                                            )
-                                        if Settings.logger.webhook is not None:
-                                            Settings.logger.webhook.send(
-                                                "\n".join(drop_messages),
-                                                Events.DROP_STATUS,
-                                            )
-                                        if Settings.logger.gotify is not None:
-                                            Settings.logger.gotify.send(
-                                                "\n".join(drop_messages),
-                                                Events.DROP_STATUS,
-                                            )
 
                     except requests.exceptions.ConnectionError as e:
                         logger.error(
