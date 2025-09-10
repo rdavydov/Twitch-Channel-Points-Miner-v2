@@ -292,11 +292,18 @@ class TwitchChannelPointsMiner:
             # 1. Load channel points and auto-claim bonus
             # 2. Check if streamers are online
             # 3. DEACTIVATED: Check if the user is a moderator. (was used before the 5th of April 2021 to deactivate predictions)
-            for streamer in self.streamers:
+            for streamer in self.streamers[:]:  # Create a copy of the list to safely remove items during iteration
                 time.sleep(random.uniform(0.3, 0.7))
-                self.twitch.load_channel_points_context(streamer)
-                self.twitch.check_streamer_online(streamer)
-                # self.twitch.viewer_is_mod(streamer)
+                try:
+                    self.twitch.load_channel_points_context(streamer)
+                    self.twitch.check_streamer_online(streamer)
+                    # self.twitch.viewer_is_mod(streamer)
+                except StreamerDoesNotExistException:
+                    logger.info(
+                        f"Streamer {streamer.username} does not exist, removing from streamers list",
+                        extra={"emoji": ":cry:"},
+                    )
+                    self.streamers.remove(streamer)
 
             self.original_streamers = [
                 streamer.channel_points for streamer in self.streamers
@@ -400,11 +407,16 @@ class TwitchChannelPointsMiner:
 
                 if ((time.time() - refresh_context) // 60) >= 30:
                     refresh_context = time.time()
-                    for index in range(0, len(self.streamers)):
-                        if self.streamers[index].is_online:
-                            self.twitch.load_channel_points_context(
-                                self.streamers[index]
-                            )
+                    for streamer in self.streamers[:]:  # Create a copy of the list to safely remove items during iteration
+                        if streamer.is_online:
+                            try:
+                                self.twitch.load_channel_points_context(streamer)
+                            except StreamerDoesNotExistException:
+                                logger.info(
+                                    f"Streamer {streamer.username} does not exist, removing from streamers list",
+                                    extra={"emoji": ":cry:"},
+                                )
+                                self.streamers.remove(streamer)
 
     def end(self, signum, frame):
         if not self.running:
