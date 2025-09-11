@@ -1,16 +1,20 @@
 ![Twitch Channel Points Miner - v2](https://raw.githubusercontent.com/revunix/Twitch-Channel-Points-Miner-v2/master/assets/banner.png)
 <p align="center">
-<a href="https://github.com/revunix/Twitch-Channel-Points-Miner-v2/releases"><img alt="Latest Version" src="https://img.shields.io/github/v/release/revunix/Twitch-Channel-Points-Miner-v2?style=flat&color=white&logo=github&logoColor=white"></a>
-<a href="https://github.com/revunix/Twitch-Channel-Points-Miner-v2/stargazers"><img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/revunix/Twitch-Channel-Points-Miner-v2?style=flat&color=limegreen&logo=github&logoColor=white"></a>
-<a href="https://github.com/revunix/Twitch-Channel-Points-Miner-v2"><img alt="GitHub last commit" src="https://img.shields.io/github/last-commit/revunix/Twitch-Channel-Points-Miner-v2?style=flat&color=lightyellow&logo=github&logoColor=white"></a>
+<a href="https://github.com/revunix/Twitch-Channel-Points-Miner-v2/releases"><img alt="Release" src="https://img.shields.io/github/v/release/revunix/Twitch-Channel-Points-Miner-v2?style=flat&color=white&logo=github&logoColor=white&label=version"></a>
+<a href="https://github.com/revunix/Twitch-Channel-Points-Miner-v2/stargazers"><img alt="Stars" src="https://img.shields.io/github/stars/revunix/Twitch-Channel-Points-Miner-v2?style=flat&color=limegreen&logo=github&logoColor=white"></a>
+<a href="https://github.com/revunix/Twitch-Channel-Points-Miner-v2"><img alt="Last Commit" src="https://img.shields.io/github/last-commit/revunix/Twitch-Channel-Points-Miner-v2?style=flat&color=lightyellow&logo=github&logoColor=white"></a>
 <a href="https://github.com/revunix/Twitch-Channel-Points-Miner-v2/blob/master/LICENSE"><img alt="License" src="https://img.shields.io/github/license/revunix/Twitch-Channel-Points-Miner-v2?style=flat&color=black&logo=unlicense&logoColor=white"></a>
 </p>
 
 <p align="center">
-<a href="https://github.com/revunix/Twitch-Channel-Points-Miner-v2/pkgs/container/twitch-channel-points-miner-v2"><img alt="Docker Version" src="https://img.shields.io/github/v/release/revunix/Twitch-Channel-Points-Miner-v2?style=flat&color=white&logo=github&logoColor=white&label=release"></a>
+<a href="https://github.com/revunix/Twitch-Channel-Points-Miner-v2/pkgs/container/twitch-channel-points-miner-v2"><img alt="Docker Image" src="https://img.shields.io/badge/dynamic/json?color=blue&label=version&query=%24%5B0%5D.version&url=https%3A%2F%2Fghcr.io%2Fv2%2Frevunix%2Ftwitch-channel-points-miner-v2%2Ftags%2Flatest&logo=docker&logoColor=white&style=flat"></a>
 <a href="https://github.com/revunix/Twitch-Channel-Points-Miner-v2/pkgs/container/twitch-channel-points-miner-v2"><img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/ghcr.io/revunix/twitch-channel-points-miner-v2?style=flat&color=blue&logo=docker&logoColor=white&label=pulls"></a>
-<a href="https://github.com/revunix/Twitch-Channel-Points-Miner-v2/pkgs/container/twitch-channel-points-miner-v2"><img alt="Docker Images Size AMD64" src="https://img.shields.io/docker/image-size/ghcr.io/revunix/twitch-channel-points-miner-v2/latest?arch=amd64&label=AMD64 image size&style=flat&color=purple&logo=amd&logoColor=white"></a>
-<a href="https://github.com/revunix/Twitch-Channel-Points-Miner-v2/pkgs/container/twitch-channel-points-miner-v2"><img alt="Docker Images Size ARM64" src="https://img.shields.io/docker/image-size/ghcr.io/revunix/twitch-channel-points-miner-v2/latest?arch=arm64&label=ARM64 image size&style=flat&color=black&logo=arm&logoColor=white"></a>
+<a href="https://github.com/revunix/Twitch-Channel-Points-Miner-v2/pkgs/container/twitch-channel-points-miner-v2"><img alt="AMD64 Size" src="https://img.shields.io/docker/image-size/ghcr.io/revunix/twitch-channel-points-miner-v2/latest?arch=amd64&label=AMD64&style=flat&color=purple&logo=amd&logoColor=white"></a>
+<a href="https://github.com/revunix/Twitch-Channel-Points-Miner-v2/pkgs/container/twitch-channel-points-miner-v2"><img alt="ARM64 Size" src="https://img.shields.io/docker/image-size/ghcr.io/revunix/twitch-channel-points-miner-v2/latest?arch=arm64&label=ARM64&style=flat&color=black&logo=arm&logoColor=white"></a>
+</p>
+
+<p align="center">
+<strong>🐳 Docker Image:</strong> <a href="https://github.com/revunix/Twitch-Channel-Points-Miner-v2/pkgs/container/twitch-channel-points-miner-v2">ghcr.io/revunix/twitch-channel-points-miner-v2</a>
 </p>
 
 
