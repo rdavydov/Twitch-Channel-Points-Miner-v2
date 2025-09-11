@@ -9,7 +9,7 @@ on:
 
 jobs:
   deploy-docker:
-    name: Deploy Docker Hub
+    name: Deploy GitHub Container Registry
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source
@@ -21,17 +21,18 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3.7.1
 
-      - name: Login to DockerHub
+      - name: Login to GitHub Container Registry
         uses: docker/login-action@v3.3.0
         with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_TOKEN }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Docker meta
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: rdavidoff/twitch-channel-points-miner-v2
+          images: ghcr.io/revunix/twitch-channel-points-miner-v2
           tags: |
             type=semver,pattern={{version}},enable=${{ startsWith(github.ref, 'refs/tags') }}
             type=raw,value=latest
@@ -50,12 +51,12 @@ jobs:
           cache-to: type=gha,mode=max
 
       # File size exceeds the maximum allowed 25000 bytes
-      # - name: Docker Hub Description
+      # - name: GitHub Container Registry Description
       #   uses: peter-evans/dockerhub-description@v2
       #   with:
-      #     username: ${{ secrets.DOCKER_USERNAME }}
-      #     password: ${{ secrets.DOCKER_TOKEN }}
-      #     repository: rdavidoff/twitch-channel-points-miner-v2
+      #     username: ${{ github.actor }}
+      #     password: ${{ secrets.GITHUB_TOKEN }}
+      #     repository: ghcr.io/revunix/twitch-channel-points-miner-v2
 
       - name: Image digest AMD64, ARM64, ARMv7
         run: echo ${{ steps.docker_build.outputs.digest }}
