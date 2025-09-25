@@ -1,11 +1,13 @@
 import platform
 import re
+import secrets
 import socket
 import time
 from copy import deepcopy
 from datetime import datetime, timezone
 from os import path
 from random import randrange
+from typing import TypeVar, Iterable
 
 import requests
 from millify import millify
@@ -33,7 +35,8 @@ def float_round(number, ndigits=2):
 def server_time(message_data):
     return (
         datetime.fromtimestamp(
-            message_data["server_time"], timezone.utc).isoformat()
+            message_data["server_time"], timezone.utc
+        ).isoformat()
         + "Z"
         if message_data is not None and "server_time" in message_data
         else datetime.fromtimestamp(time.time(), timezone.utc).isoformat() + "Z"
@@ -53,6 +56,7 @@ def create_nonce(length=30) -> str:
             char = chr(ord("A") + char_index - 26 - 10)
         nonce += char
     return nonce
+
 
 # for mobile-token
 
@@ -121,7 +125,7 @@ def copy_values_if_none(settings, defaults):
     values = list(
         filter(
             lambda x: x.startswith("__") is False
-            and callable(getattr(settings, x)) is False,
+                      and callable(getattr(settings, x)) is False,
             dir(settings),
         )
     )
@@ -210,3 +214,64 @@ def check_versions():
     except Exception:
         github_version = "0.0.0"
     return current_version, github_version
+
+
+_alphabet_base_36 = '0123456789abcdefghijklmnopqrstuvwxyz'
+
+
+def create_random_id(length: int) -> str:
+    """
+    Creates a random string of given length.
+    Mimics the ID generation function Twitch uses in their WebSocket request IDs.
+    :param length: The length of the string to create.
+    :return: The generated string.
+    """
+
+    def mapping(value: int):
+        value &= 63
+        if value < 36:
+            return _alphabet_base_36[value]
+        elif value < 62:
+            return _alphabet_base_36[value - 26].upper()
+        elif value > 62:
+            return "-"
+        else:
+            return "_"
+
+    return "".join(map(mapping, secrets.token_bytes(length)))
+
+
+def simple_repr(obj) -> str:
+    """
+    Creates a simple representation of a given object.
+    :param obj: The object to represent.
+    :return: The string representation of the object.
+    """
+    if obj is None:
+        return "None"
+    return f"<{obj.__class__.__name__}: {obj.__dict__}>"
+
+
+T = TypeVar("T")
+
+
+def combine(*iterables: Iterable[T]) -> Iterable[T]:
+    """
+    Combines multiple iterables into one.
+    :param iterables: The iterables to combine.
+    :return: The resulting iterable.
+    """
+    for iterable in iterables:
+        yield from iterable
+
+
+def format_timestamp(timestamp: datetime) -> str:
+    """
+    Formats a datetime object in ISO 8601 format for interoperability with the Twitch Web client.
+    Specifically, datetimes will be formatted like "2025-10-03T07:36:29.045Z"
+
+    :param timestamp: The datetime object to format.
+    :return: The formatted datetime string.
+    """
+    return f"{timestamp:%Y-%m-%dT%H:%M:%S}.{timestamp.microsecond // 1000:03d}Z"
+

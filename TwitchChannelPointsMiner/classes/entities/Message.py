@@ -1,5 +1,6 @@
 import json
 
+from TwitchChannelPointsMiner.classes.entities.PubsubTopic import PubsubTopic
 from TwitchChannelPointsMiner.utils import server_time
 
 
@@ -67,3 +68,6 @@ class Message(object):
                 )
             )
         )
+
+    def get_topic(self):
+        return PubsubTopic(self.topic, self.topic_user, self.channel_id)

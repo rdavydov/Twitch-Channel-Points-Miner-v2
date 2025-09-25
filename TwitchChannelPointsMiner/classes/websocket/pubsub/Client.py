@@ -9,7 +9,7 @@ from TwitchChannelPointsMiner.utils import create_nonce
 logger = logging.getLogger(__name__)
 
 
-class TwitchWebSocket(WebSocketApp):
+class PubSubWebSocket(WebSocketApp):
     def __init__(self, index, parent_pool, *args, **kw):
         super().__init__(*args, **kw)
         self.index = index
@@ -26,8 +26,6 @@ class TwitchWebSocket(WebSocketApp):
         self.pending_topics = []
 
         self.twitch = parent_pool.twitch
-        self.streamers = parent_pool.streamers
-        self.events_predictions = parent_pool.events_predictions
 
         self.last_message_timestamp = None
         self.last_message_type_channel = None
