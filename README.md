@@ -1,29 +1,29 @@
-![Twitch Channel Points Miner - v2](https://raw.githubusercontent.com/rdavydov/Twitch-Channel-Points-Miner-v2/master/assets/banner.png)
+![Twitch Channel Points Miner - v2](https://raw.githubusercontent.com/revunix/Twitch-Channel-Points-Miner-v2/master/assets/banner.png)
 <p align="center">
-<a href="https://github.com/rdavydov/Twitch-Channel-Points-Miner-v2/releases"><img alt="Latest Version" src="https://img.shields.io/github/v/release/rdavydov/Twitch-Channel-Points-Miner-v2?style=flat&color=white&logo=github&logoColor=white"></a>
-<a href="https://github.com/rdavydov/Twitch-Channel-Points-Miner-v2/stargazers"><img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/rdavydov/Twitch-Channel-Points-Miner-v2?style=flat&color=limegreen&logo=github&logoColor=white"></a>
-<a href='https://github.com/MShawon/github-clone-count-badge'><img alt='GitHub Traffic' src='https://img.shields.io/badge/dynamic/json?style=flat&color=blue&label=views&query=count&url=https://gist.githubusercontent.com/rdavydov/ad9a3c6a8d9c322f9a6b62781ea94a93/raw/traffic.json&logo=github&logoColor=white'></a>
-<a href='https://github.com/MShawon/github-clone-count-badge'><img alt='GitHub Clones' src='https://img.shields.io/badge/dynamic/json?style=flat&color=purple&label=clones&query=count&url=https://gist.githubusercontent.com/rdavydov/fed04b31a250ad522d9ea6547ce87f95/raw/clone.json&logo=github&logoColor=white'></a>
-<a href="https://github.com/rdavydov/Twitch-Channel-Points-Miner-v2/blob/master/LICENSE"><img alt="License" src="https://img.shields.io/github/license/rdavydov/Twitch-Channel-Points-Miner-v2?style=flat&color=black&logo=unlicense&logoColor=white"></a>
-<a href="https://github.com/rdavydov/Twitch-Channel-Points-Miner-v2"><img alt="GitHub last commit" src="https://img.shields.io/github/last-commit/rdavydov/Twitch-Channel-Points-Miner-v2?style=flat&color=lightyellow&logo=github&logoColor=white"></a>
+<a href="https://github.com/revunix/Twitch-Channel-Points-Miner-v2/releases"><img alt="Release" src="https://img.shields.io/github/v/release/revunix/Twitch-Channel-Points-Miner-v2?style=flat&color=white&logo=github&logoColor=white&label=version"></a>
+<a href="https://github.com/revunix/Twitch-Channel-Points-Miner-v2/stargazers"><img alt="Stars" src="https://img.shields.io/github/stars/revunix/Twitch-Channel-Points-Miner-v2?style=flat&color=limegreen&logo=github&logoColor=white"></a>
+<a href="https://github.com/revunix/Twitch-Channel-Points-Miner-v2"><img alt="Last Commit" src="https://img.shields.io/github/last-commit/revunix/Twitch-Channel-Points-Miner-v2?style=flat&color=lightyellow&logo=github&logoColor=white"></a>
+<a href="https://github.com/revunix/Twitch-Channel-Points-Miner-v2/blob/master/LICENSE"><img alt="License" src="https://img.shields.io/github/license/revunix/Twitch-Channel-Points-Miner-v2?style=flat&color=black&logo=unlicense&logoColor=white"></a>
 </p>
 
 <p align="center">
-<a href="https://hub.docker.com/r/rdavidoff/twitch-channel-points-miner-v2"><img alt="Docker Version" src="https://img.shields.io/docker/v/rdavidoff/twitch-channel-points-miner-v2?style=flat&color=white&logo=docker&logoColor=white&label=release"></a>
-<a href="https://hub.docker.com/r/rdavidoff/twitch-channel-points-miner-v2"><img alt="Docker Stars" src="https://img.shields.io/docker/stars/rdavidoff/twitch-channel-points-miner-v2?style=flat&color=limegreen&logo=docker&logoColor=white&label=stars"></a>
-<a href="https://hub.docker.com/r/rdavidoff/twitch-channel-points-miner-v2"><img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/rdavidoff/twitch-channel-points-miner-v2?style=flat&color=blue&logo=docker&logoColor=white&label=pulls"></a>
-<a href="https://hub.docker.com/r/rdavidoff/twitch-channel-points-miner-v2"><img alt="Docker Images Size AMD64" src="https://img.shields.io/docker/image-size/rdavidoff/twitch-channel-points-miner-v2/latest?arch=amd64&label=AMD64 image size&style=flat&color=purple&logo=amd&logoColor=white"></a>
-<a href="https://hub.docker.com/r/rdavidoff/twitch-channel-points-miner-v2"><img alt="Docker Images Size ARM64" src="https://img.shields.io/docker/image-size/rdavidoff/twitch-channel-points-miner-v2/latest?arch=arm64&label=ARM64 image size&style=flat&color=black&logo=arm&logoColor=white"></a>
-<a href="https://hub.docker.com/r/rdavidoff/twitch-channel-points-miner-v2"><img alt="Docker Images Size ARMv7" src="https://img.shields.io/docker/image-size/rdavidoff/twitch-channel-points-miner-v2/latest?arch=arm&label=ARMv7 image size&style=flat&color=lightyellow&logo=arm&logoColor=white"></a>
+<a href="https://github.com/revunix/Twitch-Channel-Points-Miner-v2/pkgs/container/twitch-channel-points-miner-v2"><img alt="Docker Image" src="https://img.shields.io/badge/dynamic/json?color=blue&label=version&query=%24%5B0%5D.version&url=https%3A%2F%2Fghcr.io%2Fv2%2Frevunix%2Ftwitch-channel-points-miner-v2%2Ftags%2Flatest&logo=docker&logoColor=white&style=flat"></a>
+<a href="https://github.com/revunix/Twitch-Channel-Points-Miner-v2/pkgs/container/twitch-channel-points-miner-v2"><img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/ghcr.io/revunix/twitch-channel-points-miner-v2?style=flat&color=blue&logo=docker&logoColor=white&label=pulls"></a>
+<a href="https://github.com/revunix/Twitch-Channel-Points-Miner-v2/pkgs/container/twitch-channel-points-miner-v2"><img alt="AMD64 Size" src="https://img.shields.io/docker/image-size/ghcr.io/revunix/twitch-channel-points-miner-v2/latest?arch=amd64&label=AMD64&style=flat&color=purple&logo=amd&logoColor=white"></a>
+<a href="https://github.com/revunix/Twitch-Channel-Points-Miner-v2/pkgs/container/twitch-channel-points-miner-v2"><img alt="ARM64 Size" src="https://img.shields.io/docker/image-size/ghcr.io/revunix/twitch-channel-points-miner-v2/latest?arch=arm64&label=ARM64&style=flat&color=black&logo=arm&logoColor=white"></a>
+</p>
+
+<p align="center">
+<strong>🐳 Docker Image:</strong> <a href="https://github.com/revunix/Twitch-Channel-Points-Miner-v2/pkgs/container/twitch-channel-points-miner-v2">ghcr.io/revunix/twitch-channel-points-miner-v2</a>
 </p>
 
 
-<h1 align="center">https://github.com/rdavydov/Twitch-Channel-Points-Miner-v2</h1>
 
 **Credits**
 - Main idea: https://github.com/gottagofaster236/Twitch-Channel-Points-Miner
 - ~~Bet system (Selenium): https://github.com/ClementRoyer/TwitchAutoCollect-AutoBet~~
 - Based on: https://github.com/Tkd-Alex/Twitch-Channel-Points-Miner-v2
+- Fork: https://github.com/rdavydov/Twitch-Channel-Points-Miner-v2
 
 > A simple script that will watch a stream for you and earn the channel points.
 
@@ -66,10 +66,7 @@ If you want to offer me a coffee, I would be grateful! ❤️
 
 |                                                                                                                                                                                                                                                                                                           |                                               |
 |-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------|
-|<a href="https://bitcoin.org" target="_blank"><img src="https://dynamic-assets.coinbase.com/e785e0181f1a23a30d9476038d9be91e9f6c63959b538eabbc51a1abc8898940383291eede695c3b8dfaa1829a9b57f5a2d0a16b0523580346c6b8fab67af14b/asset_icons/b57ac673f06a4b0338a596817eb0a50ce16e2059f327dc117744449a47915cb2.png" alt="Donate BTC" height="16" width="16"></a>|`bc1qq49mvgda2zw4f9kta0a85xztwuxewqwac5eckd` _(<a href="https://bitcoin.org" target="_blank">BTC</a>)_|
-|<a href="https://dogechain.info" target="_blank"><img src="https://dynamic-assets.coinbase.com/3803f30367bb3972e192cd3fdd2230cd37e6d468eab12575a859229b20f12ff9c994d2c86ccd7bf9bc258e9bd5e46c5254283182f70caf4bd02cc4f8e3890d82/asset_icons/1597d628dd19b7885433a2ac2d7de6ad196c519aeab4bfe679706aacbf1df78a.png" alt="Donate DOGE" height="16" width="16"></a>|`DAKzncwKkpfPCm1xVU7u2pConpXwX7HS3D` _(<a href="https://dogechain.info" target="_blank">DOGE</a>)_|
-|<a href="https://www.donationalerts.com/r/rdavydov" target="_blank"><img src="https://www.donationalerts.com/static/donations/dist/favicon.ico" alt="Donate via DonationAlerts" height="16" width="16"></a>|https://www.donationalerts.com/r/rdavydov|
-|<a href="https://boosty.to/rdavydov/donate" target="_blank"><img src="https://static.boosty.to/static/favicon.png?v=11" alt="Donate via Boosty" height="16" width="16"></a>|https://boosty.to/rdavydov/donate|
+|<a href="https://ko-fi.com/revunix" target="_blank"><img src="https://storage.ko-fi.com/cdn/useruploads/display/7b4a7c8a-9c4a-4f8a-8b8a-8b8a8b8a8b8a.png" alt="Donate via Ko-fi" height="16" width="16"></a>|https://ko-fi.com/revunix|
 
 If you have any issues or you want to contribute, you are welcome! But please read the [CONTRIBUTING.md](https://github.com/rdavydov/Twitch-Channel-Points-Miner-v2/blob/master/CONTRIBUTING.md) file.
 
@@ -88,6 +85,10 @@ If you have any issues or you want to contribute, you are welcome! But please re
 - Notifying on `@nickname` mention in the Twitch chat [#227](https://github.com/rdavydov/Twitch-Channel-Points-Miner-v2/issues/227) ✔️
 
 ## Logs feature
+
+<details>
+<summary>📋 Show log examples</summary>
+
 ### Full logs
 ```
 %d/%m/%y %H:%M:%S - INFO - [run]: 💣  Start session: '9eb934b0-1684-4a62-b3e2-ba097bd67d35'
@@ -183,6 +184,8 @@ If you have any issues or you want to contribute, you are welcome! But please re
 %d/%m/%y %H:%M:%S - 🤖  Streamer(username=streamer-username6, channel_id=0000000, channel_points=9430), Total points gained (after farming - before farming): 1120
 %d/%m/%y %H:%M:%S - 💰  CLAIM(14 times, 700 gained), WATCH(42 times, 420 gained), WATCH_STREAK(1 times, 450 gained)
 ```
+
+</details>
 
 ## How to use:
 First of all please create a run.py file. You can just copy [example.py](https://github.com/rdavydov/Twitch-Channel-Points-Miner-v2/blob/master/example.py) and modify it according to your needs.
@@ -352,8 +355,8 @@ Start mining! `python run.py` 🥳
 
 ### Docker
 
-#### Docker Hub
-Official Docker images are on https://hub.docker.com/r/rdavidoff/twitch-channel-points-miner-v2 for `linux/amd64`, `linux/arm64` and `linux/arm/v7`.
+#### GitHub Container Registry
+Official Docker images are on https://github.com/revunix/Twitch-Channel-Points-Miner-v2/pkgs/container/twitch-channel-points-miner-v2 for `linux/amd64` and `linux/arm64`.
 
 The following file is mounted :
 
@@ -372,7 +375,7 @@ version: "3.9"
 
 services:
   miner:
-    image: rdavidoff/twitch-channel-points-miner-v2
+    image: ghcr.io/revunix/twitch-channel-points-miner-v2
     stdin_open: true
     tty: true
     environment:
@@ -394,12 +397,12 @@ docker run \
     -v $(pwd)/logs:/usr/src/app/logs \
     -v $(pwd)/run.py:/usr/src/app/run.py:ro \
     -p 5000:5000 \
-    rdavidoff/twitch-channel-points-miner-v2
+    ghcr.io/revunix/twitch-channel-points-miner-v2
 ```
 
 `$(pwd)` Could not work on Windows (cmd), please use the absolute path instead, like: `/path/of/your/cookies:/usr/src/app/cookies`.
 
-The correct solution for Windows lies in the correct command line: `docker run -v C:\Absolute\Path\To\Twitch-Channel-Points-Miner-v2\run.py:/usr/src/app/run.py:ro rdavidoff/twitch-channel-points-miner-v2`.
+The correct solution for Windows lies in the correct command line: `docker run -v C:\Absolute\Path\To\Twitch-Channel-Points-Miner-v2\run.py:/usr/src/app/run.py:ro ghcr.io/revunix/twitch-channel-points-miner-v2`.
 
 `run.py` MUST be mounted as a volume (`-v`).
 
@@ -408,11 +411,11 @@ If you don't mount the volume for the analytics (or cookies or logs) folder, the
 If you don't have a cookie or it's your first time running the script, you will need to login to Twitch and start the container with `-it` args. If you need to run multiple containers you can bind different ports (only if you need also the analytics) and mount dirrent run.py file, like
 
 ```sh
-docker run --name user1 -v $(pwd)/user1.py:/usr/src/app/run.py:ro -p 5001:5000 rdavidoff/twitch-channel-points-miner-v2
+docker run --name user1 -v $(pwd)/user1.py:/usr/src/app/run.py:ro -p 5001:5000 ghcr.io/revunix/twitch-channel-points-miner-v2
 ```
 
 ```sh
-docker run --name user2 -v $(pwd)/user2.py:/usr/src/app/run.py:ro -p 5002:5000 rdavidoff/twitch-channel-points-miner-v2
+docker run --name user2 -v $(pwd)/user2.py:/usr/src/app/run.py:ro -p 5002:5000 ghcr.io/revunix/twitch-channel-points-miner-v2
 ```
 
 #### Portainer
@@ -661,6 +664,10 @@ Here's a concrete example. Let's suppose we have a bet that is opened with a tim
 - **PERCENTAGE** with `delay=0.2`: The bet will be placed when the timer went down by 20% (so 2mins after the bet is opened)
 
 ## Analytics
+
+<details>
+<summary>📊 Show analytics feature</summary>
+
 We have recently introduced a little frontend where you can show with a chart you points trend. The script will spawn a Flask web-server on your machine where you can select binding address and port.
 The chart provides some annotation to handle the prediction and watch strike events. Usually annotation are used to notice big increase / decrease of points. If you want to can disable annotations.
 On each (x, y) points Its present a tooltip that show points, date time and reason of points gained / lost. This web page was just a funny idea, and it is not intended to use for a professional usage.
@@ -668,7 +675,7 @@ If you want you can toggle the dark theme with the dedicated checkbox.
 
 | Light theme | Dark theme |
 | ----------- | ---------- |
-| ![Light theme](https://raw.githubusercontent.com/Tkd-Alex/Twitch-Channel-Points-Miner-v2/master/assets/chart-analytics-light.png) | ![Dark theme](https://raw.githubusercontent.com/Tkd-Alex/Twitch-Channel-Points-Miner-v2/master/assets/chart-analytics-dark.png) |
+| ![Light theme](https://raw.githubusercontent.com/revunix/Twitch-Channel-Points-Miner-v2/master/assets/chart-analytics-light.png) | ![Dark theme](https://raw.githubusercontent.com/revunix/Twitch-Channel-Points-Miner-v2/master/assets/chart-analytics-dark.png) |
 
 For use this feature just call the `analytics()` method before start mining. Read more at: [#96](https://github.com/Tkd-Alex/Twitch-Channel-Points-Miner-v2/issues/96)
 The chart will be autofreshed each `refresh` minutes. If you want to connect from one to second machine that have that webpanel you have to use `0.0.0.0` instead of `127.0.0.1`. With the `days_ago` arg you can select how many days you want to show by default in your analytics graph.
@@ -685,7 +692,15 @@ Disabling Analytics significantly reduces memory consumption and saves some disk
 
 Set this option to `True` if you need Analytics. Otherwise set this option to `False` (default value).
 
+</details>
+
+</details>
+
 ## Migrating from an old repository (the original one):
+
+<details>
+<summary>📁 Migration from old repository</summary>
+
 If you already have a `twitch-cookies.pkl` and you don't want to log in again, please create a `cookies/` folder in the current directory and then copy the .pkl file with a new name `your-twitch-username.pkl`
 ```
 .
@@ -694,10 +709,16 @@ If you already have a `twitch-cookies.pkl` and you don't want to log in again, p
 |   +-- your-twitch-username.pkl
 ```
 
+</details>
+
 ## Windows
+
+<details>
+<summary>🪟 Windows-specific notes</summary>
+
 Other users have find multiple problems on Windows. Suggestions are:
- - Stop using Windows :stuck_out_tongue_closed_eyes:
- - Suppress the emoji in logs with `logger_settings=LoggerSettings(emoji=False)`
+  - Stop using Windows :stuck_out_tongue_closed_eyes:
+  - Suppress the emoji in logs with `logger_settings=LoggerSettings(emoji=False)`
 
 Other useful info can be found here:
 - https://github.com/gottagofaster236/Twitch-Channel-Points-Miner/issues/31
@@ -705,7 +726,13 @@ Other useful info can be found here:
 
 You can also follow this [video tutorial](https://www.youtube.com/watch?v=0VkM7NOZkuA).
 
+</details>
+
 ## Termux
+
+<details>
+<summary>📱 Termux installation (Android)</summary>
+
 **1. Upgrade packages**
 ```
 pkg upgrade
@@ -725,7 +752,7 @@ pkg install python-pandas
 
 **4. Clone this repository**
 
-`git clone https://github.com/rdavydov/Twitch-Channel-Points-Miner-v2`
+`git clone https://github.com/revunix/Twitch-Channel-Points-Miner-v2`
 
 **5. Go to the miner's directory**
 
@@ -759,5 +786,8 @@ If you can't install `cryptography`, please try:
 
 ⚠️ Installation of `pandas`, `maturin` and `cryptography` takes a long time.
 
+</details>
+
 ## Disclaimer
-This project comes with no guarantee or warranty. You are responsible for whatever happens from using this project. It is possible to get soft or hard banned by using this project if you are not careful. This is a personal project and is in no way affiliated with Twitch.
+
+⚠️ **Important Notice:** This project comes with no guarantee or warranty. You are responsible for whatever happens from using this project. It is possible to get soft or hard banned by using this project if you are not careful. This is a personal project and is in no way affiliated with Twitch.

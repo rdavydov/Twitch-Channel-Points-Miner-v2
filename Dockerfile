@@ -27,9 +27,6 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get install -qq -y --fix-missing --no-ins
     g++ \
     subversion \
     python3-dev \
-  && if [ "${BUILDX_QEMU_ENV}" = "true" ] && [ "$(getconf LONG_BIT)" = "32" ]; then \
-        pip install -U cryptography==3.3.2; \
-     fi \
   && pip install -r requirements.txt \
   && pip cache purge \
   && apt-get remove -y gcc rustc \

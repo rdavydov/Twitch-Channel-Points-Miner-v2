@@ -155,3 +155,4 @@ analytics/*
 keep_replit_alive.py
 .replit
 replit.nix
+github-actions-logs.txt
