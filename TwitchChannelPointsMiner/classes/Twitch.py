@@ -11,16 +11,12 @@ import random
 import re
 import string
 import time
-import requests
-import validators
-# import json
-
 from pathlib import Path
 from secrets import choice, token_hex
-from typing import Dict, Any
-# from urllib.parse import quote
-# from base64 import urlsafe_b64decode
-# from datetime import datetime
+from typing import Any, Dict
+
+import requests
+import validators
 
 from TwitchChannelPointsMiner.classes.entities.Campaign import Campaign
 from TwitchChannelPointsMiner.classes.entities.CommunityGoal import CommunityGoal
@@ -47,6 +43,13 @@ from TwitchChannelPointsMiner.utils import (
     create_chunks,
     internet_connection_available,
 )
+
+# import json
+
+# from urllib.parse import quote
+# from base64 import urlsafe_b64decode
+# from datetime import datetime
+
 
 logger = logging.getLogger(__name__)
 JsonType = Dict[str, Any]
@@ -140,8 +143,7 @@ class Twitch(object):
 
             headers = {"User-Agent": USER_AGENTS["Linux"]["FIREFOX"]}
 
-            main_page_request = requests.get(
-                streamer.streamer_url, headers=headers)
+            main_page_request = requests.get(streamer.streamer_url, headers=headers)
             response = main_page_request.text
             # logger.info(response)
             regex_settings = "(https://static.twitchcdn.net/config/settings.*?js|https://assets.twitch.tv/config/settings.*?.js)"
@@ -150,11 +152,9 @@ class Twitch(object):
             settings_request = requests.get(settings_url, headers=headers)
             response = settings_request.text
             regex_spade = '"spade_url":"(.*?)"'
-            streamer.stream.spade_url = re.search(
-                regex_spade, response).group(1)
+            streamer.stream.spade_url = re.search(regex_spade, response).group(1)
         except requests.exceptions.RequestException as e:
-            logger.error(
-                f"Something went wrong during extraction of 'spade_url': {e}")
+            logger.error(f"Something went wrong during extraction of 'spade_url': {e}")
 
     def get_broadcast_id(self, streamer):
         json_data = copy.deepcopy(GQLOperations.WithIsStreamLiveQuery)
@@ -168,8 +168,7 @@ class Twitch(object):
                 raise StreamerIsOfflineException
 
     def get_stream_info(self, streamer):
-        json_data = copy.deepcopy(
-            GQLOperations.VideoPlayerStreamInfoOverlayChannel)
+        json_data = copy.deepcopy(GQLOperations.VideoPlayerStreamInfoOverlayChannel)
         json_data["variables"] = {"channel": streamer.username}
         response = self.post_gql_request(json_data)
         if response != {}:
@@ -241,8 +240,7 @@ class Twitch(object):
 
             logger.info(
                 f"Joining raid from {streamer} to {raid.target_login}!",
-                extra={"emoji": ":performing_arts:",
-                       "event": Events.JOIN_RAID},
+                extra={"emoji": ":performing_arts:", "event": Events.JOIN_RAID},
             )
 
     def viewer_is_mod(self, streamer):
@@ -399,13 +397,11 @@ class Twitch(object):
                         streamers_watching += streamers_index[:2]
 
                     elif (
-                        prior in [Priority.POINTS_ASCENDING,
-                                  Priority.POINTS_DESCENDING]
+                        prior in [Priority.POINTS_ASCENDING, Priority.POINTS_DESCENDING]
                         and len(streamers_watching) < 2
                     ):
                         items = [
-                            {"points": streamers[index].channel_points,
-                                "index": index}
+                            {"points": streamers[index].channel_points, "index": index}
                             for index in streamers_index
                         ]
                         items = sorted(
@@ -415,8 +411,7 @@ class Twitch(object):
                                 True if prior == Priority.POINTS_DESCENDING else False
                             ),
                         )
-                        streamers_watching += [item["index"]
-                                               for item in items][:2]
+                        streamers_watching += [item["index"] for item in items][:2]
 
                     elif prior == Priority.STREAK and len(streamers_watching) < 2:
                         """
@@ -432,8 +427,7 @@ class Twitch(object):
                                 and (
                                     streamers[index].offline_at == 0
                                     or (
-                                        (time.time() -
-                                         streamers[index].offline_at)
+                                        (time.time() - streamers[index].offline_at)
                                         // 60
                                     )
                                     > 30
@@ -460,8 +454,7 @@ class Twitch(object):
                         ]
                         streamers_with_multiplier = sorted(
                             streamers_with_multiplier,
-                            key=lambda x: streamers[x].total_points_multiplier(
-                            ),
+                            key=lambda x: streamers[x].total_points_multiplier(),
                             reverse=True,
                         )
                         streamers_watching += streamers_with_multiplier[:2]
@@ -480,8 +473,7 @@ class Twitch(object):
                         ####################################
                         # Start of fix for 2024/5 API Change
                         # Create the JSON data for the GraphQL request
-                        json_data = copy.deepcopy(
-                            GQLOperations.PlaybackAccessToken)
+                        json_data = copy.deepcopy(GQLOperations.PlaybackAccessToken)
                         json_data["variables"] = {
                             "login": streamers[index].username,
                             "isLive": True,
@@ -494,29 +486,34 @@ class Twitch(object):
                         # Get signature and value using the post_gql_request method
                         try:
                             responsePlaybackAccessToken = self.post_gql_request(
-                                json_data)
+                                json_data
+                            )
                             logger.debug(
-                                f"Sent PlaybackAccessToken request for {streamers[index]}")
+                                f"Sent PlaybackAccessToken request for {streamers[index]}"
+                            )
 
-                            if 'data' not in responsePlaybackAccessToken:
+                            if "data" not in responsePlaybackAccessToken:
                                 logger.error(
-                                    f"Invalid response from Twitch: {responsePlaybackAccessToken}")
+                                    f"Invalid response from Twitch: {responsePlaybackAccessToken}"
+                                )
                                 continue
 
-                            streamPlaybackAccessToken = responsePlaybackAccessToken["data"].get(
-                                'streamPlaybackAccessToken', {})
-                            signature = streamPlaybackAccessToken.get(
-                                "signature")
+                            streamPlaybackAccessToken = responsePlaybackAccessToken[
+                                "data"
+                            ].get("streamPlaybackAccessToken", {})
+                            signature = streamPlaybackAccessToken.get("signature")
                             value = streamPlaybackAccessToken.get("value")
 
                             if not signature or not value:
                                 logger.error(
-                                    f"Missing signature or value in Twitch response: {responsePlaybackAccessToken}")
+                                    f"Missing signature or value in Twitch response: {responsePlaybackAccessToken}"
+                                )
                                 continue
 
                         except Exception as e:
                             logger.error(
-                                f"Error fetching PlaybackAccessToken for {streamers[index]}: {str(e)}")
+                                f"Error fetching PlaybackAccessToken for {streamers[index]}: {str(e)}"
+                            )
                             continue
 
                         # encoded_value = quote(json.dumps(value))
@@ -538,8 +535,7 @@ class Twitch(object):
                         BroadcastQualities = responseBroadcastQualities.text
 
                         # Just takes the last line, which should be the URL for the lowest quality
-                        BroadcastLowestQualityURL = BroadcastQualities.split(
-                            "\n")[-1]
+                        BroadcastLowestQualityURL = BroadcastQualities.split("\n")[-1]
                         if not validators.url(BroadcastLowestQualityURL):
                             continue
 
@@ -615,7 +611,7 @@ class Twitch(object):
                                                     "skip_discord": True,
                                                     "skip_webhook": True,
                                                     "skip_matrix": True,
-                                                    "skip_gotify": True
+                                                    "skip_gotify": True,
                                                 },
                                             )
 
@@ -642,12 +638,10 @@ class Twitch(object):
                                             )
 
                     except requests.exceptions.ConnectionError as e:
-                        logger.error(
-                            f"Error while trying to send minute watched: {e}")
+                        logger.error(f"Error while trying to send minute watched: {e}")
                         self.__check_connection_handler(chunk_size)
                     except requests.exceptions.Timeout as e:
-                        logger.error(
-                            f"Error while trying to send minute watched: {e}")
+                        logger.error(f"Error while trying to send minute watched: {e}")
 
                     self.__chuncked_sleep(
                         next_iteration - time.time(), chunk_size=chunk_size
@@ -657,8 +651,7 @@ class Twitch(object):
                     # self.__chuncked_sleep(60, chunk_size=chunk_size)
                     self.__chuncked_sleep(20, chunk_size=chunk_size)
             except Exception:
-                logger.error(
-                    "Exception raised in send minute watched", exc_info=True)
+                logger.error("Exception raised in send minute watched", exc_info=True)
 
     # === CHANNEL POINTS / PREDICTION === #
     # Load the amount of current points for a channel, check if a bonus is available
@@ -682,8 +675,7 @@ class Twitch(object):
                 }
 
             if community_points["availableClaim"] is not None:
-                self.claim_bonus(
-                    streamer, community_points["availableClaim"]["id"])
+                self.claim_bonus(streamer, community_points["availableClaim"]["id"])
 
             if streamer.settings.community_goals is True:
                 self.contribute_to_community_goals(streamer)
@@ -789,8 +781,7 @@ class Twitch(object):
         if Settings.logger.less is False:
             logger.info(
                 f"Claiming the moment for {streamer}!",
-                extra={"emoji": ":video_camera:",
-                       "event": Events.MOMENT_CLAIM},
+                extra={"emoji": ":video_camera:", "event": Events.MOMENT_CLAIM},
             )
 
         json_data = copy.deepcopy(GQLOperations.CommunityMomentCallout_Claim)
@@ -798,22 +789,56 @@ class Twitch(object):
         self.post_gql_request(json_data)
 
     # === CAMPAIGNS / DROPS / INVENTORY === #
-    def __get_campaign_ids_from_streamer(self, streamer):
-        json_data = copy.deepcopy(
-            GQLOperations.DropsHighlightService_AvailableDrops)
-        json_data["variables"] = {"channelID": streamer.channel_id}
+
+
+# === CAMPAIGNS / DROPS / INVENTORY === #
+def __get_campaign_ids_from_streamer(self, streamer):
+    """
+    Null-safe retrieval of active drop campaign IDs for a streamer.
+    Treats missing fields as 'no campaigns' instead of crashing.
+    """
+    # Build the GraphQL request exactly like the repo does
+    json_data = copy.deepcopy(GQLOperations.DropsHighlightService_AvailableDrops)
+    json_data["variables"] = {"channelID": streamer.channel_id}
+
+    try:
         response = self.post_gql_request(json_data)
-        try:
-            return (
-                []
-                if response["data"]["channel"]["viewerDropCampaigns"] is None
-                else [
-                    item["id"]
-                    for item in response["data"]["channel"]["viewerDropCampaigns"]
-                ]
-            )
-        except (ValueError, KeyError):
-            return []
+    except Exception:
+        # If the call itself fails, don't crash the miner
+        streamer.drops_campaign_ids = []
+        return
+
+    # Defensive unwraps
+    # response can be None or may contain 'errors'
+    if response is None or ("errors" in response and response["errors"]):
+        streamer.drops_campaign_ids = []
+        return
+
+    data = response.get("data", {})
+    channel = data.get("channel")
+    if not channel:
+        streamer.drops_campaign_ids = []
+        return
+
+    # Twitch may return None instead of [], or (speculatively) A/B rename the field.
+    # If you have observed this field being renamed, please add a reference here (e.g., API docs, GitHub issue).
+    campaigns = channel.get("viewerDropCampaigns")
+    if campaigns is None:
+        campaigns = channel.get("activeDropCampaigns")
+
+    if not campaigns:
+        streamer.drops_campaign_ids = []
+        return
+
+    # Extract IDs safely
+    ids = []
+    for c in campaigns:
+        if isinstance(c, dict):
+            cid = c.get("id")
+            if cid:
+                ids.append(cid)
+
+    streamer.drops_campaign_ids = ids
 
     def __get_inventory(self):
         response = self.post_gql_request(GQLOperations.Inventory)
@@ -846,8 +871,7 @@ class Twitch(object):
         for chunk in chunks:
             json_data = []
             for campaign in chunk:
-                json_data.append(copy.deepcopy(
-                    GQLOperations.DropCampaignDetails))
+                json_data.append(copy.deepcopy(GQLOperations.DropCampaignDetails))
                 json_data[-1]["variables"] = {
                     "dropID": campaign["id"],
                     "channelLogin": f"{self.twitch_login.get_user_id()}",
@@ -895,8 +919,7 @@ class Twitch(object):
         )
 
         json_data = copy.deepcopy(GQLOperations.DropsPage_ClaimDropRewards)
-        json_data["variables"] = {
-            "input": {"dropInstanceID": drop.drop_instance_id}}
+        json_data["variables"] = {"input": {"dropInstanceID": drop.drop_instance_id}}
         response = self.post_gql_request(json_data)
         try:
             # response["data"]["claimDropRewards"] can be null and respose["data"]["errors"] != []
@@ -1041,8 +1064,7 @@ class Twitch(object):
                         )
 
     def contribute_to_community_goal(self, streamer, goal_id, title, amount):
-        json_data = copy.deepcopy(
-            GQLOperations.ContributeCommunityPointsCommunityGoal)
+        json_data = copy.deepcopy(GQLOperations.ContributeCommunityPointsCommunityGoal)
         json_data["variables"] = {
             "input": {
                 "amount": amount,
