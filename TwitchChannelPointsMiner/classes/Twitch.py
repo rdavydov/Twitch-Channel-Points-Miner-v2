@@ -197,8 +197,8 @@ class Twitch(object):
                 streamer.set_offline()
 
     def get_channel_id(self, streamer_username):
-        json_data = copy.deepcopy(GQLOperations.ReportMenuItem)
-        json_data["variables"] = {"channelLogin": streamer_username}
+        json_data = copy.deepcopy(GQLOperations.GetIDFromLogin)
+        json_data["variables"]["login"] = streamer_username
         json_response = self.post_gql_request(json_data)
         if (
             "data" not in json_response
@@ -487,8 +487,8 @@ class Twitch(object):
                             "isLive": True,
                             "isVod": False,
                             "vodID": "",
-                            # "playerType": "site"
-                            "playerType": "picture-by-picture",
+                            "playerType": "site"
+                            # "playerType": "picture-by-picture",
                         }
 
                         # Get signature and value using the post_gql_request method
@@ -826,12 +826,16 @@ class Twitch(object):
 
     def __get_drops_dashboard(self, status=None):
         response = self.post_gql_request(GQLOperations.ViewerDropsDashboard)
-        campaigns = response["data"]["currentUser"]["dropCampaigns"] or []
+        campaigns = (
+            response.get("data", {})
+            .get("currentUser", {})
+            .get("dropCampaigns", [])
+            or []
+        )
 
         if status is not None:
             campaigns = (
-                list(filter(lambda x: x["status"] ==
-                     status.upper(), campaigns)) or []
+                list(filter(lambda x: x["status"] == status.upper(), campaigns)) or []
             )
 
         return campaigns
@@ -850,9 +854,15 @@ class Twitch(object):
                 }
 
             response = self.post_gql_request(json_data)
+            if not isinstance(response, list):
+                logger.debug("Unexpected campaigns response format, skipping chunk")
+                continue
             for r in response:
-                if r["data"]["user"] is not None:
-                    result.append(r["data"]["user"]["dropCampaign"])
+                drop_campaign = (
+                    r.get("data", {}).get("user", {}).get("dropCampaign", None)
+                )
+                if drop_campaign is not None:
+                    result.append(drop_campaign)
         return result
 
     def __sync_campaigns(self, campaigns):
@@ -921,6 +931,7 @@ class Twitch(object):
 
     def sync_campaigns(self, streamers, chunk_size=3):
         campaigns_update = 0
+        campaigns = []
         while self.running:
             try:
                 # Get update from dashboard each 60minutes
@@ -977,6 +988,7 @@ class Twitch(object):
 
             except (ValueError, KeyError, requests.exceptions.ConnectionError) as e:
                 logger.error(f"Error while syncing inventory: {e}")
+                campaigns = []
                 self.__check_connection_handler(chunk_size)
 
             self.__chuncked_sleep(60, chunk_size=chunk_size)

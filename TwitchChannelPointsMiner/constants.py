@@ -170,12 +170,13 @@ class GQLOperations:
             }
         },
     }
-    ReportMenuItem = {  # Use for replace https://api.twitch.tv/helix/users?login={self.username}
-        "operationName": "ReportMenuItem",
+    GetIDFromLogin = {
+        "operationName": "GetIDFromLogin",
+        "variables": {"login": None},
         "extensions": {
             "persistedQuery": {
                 "version": 1,
-                "sha256Hash": "8f3628981255345ca5e5453dfd844efffb01d6413a9931498836e6268692a30c",
+                "sha256Hash": "94e82a7b1e3c21e186daa73ee2afc4b8f23bade1fbbff6fe8ac133f50a2f58ca",
             }
         },
     }

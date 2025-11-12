@@ -294,9 +294,15 @@ class TwitchChannelPointsMiner:
             # 3. DEACTIVATED: Check if the user is a moderator. (was used before the 5th of April 2021 to deactivate predictions)
             for streamer in self.streamers:
                 time.sleep(random.uniform(0.3, 0.7))
-                self.twitch.load_channel_points_context(streamer)
-                self.twitch.check_streamer_online(streamer)
-                # self.twitch.viewer_is_mod(streamer)
+                try:
+                    self.twitch.load_channel_points_context(streamer)
+                    self.twitch.check_streamer_online(streamer)
+                    # self.twitch.viewer_is_mod(streamer)
+                except StreamerDoesNotExistException:
+                    logger.info(
+                        f"Streamer {streamer.username} does not exist",
+                        extra={"emoji": ":cry:"},
+                    )
 
             self.original_streamers = [
                 streamer.channel_points for streamer in self.streamers
