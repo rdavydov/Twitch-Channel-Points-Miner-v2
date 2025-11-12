@@ -810,17 +810,18 @@ def __get_campaign_ids_from_streamer(self, streamer):
 
     # Defensive unwraps
     # response can be None or may contain 'errors'
-    if not response or ("errors" in response and response["errors"]):
+    if response is None or ("errors" in response and response["errors"]):
         streamer.drops_campaign_ids = []
         return
 
-    data = response.get("data") or {}
+    data = response.get("data", {})
     channel = data.get("channel")
     if not channel:
         streamer.drops_campaign_ids = []
         return
 
-    # Twitch may return None instead of [] or A/B rename the field
+    # Twitch may return None instead of [], or (speculatively) A/B rename the field.
+    # If you have observed this field being renamed, please add a reference here (e.g., API docs, GitHub issue).
     campaigns = channel.get("viewerDropCampaigns")
     if campaigns is None:
         campaigns = channel.get("activeDropCampaigns")
