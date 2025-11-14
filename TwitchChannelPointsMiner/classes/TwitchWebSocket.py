@@ -4,6 +4,7 @@ import time
 
 from websocket import WebSocketApp, WebSocketConnectionClosedException
 
+from TwitchChannelPointsMiner.JSONDictDecoder import JSONDictDecoder
 from TwitchChannelPointsMiner.utils import create_nonce
 
 logger = logging.getLogger(__name__)
@@ -27,7 +28,8 @@ class TwitchWebSocket(WebSocketApp):
 
         self.twitch = parent_pool.twitch
         self.streamers = parent_pool.streamers
-        self.events_predictions = parent_pool.events_predictions
+        self.prediction_manager = parent_pool.prediction_manager
+        self.json_decoder: JSONDictDecoder = parent_pool.json_decoder
 
         self.last_message_timestamp = None
         self.last_message_type_channel = None

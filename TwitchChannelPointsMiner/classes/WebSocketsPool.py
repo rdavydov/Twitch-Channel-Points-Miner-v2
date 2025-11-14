@@ -2,19 +2,29 @@ import json
 import logging
 import random
 import time
+
 # import os
-from threading import Thread, Timer
-# from pathlib import Path
+from threading import Thread
 
 from dateutil import parser
 
 from TwitchChannelPointsMiner.classes.entities.CommunityGoal import CommunityGoal
-from TwitchChannelPointsMiner.classes.entities.EventPrediction import EventPrediction
+from TwitchChannelPointsMiner.classes.entities.EventPrediction import (
+    EventPrediction,
+    Prediction,
+    Result,
+)
 from TwitchChannelPointsMiner.classes.entities.Message import Message
 from TwitchChannelPointsMiner.classes.entities.Raid import Raid
+from TwitchChannelPointsMiner.classes.entities.Streamer import Streamer
+from TwitchChannelPointsMiner.classes.event_prediction.Manager import (
+    EventPredictionManagerBase,
+)
 from TwitchChannelPointsMiner.classes.Settings import Events, Settings
+from TwitchChannelPointsMiner.classes.Twitch import Twitch
 from TwitchChannelPointsMiner.classes.TwitchWebSocket import TwitchWebSocket
 from TwitchChannelPointsMiner.constants import WEBSOCKET
+from TwitchChannelPointsMiner.JSONDictDecoder import JSONDictDecoder
 from TwitchChannelPointsMiner.utils import (
     get_streamer_index,
     internet_connection_available,
@@ -24,13 +34,20 @@ logger = logging.getLogger(__name__)
 
 
 class WebSocketsPool:
-    __slots__ = ["ws", "twitch", "streamers", "events_predictions"]
+    __slots__ = ["ws", "twitch", "streamers", "prediction_manager", "json_decoder"]
 
-    def __init__(self, twitch, streamers, events_predictions):
+    def __init__(
+        self,
+        twitch: Twitch,
+        streamers: list[Streamer],
+        prediction_manager: EventPredictionManagerBase,
+        json_decoder: JSONDictDecoder,
+    ):
         self.ws = []
         self.twitch = twitch
         self.streamers = streamers
-        self.events_predictions = events_predictions
+        self.prediction_manager = prediction_manager
+        self.json_decoder = json_decoder
 
     """
     API Limits
@@ -65,7 +82,7 @@ class WebSocketsPool:
             on_message=WebSocketsPool.on_message,
             on_open=WebSocketsPool.on_open,
             on_error=WebSocketsPool.on_error,
-            on_close=WebSocketsPool.on_close
+            on_close=WebSocketsPool.on_close,
             # on_close=WebSocketsPool.handle_reconnection, # Do nothing.
         )
 
@@ -78,7 +95,7 @@ class WebSocketsPool:
                     sslopt={"cert_reqs": ssl.CERT_NONE}
                 )
             )
-            logger.warn("SSL certificate verification is disabled! Be aware!")
+            logger.warning("SSL certificate verification is disabled! Be aware!")
         else:
             thread_ws = Thread(target=lambda: self.ws[index].run_forever())
         thread_ws.daemon = True
@@ -166,7 +183,7 @@ class WebSocketsPool:
                     self.__submit(ws.index, topic)
 
     @staticmethod
-    def on_message(ws, message):
+    def on_message(ws: TwitchWebSocket, message):
         logger.debug(f"#{ws.index} - Received: {message.strip()}")
         response = json.loads(message)
 
@@ -197,9 +214,11 @@ class WebSocketsPool:
                             # Analytics switch
                             if Settings.enable_analytics is True:
                                 ws.streamers[streamer_index].persistent_series(
-                                    event_type=message.data["point_gain"]["reason_code"]
-                                    if message.type == "points-earned"
-                                    else "Spent"
+                                    event_type=(
+                                        message.data["point_gain"]["reason_code"]
+                                        if message.type == "points-earned"
+                                        else "Spent"
+                                    )
                                 )
 
                         if message.type == "points-earned":
@@ -255,169 +274,80 @@ class WebSocketsPool:
                             )
 
                     elif message.topic == "predictions-channel-v1":
-
                         event_dict = message.data["event"]
-                        event_id = event_dict["id"]
-                        event_status = event_dict["status"]
-
                         current_tmsp = parser.parse(message.timestamp)
-
+                        event_prediction = ws.json_decoder.decode(
+                            event_dict, EventPrediction
+                        )
                         if (
                             message.type == "event-created"
-                            and event_id not in ws.events_predictions
+                            and event_prediction.status == "ACTIVE"
                         ):
-                            if event_status == "ACTIVE":
-                                prediction_window_seconds = float(
-                                    event_dict["prediction_window_seconds"]
-                                )
-                                # Reduce prediction window by 3/6s - Collect more accurate data for decision
-                                prediction_window_seconds = ws.streamers[
-                                    streamer_index
-                                ].get_prediction_window(prediction_window_seconds)
-                                event = EventPrediction(
-                                    ws.streamers[streamer_index],
-                                    event_id,
-                                    event_dict["title"],
-                                    parser.parse(event_dict["created_at"]),
-                                    prediction_window_seconds,
-                                    event_status,
-                                    event_dict["outcomes"],
-                                )
-                                if (
-                                    ws.streamers[streamer_index].is_online
-                                    and event.closing_bet_after(current_tmsp) > 0
-                                ):
-                                    streamer = ws.streamers[streamer_index]
-                                    bet_settings = streamer.settings.bet
-                                    if (
-                                        bet_settings.minimum_points is None
-                                        or streamer.channel_points
-                                        > bet_settings.minimum_points
-                                    ):
-                                        ws.events_predictions[event_id] = event
-                                        start_after = event.closing_bet_after(
-                                            current_tmsp
-                                        )
+                            # event-creates happens when a new prediction event is created
+                            ws.prediction_manager.new(
+                                ws.streamers[streamer_index],
+                                event_prediction,
+                                current_tmsp,
+                            )
 
-                                        place_bet_thread = Timer(
-                                            start_after,
-                                            ws.twitch.make_predictions,
-                                            (ws.events_predictions[event_id],),
-                                        )
-                                        place_bet_thread.daemon = True
-                                        place_bet_thread.start()
-
-                                        logger.info(
-                                            f"Place the bet after: {start_after}s for: {ws.events_predictions[event_id]}",
-                                            extra={
-                                                "emoji": ":alarm_clock:",
-                                                "event": Events.BET_START,
-                                            },
-                                        )
-                                    else:
-                                        logger.info(
-                                            f"{streamer} have only {streamer.channel_points} channel points and the minimum for bet is: {bet_settings.minimum_points}",
-                                            extra={
-                                                "emoji": ":pushpin:",
-                                                "event": Events.BET_FILTERS,
-                                            },
-                                        )
-
-                        elif (
-                            message.type == "event-updated"
-                            and event_id in ws.events_predictions
-                        ):
-                            ws.events_predictions[event_id].status = event_status
-                            # Game over we can't update anymore the values... The bet was placed!
-                            if (
-                                ws.events_predictions[event_id].bet_placed is False
-                                and ws.events_predictions[event_id].bet.decision == {}
-                            ):
-                                ws.events_predictions[event_id].bet.update_outcomes(
-                                    event_dict["outcomes"]
-                                )
+                        elif message.type == "event-updated":
+                            # event-updated happens periodically when events change
+                            ws.prediction_manager.update(
+                                ws.streamers[streamer_index],
+                                event_prediction,
+                                current_tmsp,
+                            )
 
                     elif message.topic == "predictions-user-v1":
                         event_id = message.data["prediction"]["event_id"]
-                        if event_id in ws.events_predictions:
-                            event_prediction = ws.events_predictions[event_id]
-                            if (
-                                message.type == "prediction-result"
-                                and event_prediction.bet_confirmed
-                            ):
-                                points = event_prediction.parse_result(
-                                    message.data["prediction"]["result"]
-                                )
+                        if message.type == "prediction-result":
+                            # prediction-result happens when a prediction is resulted
+                            result = ws.json_decoder.decode(
+                                message.data["prediction"]["result"], Result
+                            )
+                            ws.prediction_manager.result(
+                                ws.streamers[streamer_index], event_id, result
+                            )
 
-                                decision = event_prediction.bet.get_decision()
-                                choice = event_prediction.bet.decision["choice"]
+                        elif message.type in ["prediction-made", "prediction-updated"]:
+                            # prediction-made happens when the prediction is first created
+                            # prediction-updated happens more points are wagered on an existing prediction
+                            bet = ws.json_decoder.decode(
+                                message.data["prediction"], Prediction
+                            )
+                            ws.prediction_manager.prediction_updated(
+                                ws.streamers[streamer_index], event_id, bet
+                            )
 
-                                logger.info(
-                                    (
-                                        f"{event_prediction} - Decision: {choice}: {decision['title']} "
-                                        f"({decision['color']}) - Result: {event_prediction.result['string']}"
-                                    ),
-                                    extra={
-                                        "emoji": ":bar_chart:",
-                                        "event": Events.get(
-                                            f"BET_{event_prediction.result['type']}"
-                                        ),
-                                    },
-                                )
-
-                                ws.streamers[streamer_index].update_history(
-                                    "PREDICTION", points["gained"]
-                                )
-
-                                # Remove duplicate history records from previous message sent in community-points-user-v1
-                                if event_prediction.result["type"] == "REFUND":
-                                    ws.streamers[streamer_index].update_history(
-                                        "REFUND",
-                                        -points["placed"],
-                                        counter=-1,
-                                    )
-                                elif event_prediction.result["type"] == "WIN":
-                                    ws.streamers[streamer_index].update_history(
-                                        "PREDICTION",
-                                        -points["won"],
-                                        counter=-1,
-                                    )
-
-                                if event_prediction.result["type"]:
-                                    # Analytics switch
-                                    if Settings.enable_analytics is True:
-                                        ws.streamers[
-                                            streamer_index
-                                        ].persistent_annotations(
-                                            event_prediction.result["type"],
-                                            f"{ws.events_predictions[event_id].title}",
-                                        )
-                            elif message.type == "prediction-made":
-                                event_prediction.bet_confirmed = True
-                                # Analytics switch
-                                if Settings.enable_analytics is True:
-                                    ws.streamers[streamer_index].persistent_annotations(
-                                        "PREDICTION_MADE",
-                                        f"Decision: {event_prediction.bet.decision['choice']} - {event_prediction.title}",
-                                    )
                     elif message.topic == "community-points-channel-v1":
                         if message.type == "community-goal-created":
                             # TODO Untested, hard to find this happening live
                             ws.streamers[streamer_index].add_community_goal(
-                                CommunityGoal.from_pubsub(message.data["community_goal"])
+                                CommunityGoal.from_pubsub(
+                                    message.data["community_goal"]
+                                )
                             )
                         elif message.type == "community-goal-updated":
                             ws.streamers[streamer_index].update_community_goal(
-                                CommunityGoal.from_pubsub(message.data["community_goal"])
+                                CommunityGoal.from_pubsub(
+                                    message.data["community_goal"]
+                                )
                             )
                         elif message.type == "community-goal-deleted":
                             # TODO Untested, not sure what the message format for this is,
                             #      https://github.com/sammwyy/twitch-ps/blob/master/main.js#L417
                             #      suggests that it should be just the entire, now deleted, goal model
-                            ws.streamers[streamer_index].delete_community_goal(message.data["community_goal"]["id"])
+                            ws.streamers[streamer_index].delete_community_goal(
+                                message.data["community_goal"]["id"]
+                            )
 
-                        if message.type in ["community-goal-updated", "community-goal-created"]:
-                            ws.twitch.contribute_to_community_goals(ws.streamers[streamer_index])
+                        if message.type in [
+                            "community-goal-updated",
+                            "community-goal-created",
+                        ]:
+                            ws.twitch.contribute_to_community_goals(
+                                ws.streamers[streamer_index]
+                            )
 
                 except Exception:
                     logger.error(
@@ -429,12 +359,14 @@ class WebSocketsPool:
             # raise RuntimeError(f"Error while trying to listen for a topic: {response}")
             error_message = response.get("error", "")
             logger.error(f"Error while trying to listen for a topic: {error_message}")
-            
+
             # Check if the error message indicates an authentication issue (ERR_BADAUTH)
             if "ERR_BADAUTH" in error_message:
                 # Inform the user about the potential outdated cookie file
                 username = ws.twitch.twitch_login.username
-                logger.error(f"Received the ERR_BADAUTH error, most likely you have an outdated cookie file \"cookies\\{username}.pkl\". Delete this file and try again.")
+                logger.error(
+                    f'Received the ERR_BADAUTH error, most likely you have an outdated cookie file "cookies\\{username}.pkl". Delete this file and try again.'
+                )
                 # Attempt to delete the outdated cookie file
                 # try:
                 #     cookie_file_path = os.path.join("cookies", f"{username}.pkl")
