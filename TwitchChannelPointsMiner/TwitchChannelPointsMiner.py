@@ -11,23 +11,26 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 
+import TwitchChannelPointsMiner.classes.websocket.hermes.data as hermes_data
 from TwitchChannelPointsMiner.classes.Chat import ChatPresence, ThreadChat
+from TwitchChannelPointsMiner.classes.Exceptions import StreamerDoesNotExistException
+from TwitchChannelPointsMiner.classes.PubSub import PubSubHandler
+from TwitchChannelPointsMiner.classes.Settings import FollowersOrder, Priority, Settings
+from TwitchChannelPointsMiner.classes.Twitch import Twitch
+from TwitchChannelPointsMiner.classes.entities.EventPrediction import EventPrediction
 from TwitchChannelPointsMiner.classes.entities.PubsubTopic import PubsubTopic
 from TwitchChannelPointsMiner.classes.entities.Streamer import (
     Streamer,
     StreamerSettings,
 )
-from TwitchChannelPointsMiner.classes.Exceptions import StreamerDoesNotExistException
-from TwitchChannelPointsMiner.classes.Settings import FollowersOrder, Priority, Settings
-from TwitchChannelPointsMiner.classes.Twitch import Twitch
-from TwitchChannelPointsMiner.classes.WebSocketsPool import WebSocketsPool
+from TwitchChannelPointsMiner.classes.websocket import HermesWebSocketPool, PubSubWebSocketPool
+from TwitchChannelPointsMiner.constants import HERMES_WEBSOCKET, CLIENT_ID_WEB
 from TwitchChannelPointsMiner.logger import LoggerSettings, configure_loggers
 from TwitchChannelPointsMiner.utils import (
     _millify,
     at_least_one_value_in_settings_is,
     check_versions,
     get_user_agent,
-    internet_connection_available,
     set_default_settings,
 )
 
@@ -85,6 +88,8 @@ class TwitchChannelPointsMiner:
         logger_settings: LoggerSettings = LoggerSettings(),
         # Default values for all streamers
         streamer_settings: StreamerSettings = StreamerSettings(),
+        # True if we want to use the new Hermes WebSocket API
+        use_hermes: bool = False,
     ):
         # Fixes TypeError: 'NoneType' object is not subscriptable
         if not username or username == "your-twitch-username":
@@ -96,6 +101,8 @@ class TwitchChannelPointsMiner:
         Settings.disable_ssl_cert_verification = disable_ssl_cert_verification
 
         Settings.disable_at_in_nickname = disable_at_in_nickname
+
+        Settings.use_hermes = use_hermes
 
         import socket
 
@@ -143,7 +150,7 @@ class TwitchChannelPointsMiner:
         self.priority = priority if isinstance(priority, list) else [priority]
 
         self.streamers: list[Streamer] = []
-        self.events_predictions = {}
+        self.events_predictions: dict[str, EventPrediction] = {}
         self.minute_watcher_thread = None
         self.sync_campaigns_thread = None
         self.ws_pool = None
@@ -316,8 +323,8 @@ class TwitchChannelPointsMiner:
             # If we have at least one streamer with settings = claim_drops True
             # Spawn a thread for sync inventory and dashboard
             if (
-                at_least_one_value_in_settings_is(self.streamers, "claim_drops", True)
-                is True
+                    at_least_one_value_in_settings_is(self.streamers, "claim_drops", True)
+                    is True
             ):
                 self.sync_campaigns_thread = threading.Thread(
                     target=self.twitch.sync_campaigns,
@@ -334,11 +341,19 @@ class TwitchChannelPointsMiner:
             self.minute_watcher_thread.name = "Minute watcher"
             self.minute_watcher_thread.start()
 
-            self.ws_pool = WebSocketsPool(
-                twitch=self.twitch,
-                streamers=self.streamers,
-                events_predictions=self.events_predictions,
-            )
+            pubsub_handlers = [PubSubHandler(self.twitch, self.streamers, self.events_predictions)]
+            if Settings.use_hermes:
+                self.ws_pool = HermesWebSocketPool(
+                    url=f"{HERMES_WEBSOCKET}?clientId={CLIENT_ID_WEB}",
+                    twitch=self.twitch,
+                    request_encoder=hermes_data.JsonEncoder(),
+                    response_decoder=hermes_data.JsonDecoder(),
+                    listeners=pubsub_handlers
+                )
+            else:
+                self.ws_pool = PubSubWebSocketPool(twitch=self.twitch, listeners=pubsub_handlers)
+
+            self.ws_pool.start()
 
             # Subscribe to community-points-user. Get update for points spent or gains
             user_id = self.twitch.twitch_login.get_user_id()
@@ -391,19 +406,7 @@ class TwitchChannelPointsMiner:
             refresh_context = time.time()
             while self.running:
                 time.sleep(random.uniform(20, 60))
-                # Do an external control for WebSocket. Check if the thread is running
-                # Check if is not None because maybe we have already created a new connection on array+1 and now index is None
-                for index in range(0, len(self.ws_pool.ws)):
-                    if (
-                        self.ws_pool.ws[index].is_reconnecting is False
-                        and self.ws_pool.ws[index].elapsed_last_ping() > 10
-                        and internet_connection_available() is True
-                    ):
-                        logger.info(
-                            f"#{index} - The last PING was sent more than 10 minutes ago. Reconnecting to the WebSocket..."
-                        )
-                        WebSocketsPool.handle_reconnection(self.ws_pool.ws[index])
-
+                self.ws_pool.check_stale_connections()
                 if ((time.time() - refresh_context) // 60) >= 30:
                     refresh_context = time.time()
                     for index in range(0, len(self.streamers)):
@@ -415,14 +418,11 @@ class TwitchChannelPointsMiner:
     def end(self, signum, frame):
         if not self.running:
             return
-        
+
         logger.info("CTRL+C Detected! Please wait just a moment!")
 
         for streamer in self.streamers:
-            if (
-                streamer.irc_chat is not None
-                and streamer.settings.chat != ChatPresence.NEVER
-            ):
+            if streamer.irc_chat is not None and streamer.settings.chat != ChatPresence.NEVER:
                 streamer.leave_chat()
                 if streamer.irc_chat.is_alive() is True:
                     streamer.irc_chat.join()
@@ -470,8 +470,8 @@ class TwitchChannelPointsMiner:
             for event_id in self.events_predictions:
                 event = self.events_predictions[event_id]
                 if (
-                    event.bet_confirmed is True
-                    and event.streamer.settings.make_predictions is True
+                        event.bet_confirmed is True
+                        and event.streamer.settings.make_predictions is True
                 ):
                     logger.info(
                         f"{event.streamer.settings.bet}",
@@ -490,23 +490,22 @@ class TwitchChannelPointsMiner:
         print("")
         for streamer_index in range(0, len(self.streamers)):
             if self.streamers[streamer_index].history != {}:
-                gained = (
-                    self.streamers[streamer_index].channel_points
-                    - self.original_streamers[streamer_index]
-                )
-                
+                gained = self.streamers[streamer_index].channel_points - self.original_streamers[streamer_index]
+
                 from colorama import Fore
                 streamer_highlight = Fore.YELLOW
-                
+
                 streamer_gain = (
                     f"{streamer_highlight}{self.streamers[streamer_index]}{Fore.RESET}, Total Points Gained: {_millify(gained)}"
                     if Settings.logger.less
                     else f"{streamer_highlight}{repr(self.streamers[streamer_index])}{Fore.RESET}, Total Points Gained (after farming - before farming): {_millify(gained)}"
                 )
-                
+
                 indent = ' ' * 25
-                streamer_history = '\n'.join(f"{indent}{history}" for history in self.streamers[streamer_index].print_history().split('; ')) 
-                
+                streamer_history = '\n'.join(
+                    f"{indent}{history}" for history in self.streamers[streamer_index].print_history().split('; ')
+                )
+
                 logger.info(
                     f"{streamer_gain}\n{streamer_history}",
                     extra={"emoji": ":moneybag:"},
