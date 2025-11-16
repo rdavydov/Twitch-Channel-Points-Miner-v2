@@ -711,6 +711,7 @@ class Twitch(object):
             self.load_channel_points_context(streamer)
             self.check_streamer_online(streamer)
 
+        # Initialize channel context in parallel so large streamer lists do not block startup
         workers = max(1, min(max_workers, len(streamers)))
         with ThreadPoolExecutor(max_workers=workers) as executor:
             futures = {
@@ -974,6 +975,7 @@ class Twitch(object):
         campaigns = []
         while self.running:
             try:
+                # Skip the expensive dashboard sync loop when no streamer can currently farm drops
                 if not self.__streamers_require_campaign_sync(streamers):
                     campaigns = []
                     self.__chuncked_sleep(60, chunk_size=chunk_size)
