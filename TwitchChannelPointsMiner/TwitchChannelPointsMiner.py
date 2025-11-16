@@ -141,7 +141,7 @@ class TwitchChannelPointsMiner:
         elif isinstance(priority, Priority):
             self.priority = [priority]
         else:
-            self.priority = list(priority)
+            self.priority = priority
 
         self.streamers: list[Streamer] = []
         self.events_predictions = {}
