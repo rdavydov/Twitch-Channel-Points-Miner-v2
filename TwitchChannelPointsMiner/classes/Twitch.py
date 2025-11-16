@@ -11,6 +11,8 @@ import random
 import re
 import string
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
 import requests
 import validators
 # import json
@@ -696,6 +698,40 @@ class Twitch(object):
             if streamer.settings.community_goals is True:
                 self.contribute_to_community_goals(streamer)
 
+    def initialize_streamers_context(self, streamers, max_workers=5):
+        if not streamers:
+            return set()
+
+        failed_streamers = set()
+
+        def _load_streamer_context(streamer):
+            time.sleep(random.uniform(0.3, 0.7))
+            self.load_channel_points_context(streamer)
+            self.check_streamer_online(streamer)
+
+        workers = max(1, min(max_workers, len(streamers)))
+        with ThreadPoolExecutor(max_workers=workers) as executor:
+            futures = {
+                executor.submit(_load_streamer_context, streamer): streamer
+                for streamer in streamers
+            }
+            for future in as_completed(futures):
+                streamer = futures[future]
+                try:
+                    future.result()
+                except StreamerDoesNotExistException:
+                    failed_streamers.add(streamer.username)
+                    logger.info(
+                        f"Streamer {streamer.username} does not exist",
+                        extra={"emoji": ":cry:"},
+                    )
+                except Exception:
+                    logger.error(
+                        f"Failed to initialize streamer {streamer.username}",
+                        exc_info=True,
+                    )
+        return failed_streamers
+
     def make_predictions(self, event):
         decision = event.bet.calculate(event.streamer.channel_points)
         # selector_index = 0 if decision["choice"] == "A" else 1
@@ -934,11 +970,18 @@ class Twitch(object):
                             drop.is_claimed = self.claim_drop(drop)
                             time.sleep(random.uniform(5, 10))
 
+    def __streamers_require_campaign_sync(self, streamers):
+        return any(streamer.drops_condition() for streamer in streamers)
+
     def sync_campaigns(self, streamers, chunk_size=3):
         campaigns_update = 0
         campaigns = []
         while self.running:
             try:
+                if not self.__streamers_require_campaign_sync(streamers):
+                    campaigns = []
+                    self.__chuncked_sleep(60, chunk_size=chunk_size)
+                    continue
                 # Get update from dashboard each 60minutes
                 if (
                     campaigns_update == 0

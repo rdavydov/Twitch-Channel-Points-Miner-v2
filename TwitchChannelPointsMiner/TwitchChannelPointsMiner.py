@@ -10,6 +10,7 @@ import time
 import uuid
 from datetime import datetime
 from pathlib import Path
+from typing import Optional
 
 from TwitchChannelPointsMiner.classes.Chat import ChatPresence, ThreadChat
 from TwitchChannelPointsMiner.classes.entities.PubsubTopic import PubsubTopic
@@ -80,7 +81,7 @@ class TwitchChannelPointsMiner:
         disable_ssl_cert_verification: bool = False,
         disable_at_in_nickname: bool = False,
         # Settings for logging and selenium as you can see.
-        priority: list = [Priority.STREAK, Priority.DROPS, Priority.ORDER],
+        priority: Optional[list] = None,
         # This settings will be global shared trought Settings class
         logger_settings: LoggerSettings = LoggerSettings(),
         # Default values for all streamers
@@ -97,24 +98,21 @@ class TwitchChannelPointsMiner:
 
         Settings.disable_at_in_nickname = disable_at_in_nickname
 
-        import socket
-
-        def is_connected():
-            try:
-                # resolve the IP address of the Twitch.tv domain name
-                socket.gethostbyname("twitch.tv")
-                return True
-            except OSError:
-                pass
-            return False
-
-        # check for Twitch.tv connectivity every 5 seconds
+        # Wait for Twitch.tv connectivity with a timeout to avoid hanging forever
         error_printed = False
-        while not is_connected():
+        connectivity_interval = 5
+        connectivity_timeout = 60
+        connectivity_start = time.time()
+        while not internet_connection_available(host="twitch.tv", port=443):
             if not error_printed:
                 logger.error("Waiting for Twitch.tv connectivity...")
                 error_printed = True
-            time.sleep(5)
+            if (time.time() - connectivity_start) >= connectivity_timeout:
+                logger.error(
+                    "Unable to reach Twitch.tv after 60 seconds, exiting..."
+                )
+                sys.exit(0)
+            time.sleep(connectivity_interval)
 
         # Analytics switch
         Settings.enable_analytics = enable_analytics
@@ -140,7 +138,13 @@ class TwitchChannelPointsMiner:
         self.twitch = Twitch(self.username, user_agent, password)
 
         self.claim_drops_startup = claim_drops_startup
-        self.priority = priority if isinstance(priority, list) else [priority]
+        if priority is None:
+            priority = [Priority.STREAK, Priority.DROPS, Priority.ORDER]
+        elif not isinstance(priority, list):
+            priority = [priority]
+        else:
+            priority = list(priority)
+        self.priority = priority
 
         self.streamers: list[Streamer] = []
         self.events_predictions = {}
@@ -203,29 +207,37 @@ class TwitchChannelPointsMiner:
 
     def mine(
         self,
-        streamers: list = [],
-        blacklist: list = [],
+        streamers: Optional[list] = None,
+        blacklist: Optional[list] = None,
         followers: bool = False,
         followers_order: FollowersOrder = FollowersOrder.ASC,
     ):
-        self.run(streamers=streamers, blacklist=blacklist, followers=followers)
+        self.run(
+            streamers=streamers,
+            blacklist=blacklist,
+            followers=followers,
+            followers_order=followers_order,
+        )
 
     def run(
         self,
-        streamers: list = [],
-        blacklist: list = [],
+        streamers: Optional[list] = None,
+        blacklist: Optional[list] = None,
         followers: bool = False,
         followers_order: FollowersOrder = FollowersOrder.ASC,
     ):
         if self.running:
             logger.error("You can't start multiple sessions of this instance!")
-        else:
-            logger.info(
-                f"Start session: '{self.session_id}'", extra={"emoji": ":bomb:"}
-            )
-            self.running = True
-            self.start_datetime = datetime.now()
+            return
 
+        streamers = [] if streamers is None else streamers
+        blacklist = [] if blacklist is None else blacklist
+
+        logger.info(f"Start session: '{self.session_id}'", extra={"emoji": ":bomb:"})
+        self.running = True
+        self.start_datetime = datetime.now()
+
+        try:
             self.twitch.login()
 
             if self.claim_drops_startup is True:
@@ -292,17 +304,17 @@ class TwitchChannelPointsMiner:
             # 1. Load channel points and auto-claim bonus
             # 2. Check if streamers are online
             # 3. DEACTIVATED: Check if the user is a moderator. (was used before the 5th of April 2021 to deactivate predictions)
-            for streamer in self.streamers:
-                time.sleep(random.uniform(0.3, 0.7))
-                try:
-                    self.twitch.load_channel_points_context(streamer)
-                    self.twitch.check_streamer_online(streamer)
-                    # self.twitch.viewer_is_mod(streamer)
-                except StreamerDoesNotExistException:
-                    logger.info(
-                        f"Streamer {streamer.username} does not exist",
-                        extra={"emoji": ":cry:"},
-                    )
+            invalid_streamers = self.twitch.initialize_streamers_context(self.streamers)
+            if invalid_streamers:
+                self.streamers = [
+                    streamer
+                    for streamer in self.streamers
+                    if streamer.username not in invalid_streamers
+                ]
+                if not self.streamers:
+                    logger.error("No valid streamers available after initialization.")
+                    self.end(0, 0)
+                    return
 
             self.original_streamers = [
                 streamer.channel_points for streamer in self.streamers
@@ -411,6 +423,8 @@ class TwitchChannelPointsMiner:
                             self.twitch.load_channel_points_context(
                                 self.streamers[index]
                             )
+        finally:
+            self.running = False
 
     def end(self, signum, frame):
         if not self.running:
