@@ -54,7 +54,7 @@ from TwitchChannelPointsMiner.utils import (
 
 logger = logging.getLogger(__name__)
 JsonType = Dict[str, Any]
-STREAMER_INIT_TIMEOUT = 60  # seconds
+STREAMER_INIT_TIMEOUT_PER_STREAMER = 5  # seconds
 
 
 class Twitch(object):
@@ -714,13 +714,14 @@ class Twitch(object):
 
         # Initialize channel context in parallel so large streamer lists do not block startup
         workers = max(1, min(max_workers, len(streamers)))
+        timeout_seconds = STREAMER_INIT_TIMEOUT_PER_STREAMER * len(streamers)
         with ThreadPoolExecutor(max_workers=workers) as executor:
             futures = {
                 executor.submit(_load_streamer_context, streamer): streamer
                 for streamer in streamers
             }
             try:
-                for future in as_completed(futures, timeout=STREAMER_INIT_TIMEOUT):
+                for future in as_completed(futures, timeout=timeout_seconds):
                     streamer = futures[future]
                     try:
                         future.result()
@@ -739,7 +740,7 @@ class Twitch(object):
             except TimeoutError:
                 logger.error(
                     "Timed out while initialising streamers after %s seconds.",
-                    STREAMER_INIT_TIMEOUT,
+                    timeout_seconds,
                 )
                 for future, streamer in futures.items():
                     if not future.done():
