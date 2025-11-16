@@ -66,9 +66,7 @@ class EventPrediction(object):
         result_type = result["type"]
 
         points = {}
-        points["placed"] = (
-            self.bet.decision["amount"] if result_type != "REFUND" else 0
-        )
+        points["placed"] = self.bet.decision["amount"] if result_type != "REFUND" else 0
         points["won"] = (
             result["points_won"]
             if result["points_won"] or result_type == "REFUND"

@@ -11,7 +11,7 @@ class Pushover(object):
     def __init__(self, userkey: str, token: str, priority, sound, events: list):
         self.userkey = userkey
         self.token = token
-        self. priority = priority
+        self.priority = priority
         self.sound = sound
         self.events = [str(e) for e in events]
 

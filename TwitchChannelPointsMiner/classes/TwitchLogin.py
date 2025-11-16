@@ -3,6 +3,7 @@
 # The MIT License (MIT)
 
 import copy
+
 # import getpass
 import logging
 import os
@@ -51,7 +52,7 @@ class TwitchLogin(object):
         "user_id",
         "email",
         "cookies",
-        "shared_cookies"
+        "shared_cookies",
     ]
 
     def __init__(self, client_id, device_id, username, user_agent, password=None):
@@ -61,8 +62,11 @@ class TwitchLogin(object):
         self.login_check_result = False
         self.session = requests.session()
         self.session.headers.update(
-            {"Client-ID": self.client_id,
-                "X-Device-Id": self.device_id, "User-Agent": user_agent}
+            {
+                "Client-ID": self.client_id,
+                "X-Device-Id": self.device_id,
+                "User-Agent": user_agent,
+            }
         )
         self.username = username
         self.password = password
@@ -80,7 +84,7 @@ class TwitchLogin(object):
             "scopes": (
                 "channel_read chat:read user_blocks_edit "
                 "user_blocks_read user_follows_edit user_read"
-            )
+            ),
         }
         # login-fix
         use_backup_flow = False
@@ -89,7 +93,8 @@ class TwitchLogin(object):
             logger.info("Trying the TV login method..")
 
             login_response = self.send_oauth_request(
-                "https://id.twitch.tv/oauth2/device", post_data)
+                "https://id.twitch.tv/oauth2/device", post_data
+            )
 
             # {
             #     "device_code": "40 chars [A-Za-z0-9]",
@@ -110,14 +115,9 @@ class TwitchLogin(object):
                 now = datetime.now(timezone.utc)
                 device_code: str = login_response_json["device_code"]
                 interval: int = login_response_json["interval"]
-                expires_at = now + \
-                    timedelta(seconds=login_response_json["expires_in"])
-                logger.info(
-                    "Open https://www.twitch.tv/activate"
-                )
-                logger.info(
-                    f"and enter this code: {user_code}"
-                )
+                expires_at = now + timedelta(seconds=login_response_json["expires_in"])
+                logger.info("Open https://www.twitch.tv/activate")
+                logger.info(f"and enter this code: {user_code}")
                 logger.info(
                     f"Hurry up! It will expire in {int(login_response_json['expires_in'] / 60)} minutes!"
                 )
@@ -134,7 +134,8 @@ class TwitchLogin(object):
                     # sleep first, not like the user is gonna enter the code *that* fast
                     sleep(interval)
                     login_response = self.send_oauth_request(
-                        "https://id.twitch.tv/oauth2/token", post_data)
+                        "https://id.twitch.tv/oauth2/token", post_data
+                    )
                     if now == expires_at:
                         logger.error("Code expired. Try again")
                         break
@@ -151,14 +152,14 @@ class TwitchLogin(object):
                     if "access_token" in login_response_json:
                         self.set_token(login_response_json["access_token"])
                         return self.check_login()
-            # except RequestInvalid:
-                # the device_code has expired, request a new code
-                # continue
-                # invalidate_after is not None
-                # account for the expiration landing during the request
-                # and datetime.now(timezone.utc) >= (invalidate_after - session_timeout)
-            # ):
-                # raise RequestInvalid()
+                    # except RequestInvalid:
+                    # the device_code has expired, request a new code
+                    # continue
+                    # invalidate_after is not None
+                    # account for the expiration landing during the request
+                    # and datetime.now(timezone.utc) >= (invalidate_after - session_timeout)
+                    # ):
+                    # raise RequestInvalid()
                     else:
                         if "error_code" in login_response:
                             err_code = login_response["error_code"]
@@ -192,19 +193,23 @@ class TwitchLogin(object):
             'Content-Type': 'application/json; charset=UTF-8',
             'Host': 'passport.twitch.tv'
         },)"""
-        response = self.session.post(url, data=json_data, headers={
-            'Accept': 'application/json',
-            'Accept-Encoding': 'gzip',
-            'Accept-Language': 'en-US',
-            "Cache-Control": "no-cache",
-            "Client-Id": CLIENT_ID,
-            "Host": "id.twitch.tv",
-            "Origin": "https://android.tv.twitch.tv",
-            "Pragma": "no-cache",
-            "Referer": "https://android.tv.twitch.tv/",
-            "User-Agent": USER_AGENTS["Android"]["TV"],
-            "X-Device-Id": self.device_id
-        },)
+        response = self.session.post(
+            url,
+            data=json_data,
+            headers={
+                "Accept": "application/json",
+                "Accept-Encoding": "gzip",
+                "Accept-Language": "en-US",
+                "Cache-Control": "no-cache",
+                "Client-Id": CLIENT_ID,
+                "Host": "id.twitch.tv",
+                "Origin": "https://android.tv.twitch.tv",
+                "Pragma": "no-cache",
+                "Referer": "https://android.tv.twitch.tv/",
+                "User-Agent": USER_AGENTS["Android"]["TV"],
+                "X-Device-Id": self.device_id,
+            },
+        )
         return response
 
     def login_flow_backup(self, password=None):
@@ -332,8 +337,7 @@ class TwitchLogin(object):
     def get_user_id(self):
         persistent = self.get_cookie_value("persistent")
         user_id = (
-            int(persistent.split("%")[
-                0]) if persistent is not None else self.user_id
+            int(persistent.split("%")[0]) if persistent is not None else self.user_id
         )
         if user_id is None:
             if self.__set_user_id() is True:

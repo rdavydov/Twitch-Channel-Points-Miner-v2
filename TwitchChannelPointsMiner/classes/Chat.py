@@ -72,8 +72,11 @@ class ClientIRC(SingleServerIRCBot):
             nick = event.source.split("!", 1)[0]
             # chan = event.target
 
-            logger.info(f"{nick} at {self.channel} wrote: {msg}", extra={
-                        "emoji": ":speech_balloon:", "event": Events.CHAT_MENTION})
+            logger.info(
+                f"{nick} at {self.channel} wrote: {msg}",
+                extra={"emoji": ":speech_balloon:", "event": Events.CHAT_MENTION},
+            )
+
     # """
 
 

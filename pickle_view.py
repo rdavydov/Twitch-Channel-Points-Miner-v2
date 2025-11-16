@@ -5,9 +5,9 @@
 import pickle
 import sys
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     argv = sys.argv
     if len(argv) <= 1:
         print("Specify a pickle file as a parameter, e.g. cookies/user.pkl")
     else:
-        print(pickle.load(open(argv[1], 'rb')))
+        print(pickle.load(open(argv[1], "rb")))
