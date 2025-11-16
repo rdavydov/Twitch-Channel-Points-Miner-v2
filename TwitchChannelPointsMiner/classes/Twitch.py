@@ -11,7 +11,7 @@ import random
 import re
 import string
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, TimeoutError, as_completed
 
 import requests
 import validators
@@ -54,6 +54,7 @@ from TwitchChannelPointsMiner.utils import (
 
 logger = logging.getLogger(__name__)
 JsonType = Dict[str, Any]
+STREAMER_INIT_TIMEOUT = 60  # seconds
 
 
 class Twitch(object):
@@ -718,21 +719,31 @@ class Twitch(object):
                 executor.submit(_load_streamer_context, streamer): streamer
                 for streamer in streamers
             }
-            for future in as_completed(futures):
-                streamer = futures[future]
-                try:
-                    future.result()
-                except StreamerDoesNotExistException:
-                    failed_streamers.add(streamer.username)
-                    logger.info(
-                        f"Streamer {streamer.username} does not exist",
-                        extra={"emoji": ":cry:"},
-                    )
-                except Exception:
-                    logger.error(
-                        f"Failed to initialize streamer {streamer.username}",
-                        exc_info=True,
-                    )
+            try:
+                for future in as_completed(futures, timeout=STREAMER_INIT_TIMEOUT):
+                    streamer = futures[future]
+                    try:
+                        future.result()
+                    except StreamerDoesNotExistException:
+                        failed_streamers.add(streamer.username)
+                        logger.info(
+                            f"Streamer {streamer.username} does not exist",
+                            extra={"emoji": ":cry:"},
+                        )
+                    except Exception:
+                        failed_streamers.add(streamer.username)
+                        logger.error(
+                            f"Failed to initialize streamer {streamer.username}",
+                            exc_info=True,
+                        )
+            except TimeoutError:
+                logger.error(
+                    "Timed out while initialising streamers after %s seconds.",
+                    STREAMER_INIT_TIMEOUT,
+                )
+                for future, streamer in futures.items():
+                    if not future.done():
+                        failed_streamers.add(streamer.username)
         return failed_streamers
 
     def make_predictions(self, event):

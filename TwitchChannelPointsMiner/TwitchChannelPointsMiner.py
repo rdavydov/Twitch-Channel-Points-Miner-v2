@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+from __future__ import annotations
+
 import logging
 import os
 import random
@@ -10,8 +12,6 @@ import time
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
-
 from TwitchChannelPointsMiner.classes.Chat import ChatPresence, ThreadChat
 from TwitchChannelPointsMiner.classes.entities.PubsubTopic import PubsubTopic
 from TwitchChannelPointsMiner.classes.entities.Streamer import (
@@ -81,7 +81,7 @@ class TwitchChannelPointsMiner:
         disable_ssl_cert_verification: bool = False,
         disable_at_in_nickname: bool = False,
         # Settings for logging and selenium as you can see.
-        priority: Optional[list] = None,
+        priority: list[Priority] | Priority | None = None,
         # This settings will be global shared trought Settings class
         logger_settings: LoggerSettings = LoggerSettings(),
         # Default values for all streamers
@@ -137,12 +137,11 @@ class TwitchChannelPointsMiner:
 
         self.claim_drops_startup = claim_drops_startup
         if priority is None:
-            priority = [Priority.STREAK, Priority.DROPS, Priority.ORDER]
-        elif not isinstance(priority, list):
-            priority = [priority]
+            self.priority = [Priority.STREAK, Priority.DROPS, Priority.ORDER]
+        elif isinstance(priority, Priority):
+            self.priority = [priority]
         else:
-            priority = list(priority)
-        self.priority = priority
+            self.priority = list(priority)
 
         self.streamers: list[Streamer] = []
         self.events_predictions = {}
@@ -205,22 +204,24 @@ class TwitchChannelPointsMiner:
 
     def mine(
         self,
-        streamers: Optional[list] = None,
-        blacklist: Optional[list] = None,
+        streamers: list[Streamer | str] | None = None,
+        blacklist: list[str] | None = None,
         followers: bool = False,
         followers_order: FollowersOrder = FollowersOrder.ASC,
     ):
+        streamers_list = list(streamers) if streamers is not None else None
+        blacklist_list = list(blacklist) if blacklist is not None else None
         self.run(
-            streamers=streamers,
-            blacklist=blacklist,
+            streamers=streamers_list,
+            blacklist=blacklist_list,
             followers=followers,
             followers_order=followers_order,
         )
 
     def run(
         self,
-        streamers: Optional[list] = None,
-        blacklist: Optional[list] = None,
+        streamers: list[Streamer | str] | None = None,
+        blacklist: list[str] | None = None,
         followers: bool = False,
         followers_order: FollowersOrder = FollowersOrder.ASC,
     ):
@@ -228,8 +229,8 @@ class TwitchChannelPointsMiner:
             logger.error("You can't start multiple sessions of this instance!")
             return
 
-        streamers = [] if streamers is None else streamers
-        blacklist = [] if blacklist is None else blacklist
+        streamers_input = list(streamers) if streamers is not None else []
+        blacklist_input = list(blacklist) if blacklist is not None else []
 
         logger.info(f"Start session: '{self.session_id}'", extra={"emoji": ":bomb:"})
         self.running = True
@@ -244,13 +245,13 @@ class TwitchChannelPointsMiner:
             streamers_name: list = []
             streamers_dict: dict = {}
 
-            for streamer in streamers:
+            for streamer in streamers_input:
                 username = (
                     streamer.username
                     if isinstance(streamer, Streamer)
                     else streamer.lower().strip()
                 )
-                if username not in blacklist:
+                if username not in blacklist_input:
                     streamers_name.append(username)
                     streamers_dict[username] = streamer
 
@@ -261,7 +262,10 @@ class TwitchChannelPointsMiner:
                     extra={"emoji": ":clipboard:"},
                 )
                 for username in followers_array:
-                    if username not in streamers_dict and username not in blacklist:
+                    if (
+                        username not in streamers_dict
+                        and username not in blacklist_input
+                    ):
                         streamers_name.append(username)
                         streamers_dict[username] = username.lower().strip()
 
