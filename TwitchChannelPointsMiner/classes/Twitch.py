@@ -67,6 +67,7 @@ class Twitch(object):
         "client_session",
         "client_version",
         "twilight_build_id_pattern",
+        "_stream_info_cache",
     ]
 
     def __init__(self, username, user_agent, password=None):
@@ -88,6 +89,7 @@ class Twitch(object):
         self.twilight_build_id_pattern = re.compile(
             r'window\.__twilightBuildID\s*=\s*"([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})"'
         )
+        self._stream_info_cache = {}
 
     def login(self):
         if not os.path.isfile(self.cookies_file):
@@ -171,15 +173,38 @@ class Twitch(object):
                 raise StreamerIsOfflineException
 
     def get_stream_info(self, streamer):
-        json_data = copy.deepcopy(
-            GQLOperations.VideoPlayerStreamInfoOverlayChannel)
+        cache_key = streamer.username
+        cached_entry = self._stream_info_cache.get(cache_key)
+        now = time.time()
+        if cached_entry and (now - cached_entry["timestamp"]) <= STREAM_INFO_CACHE_TTL:
+            return cached_entry["data"]
+
+        json_data = copy.deepcopy(GQLOperations.VideoPlayerStreamInfoOverlayChannel)
         json_data["variables"] = {"channel": streamer.username}
         response = self.post_gql_request(json_data)
-        if response != {}:
-            if response["data"]["user"]["stream"] is None:
-                raise StreamerIsOfflineException
-            else:
-                return response["data"]["user"]
+        if not response:
+            raise StreamerIsOfflineException
+
+        try:
+            user = response["data"]["user"]
+        except (KeyError, TypeError):
+            self._stream_info_cache.pop(cache_key, None)
+            logger.info(
+                "Unexpected stream info payload for %s: %s",
+                streamer.username,
+                response,
+            )
+            raise StreamerIsOfflineException
+
+        if user is None or user.get("stream") is None:
+            self._stream_info_cache.pop(cache_key, None)
+            raise StreamerIsOfflineException
+
+        self._stream_info_cache[cache_key] = {
+            "data": user,
+            "timestamp": now,
+        }
+        return user
 
     def check_streamer_online(self, streamer):
         if time.time() < streamer.offline_at + 60:
@@ -676,9 +701,14 @@ class Twitch(object):
 
         response = self.post_gql_request(json_data)
         if response != {}:
-            if response["data"]["community"] is None:
+            try:
+                channel = response["data"]["community"]["channel"]
+            except (KeyError, TypeError):
                 raise StreamerDoesNotExistException
-            channel = response["data"]["community"]["channel"]
+
+            if channel is None:
+                raise StreamerDoesNotExistException
+
             community_points = channel["self"]["communityPoints"]
             streamer.channel_points = community_points["balance"]
             streamer.activeMultipliers = community_points["activeMultipliers"]
