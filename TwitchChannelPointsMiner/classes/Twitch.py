@@ -173,10 +173,22 @@ class Twitch(object):
         json_data["variables"] = {"channel": streamer.username}
         response = self.post_gql_request(json_data)
         if response != {}:
-            if response["data"]["user"]["stream"] is None:
+            data: Any = response.get("data", None)
+            if data is None:
+                # This shouldn't really happen, data is a core part of the GQL spec
+                return None
+            user = data.get("user", None)
+            if user is None:
+                # This can happen if there was a timeout type error, maybe we should retry
+                return None
+            stream = user.get("stream", None)
+            if stream is None:
+                # There is no stream data, so they're offline
                 raise StreamerIsOfflineException
             else:
                 return response["data"]["user"]
+        # The response was completely empty, there should be a relevant error log from `post_gql_request`
+        return None
 
     def check_streamer_online(self, streamer):
         if time.time() < streamer.offline_at + 60:
