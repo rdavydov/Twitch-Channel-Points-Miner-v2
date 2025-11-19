@@ -10,7 +10,7 @@ from TwitchChannelPointsMiner.classes.entities.Bet import BetSettings, DelayMode
 from TwitchChannelPointsMiner.classes.entities.Stream import Stream
 from TwitchChannelPointsMiner.classes.Settings import Events, Settings
 from TwitchChannelPointsMiner.constants import URL
-from TwitchChannelPointsMiner.utils import _millify
+from TwitchChannelPointsMiner.utils import _millify, dump_json, load_json
 
 logger = logging.getLogger(__name__)
 
@@ -172,6 +172,10 @@ class Streamer(object):
 
         if reason_code == "WATCH_STREAK":
             self.stream.watch_streak_missing = False
+            cache_path = os.path.join("logs", "watch_streak_cache.json")
+            cache = load_json(cache_path, {})
+            cache[self.username] = {"last_streak": time.time()}
+            dump_json(cache_path, cache)
 
     def stream_up_elapsed(self):
         return self.stream_up == 0 or ((time.time() - self.stream_up) > 120)

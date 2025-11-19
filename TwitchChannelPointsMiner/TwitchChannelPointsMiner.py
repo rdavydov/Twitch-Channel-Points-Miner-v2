@@ -27,9 +27,11 @@ from TwitchChannelPointsMiner.utils import (
     _millify,
     at_least_one_value_in_settings_is,
     check_versions,
+    dump_json,
     get_user_agent,
     internet_connection_available,
     interruptible_sleep,
+    load_json,
     set_default_settings,
 )
 
@@ -71,6 +73,8 @@ class TwitchChannelPointsMiner:
         "original_streamers",
         "logs_file",
         "queue_listener",
+        "watch_streak_cache_path",
+        "watch_streak_cache",
     ]
 
     def __init__(
@@ -139,6 +143,7 @@ class TwitchChannelPointsMiner:
         self.twitch = Twitch(self.username, user_agent, password)
 
         self.claim_drops_startup = claim_drops_startup
+        self.watch_streak_cache_path = os.path.join("logs", "watch_streak_cache.json")
         if priority is None:
             self.priority = [Priority.STREAK, Priority.DROPS, Priority.ORDER]
         elif isinstance(priority, Priority):
@@ -151,6 +156,7 @@ class TwitchChannelPointsMiner:
         self.minute_watcher_thread = None
         self.sync_campaigns_thread = None
         self.ws_pool = None
+        self.watch_streak_cache = load_json(self.watch_streak_cache_path, {})
 
         self.session_id = str(uuid.uuid4())
         self.running = False
@@ -245,14 +251,19 @@ class TwitchChannelPointsMiner:
             if self.claim_drops_startup is True:
                 self.twitch.claim_all_drops_from_inventory()
 
+            self.watch_streak_cache = load_json(self.watch_streak_cache_path, {})
+
+            def normalize_login(name: str) -> str:
+                return name.lower().strip().replace(" ", "")
+
             streamers_name: list = []
             streamers_dict: dict = {}
 
             for streamer in streamers_input:
                 username = (
-                    streamer.username
+                    normalize_login(streamer.username)
                     if isinstance(streamer, Streamer)
-                    else streamer.lower().strip()
+                    else normalize_login(str(streamer))
                 )
                 if username not in blacklist_input:
                     streamers_name.append(username)
@@ -267,10 +278,11 @@ class TwitchChannelPointsMiner:
                 for username in followers_array:
                     if (
                         username not in streamers_dict
-                        and username not in blacklist_input
+                        and normalize_login(username) not in blacklist_input
                     ):
-                        streamers_name.append(username)
-                        streamers_dict[username] = username.lower().strip()
+                        norm = normalize_login(username)
+                        streamers_name.append(norm)
+                        streamers_dict[norm] = norm
 
             logger.info(
                 f"Loading data for {len(streamers_name)} streamers. Please wait...",
@@ -298,6 +310,11 @@ class TwitchChannelPointsMiner:
                                 self.twitch.twitch_login.get_auth_token(),
                                 streamer.username,
                             )
+                        cache_entry = self.watch_streak_cache.get(streamer.username)
+                        if cache_entry:
+                            last_streak = cache_entry.get("last_streak", 0)
+                            if time.time() - last_streak < 30 * 60:
+                                streamer.stream.watch_streak_missing = False
                         self.streamers.append(streamer)
                     except StreamerDoesNotExistException:
                         logger.info(

@@ -48,6 +48,7 @@ from TwitchChannelPointsMiner.utils import (
     _millify,
     create_chunks,
     internet_connection_available,
+    interruptible_sleep,
 )
 
 logger = logging.getLogger(__name__)
@@ -286,11 +287,8 @@ class Twitch(object):
     # === 'GLOBALS' METHODS === #
     # Create chunk of sleep of speed-up the break loop after CTRL+C
     def __chuncked_sleep(self, seconds, chunk_size=3):
-        sleep_time = max(seconds, 0) / chunk_size
-        for i in range(0, chunk_size):
-            time.sleep(sleep_time)
-            if self.running is False:
-                break
+        step = max(seconds / max(chunk_size, 1), 0.5)
+        interruptible_sleep(lambda: self.running, seconds, step=step)
 
     def __check_connection_handler(self, chunk_size):
         # The success rate It's very hight usually. Why we have failed?
