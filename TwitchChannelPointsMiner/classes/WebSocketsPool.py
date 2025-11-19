@@ -2,10 +2,8 @@ import json
 import logging
 import random
 import time
-
 # import os
 from threading import Thread, Timer
-
 # from pathlib import Path
 
 from dateutil import parser
@@ -67,7 +65,7 @@ class WebSocketsPool:
             on_message=WebSocketsPool.on_message,
             on_open=WebSocketsPool.on_open,
             on_error=WebSocketsPool.on_error,
-            on_close=WebSocketsPool.on_close,
+            on_close=WebSocketsPool.on_close
             # on_close=WebSocketsPool.handle_reconnection, # Do nothing.
         )
 
@@ -199,11 +197,9 @@ class WebSocketsPool:
                             # Analytics switch
                             if Settings.enable_analytics is True:
                                 ws.streamers[streamer_index].persistent_series(
-                                    event_type=(
-                                        message.data["point_gain"]["reason_code"]
-                                        if message.type == "points-earned"
-                                        else "Spent"
-                                    )
+                                    event_type=message.data["point_gain"]["reason_code"]
+                                    if message.type == "points-earned"
+                                    else "Spent"
                                 )
 
                         if message.type == "points-earned":
@@ -408,31 +404,20 @@ class WebSocketsPool:
                         if message.type == "community-goal-created":
                             # TODO Untested, hard to find this happening live
                             ws.streamers[streamer_index].add_community_goal(
-                                CommunityGoal.from_pubsub(
-                                    message.data["community_goal"]
-                                )
+                                CommunityGoal.from_pubsub(message.data["community_goal"])
                             )
                         elif message.type == "community-goal-updated":
                             ws.streamers[streamer_index].update_community_goal(
-                                CommunityGoal.from_pubsub(
-                                    message.data["community_goal"]
-                                )
+                                CommunityGoal.from_pubsub(message.data["community_goal"])
                             )
                         elif message.type == "community-goal-deleted":
                             # TODO Untested, not sure what the message format for this is,
                             #      https://github.com/sammwyy/twitch-ps/blob/master/main.js#L417
                             #      suggests that it should be just the entire, now deleted, goal model
-                            ws.streamers[streamer_index].delete_community_goal(
-                                message.data["community_goal"]["id"]
-                            )
+                            ws.streamers[streamer_index].delete_community_goal(message.data["community_goal"]["id"])
 
-                        if message.type in [
-                            "community-goal-updated",
-                            "community-goal-created",
-                        ]:
-                            ws.twitch.contribute_to_community_goals(
-                                ws.streamers[streamer_index]
-                            )
+                        if message.type in ["community-goal-updated", "community-goal-created"]:
+                            ws.twitch.contribute_to_community_goals(ws.streamers[streamer_index])
 
                 except Exception:
                     logger.error(
@@ -444,14 +429,12 @@ class WebSocketsPool:
             # raise RuntimeError(f"Error while trying to listen for a topic: {response}")
             error_message = response.get("error", "")
             logger.error(f"Error while trying to listen for a topic: {error_message}")
-
+            
             # Check if the error message indicates an authentication issue (ERR_BADAUTH)
             if "ERR_BADAUTH" in error_message:
                 # Inform the user about the potential outdated cookie file
                 username = ws.twitch.twitch_login.username
-                logger.error(
-                    f'Received the ERR_BADAUTH error, most likely you have an outdated cookie file "cookies\\{username}.pkl". Delete this file and try again.'
-                )
+                logger.error(f"Received the ERR_BADAUTH error, most likely you have an outdated cookie file \"cookies\\{username}.pkl\". Delete this file and try again.")
                 # Attempt to delete the outdated cookie file
                 # try:
                 #     cookie_file_path = os.path.join("cookies", f"{username}.pkl")

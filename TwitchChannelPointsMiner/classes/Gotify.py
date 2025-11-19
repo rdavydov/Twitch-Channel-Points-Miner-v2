@@ -4,7 +4,6 @@ import requests
 
 from TwitchChannelPointsMiner.classes.Settings import Events
 
-
 class Gotify(object):
     __slots__ = ["endpoint", "priority", "events"]
 
@@ -17,5 +16,8 @@ class Gotify(object):
         if str(event) in self.events:
             requests.post(
                 url=self.endpoint,
-                data={"message": dedent(message), "priority": self.priority},
+                data={
+                    "message": dedent(message),
+                    "priority": self.priority
+                },
             )
