@@ -337,15 +337,14 @@ class TwitchChannelPointsMiner:
             ):
                 self.sync_campaigns_thread = threading.Thread(
                     target=self.twitch.sync_campaigns,
-                    args=(self.streamers,),
+                    args=(self.streamers, 60),
                 )
                 self.sync_campaigns_thread.name = "Sync campaigns/inventory"
                 self.sync_campaigns_thread.start()
-                time.sleep(30)
 
             self.minute_watcher_thread = threading.Thread(
                 target=self.twitch.send_minute_watched_events,
-                args=(self.streamers, self.priority),
+                args=(self.streamers, self.priority, 60),
             )
             self.minute_watcher_thread.name = "Minute watcher"
             self.minute_watcher_thread.start()
@@ -405,8 +404,14 @@ class TwitchChannelPointsMiner:
                     )
 
             refresh_context = time.time()
+
+            def interruptible_sleep(duration: float, step: float = 1.0):
+                target = time.time() + duration
+                while self.running and time.time() < target:
+                    time.sleep(min(step, target - time.time()))
+
             while self.running:
-                time.sleep(random.uniform(20, 60))
+                interruptible_sleep(random.uniform(20, 60))
                 # Do an external control for WebSocket. Check if the thread is running
                 # Check if is not None because maybe we have already created a new connection on array+1 and now index is None
                 for index in range(0, len(self.ws_pool.ws)):
