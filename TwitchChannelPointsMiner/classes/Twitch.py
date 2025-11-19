@@ -53,6 +53,7 @@ from TwitchChannelPointsMiner.utils import (
 logger = logging.getLogger(__name__)
 JsonType = Dict[str, Any]
 STREAMER_INIT_TIMEOUT_PER_STREAMER = 5  # seconds
+STREAM_INFO_CACHE_TTL = 30  # seconds
 
 
 class Twitch(object):

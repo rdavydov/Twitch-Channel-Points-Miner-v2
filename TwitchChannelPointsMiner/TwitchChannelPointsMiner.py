@@ -29,6 +29,7 @@ from TwitchChannelPointsMiner.utils import (
     check_versions,
     get_user_agent,
     internet_connection_available,
+    interruptible_sleep,
     set_default_settings,
 )
 
@@ -405,13 +406,8 @@ class TwitchChannelPointsMiner:
 
             refresh_context = time.time()
 
-            def interruptible_sleep(duration: float, step: float = 1.0):
-                target = time.time() + duration
-                while self.running and time.time() < target:
-                    time.sleep(min(step, target - time.time()))
-
             while self.running:
-                interruptible_sleep(random.uniform(20, 60))
+                interruptible_sleep(lambda: self.running, random.uniform(20, 60))
                 # Do an external control for WebSocket. Check if the thread is running
                 # Check if is not None because maybe we have already created a new connection on array+1 and now index is None
                 for index in range(0, len(self.ws_pool.ws)):

@@ -186,6 +186,12 @@ def init2dict(content):
     return dict(re.findall(r"""__([a-z]+)__ = "([^"]+)""", content))
 
 
+def interruptible_sleep(running_flag, duration, step=1.0):
+    target = time.time() + duration
+    while running_flag() and time.time() < target:
+        time.sleep(max(0.0, min(step, target - time.time())))
+
+
 def check_versions():
     try:
         current_version = init2dict(read("__init__.py"))
