@@ -342,7 +342,7 @@ twitch_miner.mine(followers=True, blacklist=["user1", "user2"])  # Blacklist exa
 
 On startup, the miner checks whether Twitch is reachable. If Twitch is not available for 60 seconds, the miner logs an error and exits instead of continuing in a broken state.
 
-If none of the configured streamers can be initialised (for example due to invalid names or errors), the miner logs an error and exits instead of running with an empty streamer list.
+If none of the configured streamers can be initialized (for example due to invalid names or errors), the miner logs an error and exits instead of running with an empty streamer list.
 
 ### By cloning the repository
 1. Clone this repository `git clone https://github.com/rdavydov/Twitch-Channel-Points-Miner-v2`

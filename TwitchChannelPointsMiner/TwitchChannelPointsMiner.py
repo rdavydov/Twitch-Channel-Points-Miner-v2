@@ -10,6 +10,7 @@ import sys
 import threading
 import time
 import uuid
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
 from TwitchChannelPointsMiner.classes.Chat import ChatPresence, ThreadChat
@@ -23,15 +24,17 @@ from TwitchChannelPointsMiner.classes.Settings import FollowersOrder, Priority, 
 from TwitchChannelPointsMiner.classes.Twitch import Twitch
 from TwitchChannelPointsMiner.classes.WebSocketsPool import WebSocketsPool
 from TwitchChannelPointsMiner.logger import LoggerSettings, configure_loggers
+from TwitchChannelPointsMiner.watch_streak_cache import (
+    WATCH_STREAK_CACHE_TTL_SECONDS,
+    WatchStreakCache,
+)
 from TwitchChannelPointsMiner.utils import (
     _millify,
     at_least_one_value_in_settings_is,
     check_versions,
-    dump_json,
     get_user_agent,
     internet_connection_available,
     interruptible_sleep,
-    load_json,
     set_default_settings,
 )
 
@@ -144,6 +147,10 @@ class TwitchChannelPointsMiner:
 
         self.claim_drops_startup = claim_drops_startup
         self.watch_streak_cache_path = os.path.join("logs", "watch_streak_cache.json")
+        self.watch_streak_cache = WatchStreakCache.load_from_disk(
+            self.watch_streak_cache_path
+        )
+        self.twitch.watch_streak_cache = self.watch_streak_cache
         if priority is None:
             self.priority = [Priority.STREAK, Priority.DROPS, Priority.ORDER]
         elif isinstance(priority, Priority):
@@ -156,7 +163,6 @@ class TwitchChannelPointsMiner:
         self.minute_watcher_thread = None
         self.sync_campaigns_thread = None
         self.ws_pool = None
-        self.watch_streak_cache = load_json(self.watch_streak_cache_path, {})
 
         self.session_id = str(uuid.uuid4())
         self.running = False
@@ -251,7 +257,10 @@ class TwitchChannelPointsMiner:
             if self.claim_drops_startup is True:
                 self.twitch.claim_all_drops_from_inventory()
 
-            self.watch_streak_cache = load_json(self.watch_streak_cache_path, {})
+            self.watch_streak_cache = WatchStreakCache.load_from_disk(
+                self.watch_streak_cache_path
+            )
+            self.twitch.watch_streak_cache = self.watch_streak_cache
 
             def normalize_login(name: str) -> str:
                 return name.lower().strip().replace(" ", "")
@@ -288,39 +297,61 @@ class TwitchChannelPointsMiner:
                 f"Loading data for {len(streamers_name)} streamers. Please wait...",
                 extra={"emoji": ":nerd_face:"},
             )
-            for username in streamers_name:
-                if username in streamers_name:
-                    time.sleep(random.uniform(0.3, 0.7))
-                    try:
-                        streamer = (
-                            streamers_dict[username]
-                            if isinstance(streamers_dict[username], Streamer) is True
-                            else Streamer(username)
-                        )
-                        streamer.channel_id = self.twitch.get_channel_id(username)
-                        streamer.settings = set_default_settings(
-                            streamer.settings, Settings.streamer_settings
-                        )
-                        streamer.settings.bet = set_default_settings(
-                            streamer.settings.bet, Settings.streamer_settings.bet
-                        )
-                        if streamer.settings.chat != ChatPresence.NEVER:
-                            streamer.irc_chat = ThreadChat(
-                                self.username,
-                                self.twitch.twitch_login.get_auth_token(),
-                                streamer.username,
+            load_workers = max(1, min(10, len(streamers_name))) if streamers_name else 0
+
+            def build_streamer(username: str):
+                streamer_obj = streamers_dict[username]
+                streamer = (
+                    streamer_obj
+                    if isinstance(streamer_obj, Streamer) is True
+                    else Streamer(username)
+                )
+                streamer.channel_id = self.twitch.get_channel_id(username)
+                streamer.settings = set_default_settings(
+                    streamer.settings, Settings.streamer_settings
+                )
+                streamer.settings.bet = set_default_settings(
+                    streamer.settings.bet, Settings.streamer_settings.bet
+                )
+                if streamer.settings.chat != ChatPresence.NEVER:
+                    streamer.irc_chat = ThreadChat(
+                        self.username,
+                        self.twitch.twitch_login.get_auth_token(),
+                        streamer.username,
+                    )
+                streamer.watch_streak_cache = self.watch_streak_cache
+                streamer.watch_streak_cache_path = self.watch_streak_cache_path
+                if self.watch_streak_cache.was_streak_claimed_recently(
+                    streamer.username, time.time(), WATCH_STREAK_CACHE_TTL_SECONDS
+                ):
+                    streamer.stream.watch_streak_missing = False
+                return streamer
+
+            streamers_loaded = [None] * len(streamers_name)
+            if streamers_name:
+                with ThreadPoolExecutor(max_workers=load_workers or 1) as executor:
+                    futures = {
+                        executor.submit(build_streamer, username): index
+                        for index, username in enumerate(streamers_name)
+                    }
+                    for future in as_completed(futures):
+                        index = futures[future]
+                        username = streamers_name[index]
+                        try:
+                            streamers_loaded[index] = future.result()
+                        except StreamerDoesNotExistException:
+                            logger.info(
+                                f"Streamer {username} does not exist",
+                                extra={"emoji": ":cry:"},
                             )
-                        cache_entry = self.watch_streak_cache.get(streamer.username)
-                        if cache_entry:
-                            last_streak = cache_entry.get("last_streak", 0)
-                            if time.time() - last_streak < 30 * 60:
-                                streamer.stream.watch_streak_missing = False
-                        self.streamers.append(streamer)
-                    except StreamerDoesNotExistException:
-                        logger.info(
-                            f"Streamer {username} does not exist",
-                            extra={"emoji": ":cry:"},
-                        )
+                        except Exception:
+                            logger.error(
+                                f"Failed to load streamer {username}", exc_info=True
+                            )
+
+            self.streamers = [
+                streamer for streamer in streamers_loaded if streamer is not None
+            ]
 
             # Populate the streamers with default values.
             # 1. Load channel points and auto-claim bonus
@@ -447,6 +478,10 @@ class TwitchChannelPointsMiner:
                             )
         finally:
             self.running = False
+            if self.watch_streak_cache is not None:
+                self.watch_streak_cache.save_to_disk_if_dirty(
+                    self.watch_streak_cache_path
+                )
 
     def end(self, signum, frame):
         if not self.running:
@@ -483,6 +518,10 @@ class TwitchChannelPointsMiner:
         self.__print_report()
 
         # Stop the queue listener to make sure all messages have been logged
+        if self.watch_streak_cache is not None:
+            self.watch_streak_cache.save_to_disk_if_dirty(
+                self.watch_streak_cache_path
+            )
         self.queue_listener.stop()
 
         sys.exit(0)

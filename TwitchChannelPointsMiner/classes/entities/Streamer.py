@@ -10,7 +10,7 @@ from TwitchChannelPointsMiner.classes.entities.Bet import BetSettings, DelayMode
 from TwitchChannelPointsMiner.classes.entities.Stream import Stream
 from TwitchChannelPointsMiner.classes.Settings import Events, Settings
 from TwitchChannelPointsMiner.constants import URL
-from TwitchChannelPointsMiner.utils import _millify, dump_json, load_json
+from TwitchChannelPointsMiner.utils import _millify
 
 logger = logging.getLogger(__name__)
 
@@ -88,6 +88,8 @@ class Streamer(object):
         "history",
         "streamer_url",
         "mutex",
+        "watch_streak_cache",
+        "watch_streak_cache_path",
     ]
 
     def __init__(self, username, settings=None):
@@ -113,6 +115,8 @@ class Streamer(object):
         self.streamer_url = f"{URL}/{self.username}"
 
         self.mutex = Lock()
+        self.watch_streak_cache = None
+        self.watch_streak_cache_path = ""
 
     def __repr__(self):
         return f"Streamer(username={self.username}, channel_id={self.channel_id}, channel_points={_millify(self.channel_points)})"
@@ -172,10 +176,14 @@ class Streamer(object):
 
         if reason_code == "WATCH_STREAK":
             self.stream.watch_streak_missing = False
-            cache_path = os.path.join("logs", "watch_streak_cache.json")
-            cache = load_json(cache_path, {})
-            cache[self.username] = {"last_streak": time.time()}
-            dump_json(cache_path, cache)
+            if self.watch_streak_cache is not None:
+                self.watch_streak_cache.mark_streak_claimed(
+                    self.username, time.time()
+                )
+                if self.watch_streak_cache_path:
+                    self.watch_streak_cache.save_to_disk_if_dirty(
+                        self.watch_streak_cache_path
+                    )
 
     def stream_up_elapsed(self):
         return self.stream_up == 0 or ((time.time() - self.stream_up) > 120)
