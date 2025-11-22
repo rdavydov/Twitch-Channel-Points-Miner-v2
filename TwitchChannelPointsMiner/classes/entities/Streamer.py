@@ -88,6 +88,8 @@ class Streamer(object):
         "history",
         "streamer_url",
         "mutex",
+        "watch_streak_cache",
+        "watch_streak_cache_path",
     ]
 
     def __init__(self, username, settings=None):
@@ -113,6 +115,8 @@ class Streamer(object):
         self.streamer_url = f"{URL}/{self.username}"
 
         self.mutex = Lock()
+        self.watch_streak_cache = None
+        self.watch_streak_cache_path = ""
 
     def __repr__(self):
         return f"Streamer(username={self.username}, channel_id={self.channel_id}, channel_points={_millify(self.channel_points)})"
@@ -170,8 +174,16 @@ class Streamer(object):
         self.history[reason_code]["counter"] += counter
         self.history[reason_code]["amount"] += earned
 
-        if reason_code == "WATCH_STREAK":
+        if reason_code is not None and "WATCH_STREAK" in str(reason_code):
             self.stream.watch_streak_missing = False
+            if self.watch_streak_cache is not None:
+                self.watch_streak_cache.mark_streak_claimed(
+                    self.username, time.time()
+                )
+                if self.watch_streak_cache_path:
+                    self.watch_streak_cache.save_to_disk_if_dirty(
+                        self.watch_streak_cache_path
+                    )
 
     def stream_up_elapsed(self):
         return self.stream_up == 0 or ((time.time() - self.stream_up) > 120)

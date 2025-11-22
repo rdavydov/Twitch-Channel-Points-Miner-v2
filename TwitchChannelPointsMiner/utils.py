@@ -186,6 +186,34 @@ def init2dict(content):
     return dict(re.findall(r"""__([a-z]+)__ = "([^"]+)""", content))
 
 
+def interruptible_sleep(running_flag, duration, step=1.0):
+    target = time.time() + duration
+    while running_flag() and time.time() < target:
+        time.sleep(max(0.0, min(step, target - time.time())))
+
+
+def load_json(path: str, default):
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            import json
+
+            return json.load(f)
+    except Exception:
+        return default
+
+
+def dump_json(path: str, data):
+    try:
+        import json
+        import os
+
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+    except Exception:
+        pass
+
+
 def check_versions():
     try:
         current_version = init2dict(read("__init__.py"))

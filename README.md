@@ -338,6 +338,12 @@ twitch_miner = TwitchChannelPointsMiner("your-twitch-username")
 twitch_miner.mine(followers=True, blacklist=["user1", "user2"])  # Blacklist example
 ```
 
+### Startup connectivity check
+
+On startup, the miner checks whether Twitch is reachable. If Twitch is not available for 60 seconds, the miner logs an error and exits instead of continuing in a broken state.
+
+If none of the configured streamers can be initialized (for example due to invalid names or errors), the miner logs an error and exits instead of running with an empty streamer list.
+
 ### By cloning the repository
 1. Clone this repository `git clone https://github.com/rdavydov/Twitch-Channel-Points-Miner-v2`
 2. Install all the requirements `pip install -r requirements.txt` . If you have problems with requirements, make sure to have at least Python3.6. You could also try to create a _virtualenv_ and then install all the requirements
@@ -440,6 +446,11 @@ Available values are the following:
  - `ORDER` - Following the order of the list
  - `POINTS_ASCENDING` - On top the streamers with the lowest points
  - `POINTS_DESCENDING` - On top the streamers with the highest points
+
+### Watch streak cache
+- Streak claims are persisted to `logs/watch_streak_cache.json` as soon as a WATCH_STREAK reward is recorded.
+- On startup the cache is loaded; streak checks are skipped for streamers whose cached timestamp is still within the TTL (currently 6 hours).
+- With DEBUG logging you will see cache mark/save messages when streaks are claimed and “skipping STREAK…” lines when a cached entry suppresses a re-check.
 
 You can combine all priority but keep in mind that use `ORDER` and `POINTS_ASCENDING` in the same settings doesn't make sense.
 
