@@ -447,6 +447,11 @@ Available values are the following:
  - `POINTS_ASCENDING` - On top the streamers with the lowest points
  - `POINTS_DESCENDING` - On top the streamers with the highest points
 
+### Watch streak cache
+- Streak claims are persisted to `logs/watch_streak_cache.json` as soon as a WATCH_STREAK reward is recorded.
+- On startup the cache is loaded; streak checks are skipped for streamers whose cached timestamp is still within the TTL (currently 6 hours).
+- With DEBUG logging you will see cache mark/save messages when streaks are claimed and “skipping STREAK…” lines when a cached entry suppresses a re-check.
+
 You can combine all priority but keep in mind that use `ORDER` and `POINTS_ASCENDING` in the same settings doesn't make sense.
 
 ### LoggerSettings

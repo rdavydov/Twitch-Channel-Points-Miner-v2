@@ -396,6 +396,16 @@ class Twitch(object):
             else:
                 messages.append(str(error))
         message = "; ".join(messages) if messages else "Unknown GQL error"
+        if (
+            operation_name == "VideoPlayerStreamInfoOverlayChannel"
+            and "service timeout" in message.lower()
+        ):
+            logger.debug(
+                "GQL operation %s returned errors (suppressed): %s",
+                operation_name,
+                message,
+            )
+            return True
         now = time.time()
         key = (operation_name, message)
         last_logged = self._last_gql_error_log.get(key, 0)

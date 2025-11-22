@@ -174,7 +174,7 @@ class Streamer(object):
         self.history[reason_code]["counter"] += counter
         self.history[reason_code]["amount"] += earned
 
-        if reason_code == "WATCH_STREAK":
+        if reason_code is not None and "WATCH_STREAK" in str(reason_code):
             self.stream.watch_streak_missing = False
             if self.watch_streak_cache is not None:
                 self.watch_streak_cache.mark_streak_claimed(
