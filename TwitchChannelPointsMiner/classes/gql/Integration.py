@@ -1,5 +1,6 @@
 import copy
 import logging
+import time
 from secrets import token_hex
 from typing import Callable, Any
 
@@ -7,7 +8,8 @@ import requests
 
 from TwitchChannelPointsMiner.classes.ClientSession import ClientSession
 from TwitchChannelPointsMiner.classes.Settings import FollowersOrder
-from TwitchChannelPointsMiner.classes.gql.data.Parser import Parser, GQLError
+from TwitchChannelPointsMiner.classes.gql.Errors import GQLError, RetryError, InvalidJsonShapeException
+from TwitchChannelPointsMiner.classes.gql.data.Parser import Parser
 from TwitchChannelPointsMiner.classes.gql.data.response.ChannelPointsContext import (
     ChannelPointsContextResponse,
     UserPointsContributionResponse
@@ -27,61 +29,218 @@ from TwitchChannelPointsMiner.utils import create_chunks
 logger = logging.getLogger(__name__)
 
 
+def validate_response(value: Any):
+    """
+    Validates a parsed response from the GQL API.
+    :param value: The response.
+    """
+    return
+
+
+def is_recoverable_error(e: Exception) -> bool:
+    """
+    Returns whether the given exception is recoverable.
+    :param e: The exception to check.
+    :return: True if the exception is recoverable, False otherwise.
+    """
+    if isinstance(e, requests.exceptions.RequestException):
+        return True
+    if isinstance(e, GQLError):
+        return e.recoverable()
+    return False
+
+
+class AttemptStrategy[TResult, TError: Exception]:
+    """Handles making an attempt at something multiple times by catching Exceptions and validating the Result."""
+
+    class SuccessResult:
+        """Returned when the result of `make_attempts` was successful."""
+
+        def __init__(self, errors: list[TError], result: TResult):
+            self.errors = errors
+            """Any errors that occurred."""
+            self.result = result
+            """The result."""
+
+        @property
+        def attempts(self):
+            """The number of attempts made."""
+            return len(self.errors) + 1
+
+        def __repr__(self):
+            return f"SuccessResult({self.__dict__})"
+
+        def __eq__(self, other):
+            if isinstance(other, AttemptStrategy.SuccessResult) and len(self.errors) == len(other.errors):
+                for index in range(len(self.errors)):
+                    if self.errors[index] != other.errors[index]:
+                        return False
+                return self.result == other.result
+            return False
+
+    class ErrorResult:
+        """Returned when the result of `make_attempts` was 1 or more errors."""
+
+        def __init__(self, errors: list[TError]):
+            self.errors = errors
+            """The errors in the order they occurred."""
+
+        @property
+        def attempts(self):
+            """The number of attempts made."""
+            return len(self.errors)
+
+        def __str__(self):
+            return f"ErrorResult({self.__dict__})"
+
+        def __eq__(self, other):
+            if isinstance(other, AttemptStrategy.ErrorResult) and len(self.errors) == len(other.errors):
+                for index in range(len(self.errors)):
+                    if self.errors[index] != other.errors[index]:
+                        return False
+                return True
+            return False
+
+    def __init__(
+        self,
+        attempts: int = 3,
+        attempt_interval_seconds: int = 1
+    ):
+        self.attempts = attempts
+        """The number of attempts that should be made."""
+        self.attempt_interval_seconds = attempt_interval_seconds
+        """The number of seconds to wait between attempts."""
+
+    def make_attempts(
+        self,
+        attempt: Callable[[], TResult],
+        validate: Callable[[TResult], None],
+        retryable: Callable[[TError], bool]
+    ) -> SuccessResult | ErrorResult:
+        """
+        Calls `attempt` up to `self.attempts` times until either a successful attempt is made or the maximum number of
+        attempts have been made.
+        :param attempt: The functon to attempt.
+        :param validate: Function to check if the result is valid. Should throw an Exception if not.
+        :param retryable: Function that returns True if a given Error can be retried.
+        :return:
+        """
+        attempts = 0
+        errors: list[TError] = []
+        while attempts < self.attempts:
+            attempts += 1
+            try:
+                result = attempt()
+                validate(result)
+                return AttemptStrategy.SuccessResult(errors, result)
+            except Exception as e:
+                errors.append(e)
+                if not retryable(e):
+                    logger.debug(f"Error cannot be retried: {e}")
+                    break
+            if attempts >= self.attempts:
+                # Break early to avoid sleeping
+                break
+            else:
+                time.sleep(self.attempt_interval_seconds)
+        return AttemptStrategy.ErrorResult(errors)
+
+
 class GQL:
     """
     Integration with Twitch's Graph Query Language (GQL) API.
     """
 
-    def __init__(self, parser: Parser, client_session: ClientSession, retries: int = 3):
-        self.parser = parser
-        """The parser for parsing GQL responses."""
+    def __init__(
+        self,
+        client_session: ClientSession,
+        attempt_strategy: AttemptStrategy | None = None,
+        parser: Parser = Parser(),
+        post_request=requests.post
+    ):
         self.client_session = client_session
         """The client session for making requests."""
-        self.retries = retries
-        """The number of times to retry a recoverable request."""
+        self.retry_strategy = attempt_strategy if attempt_strategy is not None else AttemptStrategy(
+            attempts=1,
+            attempt_interval_seconds=3
+        )
+        """Strategy for handling failed requests."""
+        self.parser = parser
+        """The parser for parsing GQL responses."""
+        self.post_request = post_request
+        """Function for posting GQL requests."""
 
-    def post_gql_request[T](self, json_data: dict | list, parse: Callable[[Any], T]) -> T | None:
+    def __post_gql_request[T](self, request_json: dict | list, parse: Callable[[Any], T]) -> T | list[T]:
+        response = self.post_request(
+            GQLOperations.url,
+            json=request_json,
+            headers={
+                "Authorization": f"OAuth {self.client_session.login.get_auth_token()}",
+                "Client-Id": CLIENT_ID,
+                "Client-Session-Id": self.client_session.session_id,
+                "Client-Version": self.client_session.version,
+                "User-Agent": self.client_session.user_agent,
+                "X-Device-Id": self.client_session.device_id,
+            },
+        )
+        logger.debug(f"Data: {request_json}, Status code: {response.status_code}, Content: {response.text}")
+        response.raise_for_status()
+        response_json = response.json()
+        if isinstance(request_json, list):
+            # A batched request should result in a batched response
+            if isinstance(response_json, list):
+                return list(map(parse, response_json))
+            else:
+                raise InvalidJsonShapeException([], f"Expected batched response, got {type(response_json).__name__}")
+        else:
+            return parse(response_json)
+
+    def post_gql_request[T](
+        self,
+        operation_name: str,
+        request_json: dict | list,
+        parse: Callable[[Any], T]
+    ) -> T | list[T]:
         """
-        Posts the given GQL request.
-        :param json_data: The data to send, can be either a dict or a list if sending multiple request operations.
+        Posts the given GQL request. Handles automatic retries according to the `retry_strategy`.
+        :param operation_name: The name of the GQL operation.
+        :param request_json: The data to send, can be either a dict or a list if sending multiple request operations.
         :param parse: The function to use to parse the data.
-        :return: The response json.
+        :return: The parsed response, either a single object or a list if the request was a list.
+        :raises RetryError: If one or more errors occurred while attempting the request.
         """
-        attempts = 0
-        while attempts < self.retries:
-            attempts += 1
-            try:
-                response = requests.post(
-                    GQLOperations.url,
-                    json=json_data,
-                    headers={
-                        "Authorization": f"OAuth {self.client_session.login.get_auth_token()}",
-                        "Client-Id": CLIENT_ID,
-                        "Client-Session-Id": self.client_session.session_id,
-                        "Client-Version": self.client_session.client_version,
-                        "User-Agent": self.client_session.user_agent,
-                        "X-Device-Id": self.client_session.device_id,
-                    },
-                )
-                logger.debug(f"Data: {json_data}, Status code: {response.status_code}, Content: {response.text}")
-                return parse(response.json())
-            except (requests.exceptions.RequestException, GQLError) as e:
-                if attempts == self.retries:
-                    logger.error(f"Error handling GQL response.", e)
-                    return None
-        logger.error(f"Unable to make request after {attempts} attempts.")
-        return None
+        result = self.retry_strategy.make_attempts(
+            lambda: self.__post_gql_request(request_json, parse), validate_response, is_recoverable_error
+        )
+        if isinstance(result, AttemptStrategy.ErrorResult):
+            logger.error(
+                f"Unable to make {operation_name} request after {result.attempts} attempts. Errors: {result.errors}"
+            )
+            raise RetryError(operation_name, result.errors)
+        else:
+            if result.attempts > 1:
+                logger.debug(f"{operation_name} succeeded after {result.attempts} attempts. Errors: {result.errors}")
+            return result.result
 
     def video_player_stream_info_overlay_channel(
         self, streamer_username: str
-    ) -> VideoPlayerStreamInfoOverlayChannelResponse | None:
+    ) -> VideoPlayerStreamInfoOverlayChannelResponse:
+        """
+        Gets information about the streamer with the given username.
+        :param streamer_username: The username of the streamer.
+        :return: The information.
+        """
         json_data = copy.deepcopy(
             GQLOperations.VideoPlayerStreamInfoOverlayChannel
         )
         json_data["variables"] = {"channel": streamer_username}
-        return self.post_gql_request(json_data, self.parser.parse_video_player_stream_info_overlay_channel_data)
+        return self.post_gql_request(
+            GQLOperations.VideoPlayerStreamInfoOverlayChannel["operationName"],
+            json_data,
+            self.parser.parse_video_player_stream_info_overlay_channel_data
+        )
 
-    def get_id_from_login(self, streamer_username: str) -> GetIdFromLoginResponse | None:
+    def get_id_from_login(self, streamer_username: str) -> GetIdFromLoginResponse:
         """
         Gets the user id from a Twitch user's login username.
         :param streamer_username: The username of the user.
@@ -89,7 +248,11 @@ class GQL:
         """
         json_data = copy.deepcopy(GQLOperations.GetIDFromLogin)
         json_data["variables"]["login"] = streamer_username
-        return self.post_gql_request(json_data, self.parser.parse_get_id_from_login_response)
+        return self.post_gql_request(
+            GQLOperations.GetIDFromLogin["operationName"],
+            json_data,
+            self.parser.parse_get_id_from_login_response
+        )
 
     def channel_follows(
         self, limit: int = 100, order: FollowersOrder = FollowersOrder.ASC
@@ -107,11 +270,15 @@ class GQL:
         follows: list[str] = []
         while has_next is True:
             json_data["variables"]["cursor"] = last_cursor
-            parsed_response = self.post_gql_request(json_data, self.parser.parse_channel_follows_response)
+            parsed_response = self.post_gql_request(
+                GQLOperations.ChannelFollows["operationName"],
+                json_data, self.parser.parse_channel_follows_response
+            )
             if parsed_response is not None:
-                for follow in parsed_response.follows:
+                for edge in parsed_response.follows.edges:
+                    follow = edge.node
                     follows.append(follow.login)
-                    last_cursor = follow.cursor
+                    last_cursor = edge.cursor
                 has_next = parsed_response.follows.pageInfo.has_next
             else:
                 logger.warning("Unable to get follower list.")
@@ -126,9 +293,13 @@ class GQL:
         """
         json_data = copy.deepcopy(GQLOperations.JoinRaid)
         json_data["variables"] = {"input": {"raidID": raid_id}}
-        self.post_gql_request(json_data, self.parser.parse_join_raid_response)
+        self.post_gql_request(
+            GQLOperations.JoinRaid["operationName"],
+            json_data,
+            self.parser.parse_join_raid_response
+        )
 
-    def get_playback_access_token(self, username: str) -> PlaybackAccessTokenResponse | None:
+    def get_playback_access_token(self, username: str) -> PlaybackAccessTokenResponse:
         """
         Gets a playback access token for the streamer with the given username.
         :param username: The username of the streamer.
@@ -143,9 +314,13 @@ class GQL:
             "playerType": "site"
             # "playerType": "picture-by-picture",
         }
-        return self.post_gql_request(json_data, self.parser.parse_playback_access_token_response)
+        return self.post_gql_request(
+            GQLOperations.PlaybackAccessToken["operationName"],
+            json_data,
+            self.parser.parse_playback_access_token_response
+        )
 
-    def get_channel_points_context(self, username: str) -> ChannelPointsContextResponse | None:
+    def get_channel_points_context(self, username: str) -> ChannelPointsContextResponse:
         """
         Gets the channel points context for the streamer with the given username.
         :param username: The username of the streamer.
@@ -154,9 +329,13 @@ class GQL:
         json_data = copy.deepcopy(GQLOperations.ChannelPointsContext)
         json_data["variables"] = {"channelLogin": username}
 
-        return self.post_gql_request(json_data, self.parser.parse_channel_points_context_response)
+        return self.post_gql_request(
+            GQLOperations.ChannelPointsContext["operationName"],
+            json_data,
+            self.parser.parse_channel_points_context_response
+        )
 
-    def make_prediction(self, event_id: str, outcome_id: str, points: int) -> MakePredictionResponse | None:
+    def make_prediction(self, event_id: str, outcome_id: str, points: int) -> MakePredictionResponse:
         """
         Makes a prediction.
         :param event_id: The id of the prediction event.
@@ -173,7 +352,11 @@ class GQL:
                 "transactionID": token_hex(16),
             }
         }
-        return self.post_gql_request(json_data, self.parser.parse_make_prediction_response)
+        return self.post_gql_request(
+            GQLOperations.MakePrediction["operationName"],
+            json_data,
+            self.parser.parse_make_prediction_response
+        )
 
     def claim_community_points(self, channel_id: str, claim_id: str):
         """
@@ -185,7 +368,11 @@ class GQL:
         json_data["variables"] = {
             "input": {"channelID": channel_id, "claimID": claim_id}
         }
-        self.post_gql_request(json_data, self.parser.parse_claim_community_points_response)
+        self.post_gql_request(
+            GQLOperations.ClaimCommunityPoints["operationName"],
+            json_data,
+            self.parser.parse_claim_community_points_response
+        )
 
     def claim_moment(self, moment_id: str):
         """
@@ -194,9 +381,13 @@ class GQL:
         """
         json_data = copy.deepcopy(GQLOperations.CommunityMomentCallout_Claim)
         json_data["variables"] = {"input": {"momentID": moment_id}}
-        self.post_gql_request(json_data, self.parser.parse_community_moment_callout_claim_response)
+        self.post_gql_request(
+            GQLOperations.CommunityMomentCallout_Claim["operationName"],
+            json_data,
+            self.parser.parse_community_moment_callout_claim_response
+        )
 
-    def get_available_drops(self, channel_id: str) -> DropsHighlightServiceAvailableDropsResponse | None:
+    def get_available_drops(self, channel_id: str) -> DropsHighlightServiceAvailableDropsResponse:
         """
         Gets the ids of all drops that are available.
         :param channel_id: The id of the channel to check.
@@ -204,22 +395,32 @@ class GQL:
         """
         json_data = copy.deepcopy(GQLOperations.DropsHighlightService_AvailableDrops)
         json_data["variables"] = {"channelID": channel_id}
-        return self.post_gql_request(json_data, self.parser.parse_drops_highlight_service_available_drops)
+        return self.post_gql_request(
+            GQLOperations.DropsHighlightService_AvailableDrops["operationName"],
+            json_data,
+            self.parser.parse_drops_highlight_service_available_drops
+        )
 
-    def get_inventory(self) -> InventoryResponse | None:
+    def get_inventory(self) -> InventoryResponse:
         """
         Gets the user's Inventory.
         :return: The response.
         """
-        return self.post_gql_request(GQLOperations.Inventory, self.parser.parse_inventory_response)
+        return self.post_gql_request(
+            GQLOperations.Inventory["operationName"],
+            GQLOperations.Inventory,
+            self.parser.parse_inventory_response
+        )
 
-    def get_viewer_drops_dashboard(self) -> ViewerDropsDashboardResponse | None:
+    def get_viewer_drops_dashboard(self) -> ViewerDropsDashboardResponse:
         """
         Gets the viewer drops dashboard.
         :return: The response.
         """
         return self.post_gql_request(
-            GQLOperations.ViewerDropsDashboard, self.parser.parse_viewer_drops_dashboard_response
+            GQLOperations.ViewerDropsDashboard["operationName"],
+            GQLOperations.ViewerDropsDashboard,
+            self.parser.parse_viewer_drops_dashboard_response
         )
 
     def get_drop_campaign_details(self, campaign_ids: list[str]) -> list[DropCampaignDetailsResponse]:
@@ -236,22 +437,25 @@ class GQL:
             for campaign in chunk:
                 json_data.append(copy.deepcopy(GQLOperations.DropCampaignDetails))
                 json_data[-1]["variables"] = {
-                    "dropID": campaign["id"],
+                    "dropID": campaign,
                     "channelLogin": f"{self.client_session.login.get_user_id()}",
                 }
 
-            # Don't automatically parse it here, the response should be a list
-            response = self.post_gql_request(json_data, lambda x: x)
+            response = self.post_gql_request(
+                GQLOperations.DropCampaignDetails["operationName"],
+                json_data,
+                self.parser.parse_drop_campaign_details_response
+            )
+
             if not isinstance(response, list):
                 logger.debug("Unexpected campaigns response format, skipping chunk")
                 continue
             for item in response:
-                drop_campaign = self.parser.parse_drop_campaign_details_response(item)
-                if drop_campaign is not None:
-                    result.append(drop_campaign)
+                if item is not None:
+                    result.append(item)
         return result
 
-    def claim_drop_rewards(self, drop_instance_id: str) -> DropsPageClaimDropsResponse | None:
+    def claim_drop_rewards(self, drop_instance_id: str) -> DropsPageClaimDropsResponse:
         """
         Claims the rewards for the drop with the given id.
         :param drop_instance_id: The id of the drop.
@@ -261,9 +465,13 @@ class GQL:
         json_data["variables"] = {
             "input": {"dropInstanceID": drop_instance_id}
         }
-        return self.post_gql_request(json_data, self.parser.parse_drop_page_claim_drop_rewards)
+        return self.post_gql_request(
+            GQLOperations.DropsPage_ClaimDropRewards["operationName"],
+            json_data,
+            self.parser.parse_drop_page_claim_drop_rewards
+        )
 
-    def get_user_points_contribution(self, username: str) -> UserPointsContributionResponse | None:
+    def get_user_points_contribution(self, username: str) -> UserPointsContributionResponse:
         """
         Gets the user points contribution for streamer with the given username.
         :param username: The username of the streamer.
@@ -271,7 +479,11 @@ class GQL:
         """
         json_data = copy.deepcopy(GQLOperations.UserPointsContribution)
         json_data["variables"] = {"channelLogin": username}
-        return self.post_gql_request(json_data, self.parser.parse_user_points_contribution)
+        return self.post_gql_request(
+            GQLOperations.UserPointsContribution["operationName"],
+            json_data,
+            self.parser.parse_user_points_contribution
+        )
 
     def contribute_to_community_goal(self, channel_id, goal_id, amount):
         """
@@ -289,4 +501,8 @@ class GQL:
                 "transactionID": token_hex(16),
             }
         }
-        self.post_gql_request(json_data, self.parser.parse_contribute_community_points_community_goal)
+        self.post_gql_request(
+            GQLOperations.ContributeCommunityPointsCommunityGoal["operationName"],
+            json_data,
+            self.parser.parse_contribute_community_points_community_goal
+        )

@@ -12,6 +12,6 @@ from .Error import Error
 from .GetIdFromLogin import GetIdFromLoginResponse
 from .Pagination import Paginated, Edge, PageInfo
 from .PlaybackAccessToken import Authorization, PlaybackAccessTokenResponse
-from .Predictions import Error, MakePredictionResponse
+from .Predictions import Error as PredictionError, MakePredictionResponse
 from .Stream import Stream, Tag
 from .VideoPlayerStreamInfoOverlayChannel import VideoPlayerStreamInfoOverlayChannelResponse, User

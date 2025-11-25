@@ -1,5 +1,6 @@
 class Error:
-    def __init__(self, message: str, path: list[str] | None = None):
+    def __init__(self, recoverable: bool, message: str, path: list[str] | None = None):
+        self.recoverable = recoverable
         self.message = message
         self.path = path
 

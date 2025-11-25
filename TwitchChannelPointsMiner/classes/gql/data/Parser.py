@@ -1,7 +1,7 @@
-import abc
 import datetime
 from typing import Callable, Any, ContextManager
 
+from TwitchChannelPointsMiner.classes.gql.Errors import InvalidJsonShapeException, GQLResponseErrors
 from TwitchChannelPointsMiner.classes.gql.data.response import (
     ChannelPointsContext, Predictions, Drops,
     PlaybackAccessToken
@@ -22,43 +22,6 @@ from TwitchChannelPointsMiner.classes.gql.data.response.VideoPlayerStreamInfoOve
     User,
     VideoPlayerStreamInfoOverlayChannelResponse
 )
-
-
-class GQLError(abc.ABC, Exception):
-    """Abstract base class for GQL errors."""
-    pass
-
-
-class GQLResponseErrors(GQLError):
-    """Raised when a GQL response contained Errors."""
-
-    def __init__(self, operation_name: str, errors: list[Error]):
-        self.operation_name = operation_name
-        """The name of the SQL operation."""
-        self.errors = errors
-        """The list of errors in the response."""
-
-    def __str__(self):
-        return f"GQL Operation '{self.operation_name}' returned errors: {self.errors}"
-
-
-class InvalidJsonShapeException(Exception):
-    """Raised when a GQL response has na unexpected shape."""
-
-    def __init__(self, path: list[str | int], message: str):
-        self.path = path
-        """The path in the JSON to the unexpected value."""
-        self.message = message
-        """Information about the unexpected value."""
-
-    def __str__(self):
-        def render_path_item(item: int | str) -> str:
-            if isinstance(item, int):
-                return str(item)
-            else:
-                return f'"{item}"'
-
-        return f'JSON at [{", ".join(map(render_path_item, reversed(self.path)))}] has an invalid shape: {self.message}'
 
 
 class JsonParentContext(ContextManager):
@@ -172,8 +135,11 @@ def dig[T](value: Any, path: list[str], and_then: Callable[[Any], T]) -> T:
 
 def error_parser(value: Any) -> Error:
     expect_dict(value)
+    message = parse_expected_value(value, "message", expect_str)
+    recoverable = message in ['service timeout']
     return Error(
-        parse_expected_value(value, "message", expect_str),
+        recoverable,
+        message,
         parse_value(value, "path", list_parser(expect_str))
     )
 
