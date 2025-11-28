@@ -35,7 +35,7 @@ class Follow:
         display_name: str,
         login: str,
         profile_image_url: str,
-        _self: SelfEdge
+        _self: SelfEdge,
     ):
         self._id = _id
         self.banner_image_url = banner_image_url

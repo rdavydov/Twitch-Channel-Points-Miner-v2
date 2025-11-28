@@ -66,7 +66,12 @@ class Channel:
         def __repr__(self):
             return f"ChannelSelfEdge({self.__dict__})"
 
-    def __init__(self, _id: str, edge: ChannelSelfEdge, community_points_settings: CommunityPointsSettings):
+    def __init__(
+        self,
+        _id: str,
+        edge: ChannelSelfEdge,
+        community_points_settings: CommunityPointsSettings,
+    ):
         self.id = _id
         self.edge = edge
         self.community_points_settings = community_points_settings
@@ -103,8 +108,16 @@ class GoalContribution:
 
 
 class UserPointsContributionResponse:
-    def __init__(self, goal_contributions: list[GoalContribution] | None):
+    def __init__(self, goal_contributions: list[GoalContribution]):
         self.goal_contributions = goal_contributions
 
     def __repr__(self):
         return f"UserPointsContributionResponse({self.__dict__})"
+
+
+class ContributeToCommunityGoalResponse:
+    def __init__(self, error: str | None):
+        self.error = error
+
+    def __repr__(self):
+        return f"ContributeToCommunityGoalResponse({self.__dict__})"

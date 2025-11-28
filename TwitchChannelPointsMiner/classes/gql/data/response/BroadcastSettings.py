@@ -1,11 +1,14 @@
-class Game:
+from TwitchChannelPointsMiner.classes.gql.data.response import Games
+
+
+class GameBroadcastSettings(Games.Game):
     def __init__(
         self,
         _id: str,
         display_name: str,
         name: str,
     ):
-        self.id = _id
+        super().__init__(_id)
         self.display_name = display_name
         self.name = name
 
@@ -18,7 +21,7 @@ class BroadcastSettings:
         self,
         _id: str,
         title: str,
-        game: Game,
+        game: GameBroadcastSettings | None,
     ):
         self.id = _id
         self.title = title

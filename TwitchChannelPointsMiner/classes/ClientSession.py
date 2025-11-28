@@ -18,12 +18,16 @@ class ClientSession:
         user_agent: str,
         version: str | None = None,
         device_id: str | None = None,
-        session_id: str | None = None
+        session_id: str | None = None,
     ):
         self.login = login
         self.user_agent = user_agent
-        self.version = version if version is not None else CLIENT_VERSION
-        self.device_id = device_id if device_id else "".join(
-            choice(string.ascii_letters + string.digits) for _ in range(32)
+        self.version: str = version if version is not None else CLIENT_VERSION
+        self.device_id = (
+            device_id
+            if device_id
+            else "".join(
+                choice(string.ascii_letters + string.digits) for _ in range(32)
+            )
         )
         self.session_id = session_id if session_id is not None else str(uuid.uuid4())

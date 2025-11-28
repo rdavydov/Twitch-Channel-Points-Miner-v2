@@ -4,7 +4,12 @@ from typing import Generic, TypeVar
 class PageInfo:
     """Information about the current pagination state."""
 
-    def __init__(self, has_next_page: bool, start_cursor: str | None = None, end_cursor: str | None = None):
+    def __init__(
+        self,
+        has_next_page: bool,
+        start_cursor: str | None = None,
+        end_cursor: str | None = None,
+    ):
         self.has_next_page = has_next_page
         """Whether there are more pages available."""
         self.start_cursor = start_cursor

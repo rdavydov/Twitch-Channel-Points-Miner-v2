@@ -1,4 +1,6 @@
-from TwitchChannelPointsMiner.classes.gql.data.response.BroadcastSettings import BroadcastSettings
+from TwitchChannelPointsMiner.classes.gql.data.response.BroadcastSettings import (
+    BroadcastSettings,
+)
 from TwitchChannelPointsMiner.classes.gql.data.response.Stream import Stream
 
 

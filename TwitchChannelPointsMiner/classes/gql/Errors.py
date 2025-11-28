@@ -6,7 +6,7 @@ from TwitchChannelPointsMiner.classes.gql import Error
 class GQLError(abc.ABC, Exception):
     """Abstract base class for GQL errors."""
 
-    def recoverable(self):
+    def recoverable(self) -> bool:
         """True if this error can be recovered."""
         return False
 
@@ -25,6 +25,9 @@ class GQLResponseErrors(GQLError):
 
     def __str__(self):
         return f"GQL Operation '{self.operation_name}' returned errors: {self.errors}"
+
+    def __repr__(self):
+        return str(self)
 
 
 class InvalidJsonShapeException(Exception):
@@ -45,8 +48,11 @@ class InvalidJsonShapeException(Exception):
 
         return f'JSON at [{", ".join(map(render_path_item, reversed(self.path)))}] has an invalid shape: {self.message}'
 
+    def __repr__(self):
+        return str(self)
 
-class RetryError(Exception):
+
+class RetryError(GQLError):
     """Raised when multiple attempts to perform a GQL operation fail."""
 
     def __init__(self, operation_name: str, errors: list):
@@ -58,10 +64,18 @@ class RetryError(Exception):
     def __str__(self):
         return f"GQL Operation '{self.operation_name}' failed all {len(self.errors)} attempts, errors: {self.errors}"
 
+    def __repr__(self):
+        return str(self)
+
     def __eq__(self, other):
         if isinstance(other, RetryError):
-            return self.operation_name == other.operation_name and len(self.errors) == len(other.errors) and all(
-                self.errors[index] == other.errors[index] for index in range(len(self.errors))
+            return (
+                self.operation_name == other.operation_name
+                and len(self.errors) == len(other.errors)
+                and all(
+                    self.errors[index] == other.errors[index]
+                    for index in range(len(self.errors))
+                )
             )
         else:
             return False

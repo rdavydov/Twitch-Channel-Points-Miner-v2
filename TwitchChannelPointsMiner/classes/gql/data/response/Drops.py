@@ -1,15 +1,32 @@
 from datetime import datetime
 
+from TwitchChannelPointsMiner.classes.gql.data.response.Games import Game
 
-class DropsHighlightServiceAvailableDropsResponse:
-    def __init__(self, ids: list[str]):
-        self.ids = ids
+
+class TimeBasedDropDetails:
+    def __init__(
+        self,
+        _id: str,
+        name: str,
+        end_at: datetime,
+        start_at: datetime,
+        benefits: list[str],
+        required_minutes_watched: int,
+        required_subs: int,
+    ):
+        self.id = _id
+        self.name = name
+        self.end_at = end_at
+        self.start_at = start_at
+        self.benefits = benefits
+        self.required_minutes_watched = required_minutes_watched
+        self.required_subs = required_subs
 
     def __repr__(self):
-        return f"DropsHighlightServiceAvailableDropsResponse({self.__dict__})"
+        return f"TimeBasedDropDetails({self.__dict__})"
 
 
-class TimeBasedDrop:
+class TimeBasedDropInProgress:
     class SelfEdge:
         def __init__(
             self,
@@ -17,7 +34,7 @@ class TimeBasedDrop:
             current_minutes_watched: int,
             current_subs: int,
             drop_instance_id: str | None,
-            is_claimed: bool
+            is_claimed: bool,
         ):
             self.has_preconditions_met = has_preconditions_met
             self.current_minutes_watched = current_minutes_watched
@@ -37,9 +54,9 @@ class TimeBasedDrop:
         benefits: list[str],
         required_minutes_watched: int,
         required_subs: int,
-        self_edge: SelfEdge
+        self_edge: SelfEdge,
     ):
-        self._id = _id
+        self.id = _id
         self.name = name
         self.end_at = end_at
         self.start_at = start_at
@@ -49,33 +66,68 @@ class TimeBasedDrop:
         self.self_edge = self_edge
 
     def __repr__(self):
-        return f"TimeBasedDrop({self.__dict__})"
+        return f"TimeBasedDropInProgress({self.__dict__})"
 
 
-class Game:
-    def __init__(self, _id: str, slug: str, name: str, box_art_url: str | None):
-        self._id = _id
+class GameDetails(Game):
+    def __init__(self, _id: str, slug: str, display_name: str):
+        super().__init__(_id)
         self.slug = slug
-        self.name = name
-        self.box_art_url = box_art_url
+        self.display_name = display_name
 
     def __repr__(self):
-        return f"Game({self.__dict__})"
+        return f"GameDetails({self.__dict__})"
 
 
-class DropCampaign:
-    def __init__(self, _id: str, status: str, game: Game, time_based_drops: list[TimeBasedDrop]):
+class DropCampaignDetails:
+    def __init__(
+        self,
+        _id: str,
+        name: str,
+        status: str,
+        game: GameDetails,
+        allow_channel_ids: list[str] | None,
+        time_based_drops: list[TimeBasedDropDetails],
+    ):
         self.id = _id
+        self.name = name
         self.status = status
         self.game = game
+        self.allow_channel_ids = allow_channel_ids
+        self.time_based_drops = time_based_drops
+
+    def __repr__(self):
+        return f"DropCampaignDetails({self.__dict__})"
+
+
+class DropCampaignDashboard:
+    def __init__(self, _id: str, status: str):
+        self.id = _id
+        self.status = status
+
+    def __repr__(self):
+        return f"DropCampaignDashboard({self.__dict__})"
+
+
+class DropCampaignInProgress:
+    def __init__(self, _id: str, time_based_drops: list[TimeBasedDropInProgress]):
+        self.id = _id
         self.time_based_drops = time_based_drops
 
     def __repr__(self):
         return f"DropCampaign({self.__dict__})"
 
 
+class DropsHighlightServiceAvailableDropsResponse:
+    def __init__(self, ids: list[str]):
+        self.ids = ids
+
+    def __repr__(self):
+        return f"DropsHighlightServiceAvailableDropsResponse({self.__dict__})"
+
+
 class InventoryResponse:
-    def __init__(self, campaigns: list[DropCampaign] | None):
+    def __init__(self, campaigns: list[DropCampaignInProgress] | None):
         self.campaigns = campaigns
 
     def __repr__(self):
@@ -83,7 +135,7 @@ class InventoryResponse:
 
 
 class ViewerDropsDashboardResponse:
-    def __init__(self, campaigns: list[DropCampaign] | None):
+    def __init__(self, campaigns: list[DropCampaignDashboard] | None):
         self.campaigns = campaigns
 
     def __repr__(self):
@@ -91,7 +143,7 @@ class ViewerDropsDashboardResponse:
 
 
 class DropCampaignDetailsResponse:
-    def __init__(self, campaign: DropCampaign):
+    def __init__(self, campaign: DropCampaignDetails):
         self.campaign = campaign
 
     def __repr__(self):
@@ -99,8 +151,10 @@ class DropCampaignDetailsResponse:
 
 
 class DropsPageClaimDropsResponse:
-    def __init__(self, status: str):
+    def __init__(self, status: str | None, errors: list | None):
+        # The type of `errors` is unknown because I couldn't find an instance of it happening
         self.status = status
+        self.errors = errors
 
     def __repr__(self):
         return f"DropsPageClaimDropsResponse({self.__dict__})"
