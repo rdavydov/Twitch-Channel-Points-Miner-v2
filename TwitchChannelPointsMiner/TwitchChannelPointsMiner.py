@@ -278,7 +278,7 @@ class TwitchChannelPointsMiner:
                         if streamer.settings.chat != ChatPresence.NEVER:
                             streamer.irc_chat = ThreadChat(
                                 self.username,
-                                self.twitch.twitch_login.get_auth_token(),
+                                self.twitch.client_session.login.get_auth_token(),
                                 streamer.username,
                             )
                         self.streamers.append(streamer)
@@ -341,7 +341,7 @@ class TwitchChannelPointsMiner:
             )
 
             # Subscribe to community-points-user. Get update for points spent or gains
-            user_id = self.twitch.twitch_login.get_user_id()
+            user_id = self.twitch.client_session.login.get_user_id()
             # print(f"!!!!!!!!!!!!!! USER_ID: {user_id}")
 
             # Fixes 'ERR_BADAUTH'

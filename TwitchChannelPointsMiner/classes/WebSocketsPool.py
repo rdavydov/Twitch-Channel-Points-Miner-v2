@@ -55,7 +55,7 @@ class WebSocketsPool:
         if self.ws[index].is_opened is False:
             self.ws[index].pending_topics.append(topic)
         else:
-            self.ws[index].listen(topic, self.twitch.twitch_login.get_auth_token())
+            self.ws[index].listen(topic, self.twitch.client_session.login.get_auth_token())
 
     def __new(self, index):
         return TwitchWebSocket(
@@ -97,7 +97,7 @@ class WebSocketsPool:
             ws.ping()
 
             for topic in ws.pending_topics:
-                ws.listen(topic, ws.twitch.twitch_login.get_auth_token())
+                ws.listen(topic, ws.twitch.client_session.login.get_auth_token())
 
             while ws.is_closed is False:
                 # Else: the ws is currently in reconnecting phase, you can't do ping or other operation.
@@ -433,7 +433,7 @@ class WebSocketsPool:
             # Check if the error message indicates an authentication issue (ERR_BADAUTH)
             if "ERR_BADAUTH" in error_message:
                 # Inform the user about the potential outdated cookie file
-                username = ws.twitch.twitch_login.username
+                username = ws.twitch.client_session.login.username
                 logger.error(f"Received the ERR_BADAUTH error, most likely you have an outdated cookie file \"cookies\\{username}.pkl\". Delete this file and try again.")
                 # Attempt to delete the outdated cookie file
                 # try:

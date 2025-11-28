@@ -4,27 +4,20 @@
 # Full list of available methods: https://azr.ivr.fi/schema/query.doc.html (a bit outdated)
 
 
-import copy
 import logging
 import os
 import random
 import re
 import string
 import time
-import requests
-import validators
-# import json
-
 from pathlib import Path
 from secrets import choice, token_hex
 from typing import Dict, Any
-# from urllib.parse import quote
-# from base64 import urlsafe_b64decode
-# from datetime import datetime
 
-from TwitchChannelPointsMiner.classes.entities.Campaign import Campaign
-from TwitchChannelPointsMiner.classes.entities.CommunityGoal import CommunityGoal
-from TwitchChannelPointsMiner.classes.entities.Drop import Drop
+import requests
+import validators
+
+from TwitchChannelPointsMiner.classes.ClientSession import ClientSession
 from TwitchChannelPointsMiner.classes.Exceptions import (
     StreamerDoesNotExistException,
     StreamerIsOfflineException,
@@ -36,33 +29,39 @@ from TwitchChannelPointsMiner.classes.Settings import (
     Settings,
 )
 from TwitchChannelPointsMiner.classes.TwitchLogin import TwitchLogin
+from TwitchChannelPointsMiner.classes.entities.Campaign import Campaign
+from TwitchChannelPointsMiner.classes.entities.CommunityGoal import CommunityGoal
+from TwitchChannelPointsMiner.classes.entities.Drop import Drop
+from TwitchChannelPointsMiner.classes.entities.Streamer import Streamer
+from TwitchChannelPointsMiner.classes.gql import GQL
+from TwitchChannelPointsMiner.classes.gql.Errors import RetryError
+from TwitchChannelPointsMiner.classes.gql.data.response.Drops import (
+    DropCampaignInProgress,
+    DropCampaignDetails,
+    DropCampaignDashboard,
+)
 from TwitchChannelPointsMiner.constants import (
     CLIENT_ID,
     CLIENT_VERSION,
     URL,
-    GQLOperations,
 )
 from TwitchChannelPointsMiner.utils import (
     _millify,
-    create_chunks,
     internet_connection_available,
 )
 
 logger = logging.getLogger(__name__)
 JsonType = Dict[str, Any]
 
+CLIENT_WATCH_SECONDS = 20
+
 
 class Twitch(object):
     __slots__ = [
         "cookies_file",
-        "user_agent",
-        "twitch_login",
         "running",
-        "device_id",
-        # "integrity",
-        # "integrity_expire",
         "client_session",
-        "client_version",
+        "gql",
         "twilight_build_id_pattern",
     ]
 
@@ -70,48 +69,54 @@ class Twitch(object):
         cookies_path = os.path.join(Path().absolute(), "cookies")
         Path(cookies_path).mkdir(parents=True, exist_ok=True)
         self.cookies_file = os.path.join(cookies_path, f"{username}.pkl")
-        self.user_agent = user_agent
-        self.device_id = "".join(
-            choice(string.ascii_letters + string.digits) for _ in range(32)
-        )
-        self.twitch_login = TwitchLogin(
-            CLIENT_ID, self.device_id, username, self.user_agent, password=password
-        )
-        self.running = True
-        # self.integrity = None
-        # self.integrity_expire = 0
-        self.client_session = token_hex(16)
-        self.client_version = CLIENT_VERSION
         self.twilight_build_id_pattern = re.compile(
             r'window\.__twilightBuildID\s*=\s*"([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})"'
         )
+        device_id = "".join(
+            choice(string.ascii_letters + string.digits) for _ in range(32)
+        )
+        twitch_login = TwitchLogin(
+            CLIENT_ID, device_id, username, user_agent, password=password
+        )
+        client_session_id = token_hex(16)
+        self.client_session = ClientSession(
+            login=twitch_login,
+            user_agent=user_agent,
+            version=CLIENT_VERSION,
+            device_id=device_id,
+            session_id=client_session_id,
+        )
+        self.gql = GQL(self.client_session)
+        self.running = True
 
     def login(self):
         if not os.path.isfile(self.cookies_file):
-            if self.twitch_login.login_flow():
-                self.twitch_login.save_cookies(self.cookies_file)
+            if self.client_session.login.login_flow():
+                self.client_session.login.save_cookies(self.cookies_file)
         else:
-            self.twitch_login.load_cookies(self.cookies_file)
-            self.twitch_login.set_token(self.twitch_login.get_auth_token())
+            self.client_session.login.load_cookies(self.cookies_file)
+            self.client_session.login.set_token(
+                self.client_session.login.get_auth_token()
+            )
 
     # === STREAMER / STREAM / INFO === #
     def update_stream(self, streamer):
         if streamer.stream.update_required() is True:
             stream_info = self.get_stream_info(streamer)
-            if stream_info is not None:
+            if stream_info is not None and stream_info.stream is not None:
                 streamer.stream.update(
-                    broadcast_id=stream_info["stream"]["id"],
-                    title=stream_info["broadcastSettings"]["title"],
-                    game=stream_info["broadcastSettings"]["game"],
-                    tags=stream_info["stream"]["tags"],
-                    viewers_count=stream_info["stream"]["viewersCount"],
+                    broadcast_id=stream_info.stream.id,
+                    title=stream_info.broadcast_settings.title,
+                    game=stream_info.broadcast_settings.game,
+                    tags=stream_info.stream.tags,
+                    viewers_count=stream_info.stream.viewers_count,
                 )
 
                 event_properties = {
                     "channel_id": streamer.channel_id,
                     "broadcast_id": streamer.stream.broadcast_id,
                     "player": "site",
-                    "user_id": self.twitch_login.get_user_id(),
+                    "user_id": self.client_session.login.get_user_id(),
                     "live": True,
                     "channel": streamer.username,
                 }
@@ -140,8 +145,7 @@ class Twitch(object):
 
             headers = {"User-Agent": USER_AGENTS["Linux"]["FIREFOX"]}
 
-            main_page_request = requests.get(
-                streamer.streamer_url, headers=headers)
+            main_page_request = requests.get(streamer.streamer_url, headers=headers)
             response = main_page_request.text
             # logger.info(response)
             regex_settings = "(https://static.twitchcdn.net/config/settings.*?js|https://assets.twitch.tv/config/settings.*?.js)"
@@ -150,45 +154,28 @@ class Twitch(object):
             settings_request = requests.get(settings_url, headers=headers)
             response = settings_request.text
             regex_spade = '"spade_url":"(.*?)"'
-            streamer.stream.spade_url = re.search(
-                regex_spade, response).group(1)
+            streamer.stream.spade_url = re.search(regex_spade, response).group(1)
         except requests.exceptions.RequestException as e:
-            logger.error(
-                f"Something went wrong during extraction of 'spade_url': {e}")
+            logger.error(f"Something went wrong during extraction of 'spade_url': {e}")
 
-    def get_broadcast_id(self, streamer):
-        json_data = copy.deepcopy(GQLOperations.WithIsStreamLiveQuery)
-        json_data["variables"] = {"id": streamer.channel_id}
-        response = self.post_gql_request(json_data)
-        if response != {}:
-            stream = response["data"]["user"]["stream"]
-            if stream is not None:
-                return stream["id"]
-            else:
-                raise StreamerIsOfflineException
-
-    def get_stream_info(self, streamer):
-        json_data = copy.deepcopy(
-            GQLOperations.VideoPlayerStreamInfoOverlayChannel)
-        json_data["variables"] = {"channel": streamer.username}
-        response = self.post_gql_request(json_data)
-        if response != {}:
-            data: Any = response.get("data", None)
-            if data is None:
-                # This shouldn't really happen, data is a core part of the GQL spec
-                return None
-            user = data.get("user", None)
-            if user is None:
-                # This can happen if there was a timeout type error, maybe we should retry
-                return None
-            stream = user.get("stream", None)
-            if stream is None:
-                # There is no stream data, so they're offline
-                raise StreamerIsOfflineException
-            else:
-                return response["data"]["user"]
-        # The response was completely empty, there should be a relevant error log from `post_gql_request`
-        return None
+    def get_stream_info(self, streamer: Streamer):
+        """
+        Gets information about the stream for the given streamer.
+        :param streamer: The streamer to check.
+        :return: The stream info or None if a stream is not currently in progress or an error occurs.
+        """
+        try:
+            response = self.gql.video_player_stream_info_overlay_channel(
+                streamer.username
+            )
+        except RetryError:
+            logger.exception(f"Error getting stream info for {streamer.username}")
+            return None
+        if response.user.stream is None:
+            # There is no stream data, so they're offline
+            raise StreamerIsOfflineException
+        else:
+            return response.user
 
     def check_streamer_online(self, streamer):
         if time.time() < streamer.offline_at + 60:
@@ -208,63 +195,53 @@ class Twitch(object):
             except StreamerIsOfflineException:
                 streamer.set_offline()
 
-    def get_channel_id(self, streamer_username):
-        json_data = copy.deepcopy(GQLOperations.GetIDFromLogin)
-        json_data["variables"]["login"] = streamer_username
-        json_response = self.post_gql_request(json_data)
-        if (
-            "data" not in json_response
-            or "user" not in json_response["data"]
-            or json_response["data"]["user"] is None
-        ):
+    def get_channel_id(self, streamer_username: str) -> str:
+        """
+        Gets the channel id for the streamer with the given username.
+        :param streamer_username: The username of the streamer.
+        :return: The channel id.
+        :raises StreamerDoesNotExistException:
+            If a streamer with the given username does not exist or another error occurs.
+            TODO should we return/raise something else if an error occurs and we don't know if the streamer exists?
+        """
+        try:
+            response = self.gql.get_id_from_login(streamer_username)
+            if response.id == "":
+                raise StreamerDoesNotExistException
+            else:
+                return response.id
+        except RetryError:
+            logger.exception(f"Error getting channel id for {streamer_username}")
             raise StreamerDoesNotExistException
-        else:
-            return json_response["data"]["user"]["id"]
 
     def get_followers(
         self, limit: int = 100, order: FollowersOrder = FollowersOrder.ASC
     ):
-        json_data = copy.deepcopy(GQLOperations.ChannelFollows)
-        json_data["variables"] = {"limit": limit, "order": str(order)}
-        has_next = True
-        last_cursor = ""
-        follows = []
-        while has_next is True:
-            json_data["variables"]["cursor"] = last_cursor
-            json_response = self.post_gql_request(json_data)
-            try:
-                follows_response = json_response["data"]["user"]["follows"]
-                last_cursor = None
-                for f in follows_response["edges"]:
-                    follows.append(f["node"]["login"].lower())
-                    last_cursor = f["cursor"]
-
-                has_next = follows_response["pageInfo"]["hasNextPage"]
-            except KeyError:
-                return []
-        return follows
+        """
+        Gets the list of channel logins for the user's followers.
+        :param limit: The maximum amount of logins to get per request.
+        :param order: The order in which to retrieve the logins.
+        :return: The logins or an empty list if an error occurs (or there are no followers).
+        """
+        try:
+            return self.gql.channel_follows(limit, order)
+        except RetryError:
+            logger.exception(
+                f"Error getting user's followers. Limit: {limit}, order: '{order}'"
+            )
+            return []
 
     def update_raid(self, streamer, raid):
         if streamer.raid != raid:
             streamer.raid = raid
-            json_data = copy.deepcopy(GQLOperations.JoinRaid)
-            json_data["variables"] = {"input": {"raidID": raid.raid_id}}
-            self.post_gql_request(json_data)
-
-            logger.info(
-                f"Joining raid from {streamer} to {raid.target_login}!",
-                extra={"emoji": ":performing_arts:",
-                       "event": Events.JOIN_RAID},
-            )
-
-    def viewer_is_mod(self, streamer):
-        json_data = copy.deepcopy(GQLOperations.ModViewChannelQuery)
-        json_data["variables"] = {"channelLogin": streamer.username}
-        response = self.post_gql_request(json_data)
-        try:
-            streamer.viewer_is_mod = response["data"]["user"]["self"]["isModerator"]
-        except (ValueError, KeyError):
-            streamer.viewer_is_mod = False
+            try:
+                self.gql.join_raid(raid.raid_id)
+                logger.info(
+                    f"Joining raid from {streamer} to {raid.target_login}!",
+                    extra={"emoji": ":performing_arts:", "event": Events.JOIN_RAID},
+                )
+            except RetryError:
+                logger.exception(f"Error joining raid from {streamer} to {raid}")
 
     # === 'GLOBALS' METHODS === #
     # Create chunk of sleep of speed-up the break loop after CTRL+C
@@ -276,7 +253,7 @@ class Twitch(object):
                 break
 
     def __check_connection_handler(self, chunk_size):
-        # The success rate It's very hight usually. Why we have failed?
+        # The success rate It's very high usually. Why we have failed?
         # Check internet connection ...
         while internet_connection_available() is False:
             random_sleep = random.randint(1, 3)
@@ -284,31 +261,6 @@ class Twitch(object):
                 f"No internet connection available! Retry after {random_sleep}m"
             )
             self.__chuncked_sleep(random_sleep * 60, chunk_size=chunk_size)
-
-    def post_gql_request(self, json_data):
-        try:
-            response = requests.post(
-                GQLOperations.url,
-                json=json_data,
-                headers={
-                    "Authorization": f"OAuth {self.twitch_login.get_auth_token()}",
-                    "Client-Id": CLIENT_ID,
-                    # "Client-Integrity": self.post_integrity(),
-                    "Client-Session-Id": self.client_session,
-                    "Client-Version": self.update_client_version(),
-                    "User-Agent": self.user_agent,
-                    "X-Device-Id": self.device_id,
-                },
-            )
-            logger.debug(
-                f"Data: {json_data}, Status code: {response.status_code}, Content: {response.text}"
-            )
-            return response.json()
-        except requests.exceptions.RequestException as e:
-            logger.error(
-                f"Error with GQLOperations ({json_data['operationName']}): {e}"
-            )
-            return {}
 
     # Request for Integrity Token
     # Twitch needs Authorization, Client-Id, X-Device-Id to generate JWT which is used for authorize gql requests
@@ -366,24 +318,24 @@ class Twitch(object):
         else:
             return False"""
 
-    def update_client_version(self):
+    def update_client_version(self) -> str:
         try:
             response = requests.get(URL)
             if response.status_code != 200:
                 logger.debug(
                     f"Error with update_client_version: {response.status_code}"
                 )
-                return self.client_version
+                return self.client_session.version
             matcher = re.search(self.twilight_build_id_pattern, response.text)
             if not matcher:
                 logger.debug("Error with update_client_version: no match")
-                return self.client_version
-            self.client_version = matcher.group(1)
-            logger.debug(f"Client version: {self.client_version}")
-            return self.client_version
+                return self.client_session.version
+            self.client_session.version = matcher.group(1)
+            logger.debug(f"Client version: {self.client_session.version}")
+            return self.client_session.version
         except requests.exceptions.RequestException as e:
             logger.error(f"Error with update_client_version: {e}")
-            return self.client_version
+            return self.client_session.version
 
     def send_minute_watched_events(self, streamers, priority, chunk_size=3):
         while self.running:
@@ -420,14 +372,16 @@ class Twitch(object):
 
                     if prior == Priority.ORDER:
                         # Get the first 2 items, they are already in order
-                        streamers_watching.update(streamers_index[:remaining_watch_amount()])
+                        streamers_watching.update(
+                            streamers_index[: remaining_watch_amount()]
+                        )
 
-                    elif prior in [Priority.POINTS_ASCENDING, Priority.POINTS_DESCENDING]:
+                    elif prior in [
+                        Priority.POINTS_ASCENDING,
+                        Priority.POINTS_DESCENDING,
+                    ]:
                         items = [
-                            {
-                                "points": streamers[index].channel_points,
-                                "index": index
-                            }
+                            {"points": streamers[index].channel_points, "index": index}
                             for index in streamers_index
                         ]
                         items = sorted(
@@ -437,7 +391,11 @@ class Twitch(object):
                                 True if prior == Priority.POINTS_DESCENDING else False
                             ),
                         )
-                        streamers_watching.update([item["index"] for item in items][:remaining_watch_amount()])
+                        streamers_watching.update(
+                            [item["index"] for item in items][
+                                : remaining_watch_amount()
+                            ]
+                        )
 
                     elif prior == Priority.STREAK:
                         """
@@ -453,8 +411,7 @@ class Twitch(object):
                                 and (
                                     streamers[index].offline_at == 0
                                     or (
-                                        (time.time() -
-                                         streamers[index].offline_at)
+                                        (time.time() - streamers[index].offline_at)
                                         // 60
                                     )
                                     > 30
@@ -481,122 +438,124 @@ class Twitch(object):
                         ]
                         streamers_with_multiplier = sorted(
                             streamers_with_multiplier,
-                            key=lambda x: streamers[x].total_points_multiplier(
-                            ),
+                            key=lambda x: streamers[x].total_points_multiplier(),
                             reverse=True,
                         )
-                        streamers_watching.update(streamers_with_multiplier[:remaining_watch_amount()])
+                        streamers_watching.update(
+                            streamers_with_multiplier[: remaining_watch_amount()]
+                        )
 
                 streamers_watching = list(streamers_watching)[:max_watch_amount]
 
                 for index in streamers_watching:
-                    # next_iteration = time.time() + 60 / len(streamers_watching)
-                    next_iteration = time.time() + 20 / len(streamers_watching)
+                    next_iteration = time.time() + CLIENT_WATCH_SECONDS / len(
+                        streamers_watching
+                    )
 
                     try:
                         ####################################
                         # Start of fix for 2024/5 API Change
-                        # Create the JSON data for the GraphQL request
-                        json_data = copy.deepcopy(
-                            GQLOperations.PlaybackAccessToken)
-                        json_data["variables"] = {
-                            "login": streamers[index].username,
-                            "isLive": True,
-                            "isVod": False,
-                            "vodID": "",
-                            "playerType": "site"
-                            # "playerType": "picture-by-picture",
-                        }
 
                         # Get signature and value using the post_gql_request method
                         try:
-                            responsePlaybackAccessToken = self.post_gql_request(
-                                json_data)
+                            response_playback_access_token = (
+                                self.gql.get_playback_access_token(
+                                    streamers[index].username
+                                )
+                            )
                             logger.debug(
-                                f"Sent PlaybackAccessToken request for {streamers[index]}")
+                                f"Sent PlaybackAccessToken request for {streamers[index]}"
+                            )
 
-                            if 'data' not in responsePlaybackAccessToken:
-                                logger.error(
-                                    f"Invalid response from Twitch: {responsePlaybackAccessToken}")
-                                continue
-
-                            streamPlaybackAccessToken = responsePlaybackAccessToken["data"].get(
-                                'streamPlaybackAccessToken', {})
-                            signature = streamPlaybackAccessToken.get(
-                                "signature")
-                            value = streamPlaybackAccessToken.get("value")
+                            signature = response_playback_access_token.signature
+                            value = response_playback_access_token.value
 
                             if not signature or not value:
                                 logger.error(
-                                    f"Missing signature or value in Twitch response: {responsePlaybackAccessToken}")
+                                    f"Missing signature or value in Twitch response: {response_playback_access_token}"
+                                )
                                 continue
 
                         except Exception as e:
                             logger.error(
-                                f"Error fetching PlaybackAccessToken for {streamers[index]}: {str(e)}")
+                                f"Error fetching PlaybackAccessToken for {streamers[index]}: {str(e)}"
+                            )
                             continue
-
-                        # encoded_value = quote(json.dumps(value))
 
                         # Construct the URL for the broadcast qualities
-                        RequestBroadcastQualitiesURL = f"https://usher.ttvnw.net/api/channel/hls/{streamers[index].username}.m3u8?sig={signature}&token={value}"
+                        request_broadcast_qualities_url = f"https://usher.ttvnw.net/api/channel/hls/{streamers[index].username}.m3u8?sig={signature}&token={value}"
 
                         # Get list of video qualities
-                        responseBroadcastQualities = requests.get(
-                            RequestBroadcastQualitiesURL,
-                            headers={"User-Agent": self.user_agent},
-                            timeout=20,
-                        )  # timeout=60
-                        logger.debug(
-                            f"Send RequestBroadcastQualitiesURL request for {streamers[index]} - Status code: {responseBroadcastQualities.status_code}"
+                        response_broadcast_qualities = requests.get(
+                            request_broadcast_qualities_url,
+                            headers={"User-Agent": self.client_session.user_agent},
+                            timeout=CLIENT_WATCH_SECONDS,
                         )
-                        if responseBroadcastQualities.status_code != 200:
+                        logger.debug(
+                            f"Send RequestBroadcastQualitiesURL request for {streamers[index]} - Status code: {response_broadcast_qualities.status_code}"
+                        )
+                        if response_broadcast_qualities.status_code != 200:
+                            logger.debug(
+                                f"RequestBroadcastQualitiesURL failed for {streamers[index]}: Bad Response Status {response_broadcast_qualities.status_code}."
+                            )
                             continue
-                        BroadcastQualities = responseBroadcastQualities.text
+                        broadcast_qualities = response_broadcast_qualities.text
 
                         # Just takes the last line, which should be the URL for the lowest quality
-                        BroadcastLowestQualityURL = BroadcastQualities.split(
-                            "\n")[-1]
-                        if not validators.url(BroadcastLowestQualityURL):
+                        broadcast_lowest_quality_url = broadcast_qualities.split("\n")[
+                            -1
+                        ]
+                        if not validators.url(broadcast_lowest_quality_url):
+                            logger.debug(
+                                "RequestBroadcastQualitiesURL failed for {streamers[index]}: Unable to parse URL in response"
+                            )
                             continue
 
                         # Get list of video URLs
-                        responseStreamURLList = requests.get(
-                            BroadcastLowestQualityURL,
-                            headers={"User-Agent": self.user_agent},
-                            timeout=20,
-                        )  # timeout=60
-                        logger.debug(
-                            f"Send BroadcastLowestQualityURL request for {streamers[index]} - Status code: {responseStreamURLList.status_code}"
+                        response_stream_url_list = requests.get(
+                            broadcast_lowest_quality_url,
+                            headers={"User-Agent": self.client_session.user_agent},
+                            timeout=CLIENT_WATCH_SECONDS,
                         )
-                        if responseStreamURLList.status_code != 200:
+                        logger.debug(
+                            f"Send BroadcastLowestQualityURL request for {streamers[index]} - Status code: {response_stream_url_list.status_code}"
+                        )
+                        if response_stream_url_list.status_code != 200:
+                            logger.debug(
+                                f"BroadcastLowestQualityURL failed for {streamers[index]}: Bad response status {response_stream_url_list.status_code}"
+                            )
                             continue
-                        StreamURLList = responseStreamURLList.text
+                        stream_url_list = response_stream_url_list.text
 
                         # Just takes the last line, which should be the URL for the lowest quality
-                        StreamLowestQualityURL = StreamURLList.split("\n")[-2]
-                        if not validators.url(StreamLowestQualityURL):
+                        stream_lowest_quality_url = stream_url_list.split("\n")[-2]
+                        if not validators.url(stream_lowest_quality_url):
+                            logger.debug(
+                                f"BroadcastLowestQualityURL failed for {streamers[index]}: Unable to parse URL in response"
+                            )
                             continue
 
                         # Perform a HEAD request to simulate watching the stream
-                        responseStreamLowestQualityURL = requests.head(
-                            StreamLowestQualityURL,
-                            headers={"User-Agent": self.user_agent},
-                            timeout=20,
-                        )  # timeout=60
-                        logger.debug(
-                            f"Send StreamLowestQualityURL request for {streamers[index]} - Status code: {responseStreamLowestQualityURL.status_code}"
+                        response_stream_lowest_quality_url = requests.head(
+                            stream_lowest_quality_url,
+                            headers={"User-Agent": self.client_session.user_agent},
+                            timeout=CLIENT_WATCH_SECONDS,
                         )
-                        if responseStreamLowestQualityURL.status_code != 200:
+                        logger.debug(
+                            f"Send StreamLowestQualityURL request for {streamers[index]} - Status code: {response_stream_lowest_quality_url.status_code}"
+                        )
+                        if response_stream_lowest_quality_url.status_code != 200:
+                            logger.debug(
+                                f"StreamLowestQualityURL failed for {streamers[index]}: Bad response status {response_stream_lowest_quality_url.status_code}"
+                            )
                             continue
                         # End of fix for 2024/5 API Change
                         ##################################
                         response = requests.post(
                             streamers[index].stream.spade_url,
                             data=streamers[index].stream.encode_payload(),
-                            headers={"User-Agent": self.user_agent},
-                            # timeout=60,
-                            timeout=20,
+                            headers={"User-Agent": self.client_session.user_agent},
+                            timeout=CLIENT_WATCH_SECONDS,
                         )
                         logger.debug(
                             f"Send minute watched request for {streamers[index]} - Status code: {response.status_code}"
@@ -632,7 +591,7 @@ class Twitch(object):
                                                     "skip_discord": True,
                                                     "skip_webhook": True,
                                                     "skip_matrix": True,
-                                                    "skip_gotify": True
+                                                    "skip_gotify": True,
                                                 },
                                             )
 
@@ -659,54 +618,46 @@ class Twitch(object):
                                             )
 
                     except requests.exceptions.ConnectionError as e:
-                        logger.error(
-                            f"Error while trying to send minute watched: {e}")
+                        logger.error(f"Error while trying to send minute watched: {e}")
                         self.__check_connection_handler(chunk_size)
                     except requests.exceptions.Timeout as e:
-                        logger.error(
-                            f"Error while trying to send minute watched: {e}")
+                        logger.error(f"Error while trying to send minute watched: {e}")
 
                     self.__chuncked_sleep(
                         next_iteration - time.time(), chunk_size=chunk_size
                     )
 
                 if streamers_watching == []:
-                    # self.__chuncked_sleep(60, chunk_size=chunk_size)
-                    self.__chuncked_sleep(20, chunk_size=chunk_size)
+                    self.__chuncked_sleep(CLIENT_WATCH_SECONDS, chunk_size=chunk_size)
             except Exception:
-                logger.error(
-                    "Exception raised in send minute watched", exc_info=True)
+                logger.error("Exception raised in send minute watched", exc_info=True)
 
     # === CHANNEL POINTS / PREDICTION === #
     # Load the amount of current points for a channel, check if a bonus is available
-    def load_channel_points_context(self, streamer):
-        json_data = copy.deepcopy(GQLOperations.ChannelPointsContext)
-        json_data["variables"] = {"channelLogin": streamer.username}
+    def load_channel_points_context(self, streamer: Streamer):
+        try:
+            response = self.gql.get_channel_points_context(streamer.username)
+        except RetryError:
+            logger.exception(f"Error while trying to load channel points context")
+            return
+        if response.community is None:
+            raise StreamerDoesNotExistException
+        channel = response.community.channel
+        community_points = channel.edge.community_points
+        streamer.channel_points = community_points.balance
+        streamer.active_multipliers = community_points.active_multipliers
 
-        response = self.post_gql_request(json_data)
-        if response != {}:
-            if response["data"]["community"] is None:
-                raise StreamerDoesNotExistException
-            channel = response["data"]["community"]["channel"]
-            community_points = channel["self"]["communityPoints"]
-            streamer.channel_points = community_points["balance"]
-            streamer.activeMultipliers = community_points["activeMultipliers"]
+        if streamer.settings.community_goals is True:
+            streamer.community_goals = {
+                goal.id: CommunityGoal.from_gql(goal)
+                for goal in channel.community_points_settings.goals
+            }
 
-            if streamer.settings.community_goals is True:
-                streamer.community_goals = {
-                    goal["id"]: CommunityGoal.from_gql(goal)
-                    for goal in channel["communityPointsSettings"]["goals"]
-                }
+        if community_points.available_claim is not None:
+            self.claim_bonus(streamer, community_points.available_claim.id)
 
-            if community_points["availableClaim"] is not None:
-                self.claim_bonus(
-                    streamer, community_points["availableClaim"]["id"])
-
-            if streamer.settings.community_goals is True:
-                self.contribute_to_community_goals(streamer)
-
-            if streamer.settings.community_goals is True:
-                self.contribute_to_community_goals(streamer)
+        if streamer.settings.community_goals is True:
+            self.contribute_to_community_goals(streamer)
 
     def make_predictions(self, event):
         decision = event.bet.calculate(event.streamer.channel_points)
@@ -747,23 +698,16 @@ class Twitch(object):
                         },
                     )
 
-                    json_data = copy.deepcopy(GQLOperations.MakePrediction)
-                    json_data["variables"] = {
-                        "input": {
-                            "eventID": event.event_id,
-                            "outcomeID": decision["id"],
-                            "points": decision["amount"],
-                            "transactionID": token_hex(16),
-                        }
-                    }
-                    response = self.post_gql_request(json_data)
-                    if (
-                        "data" in response
-                        and "makePrediction" in response["data"]
-                        and "error" in response["data"]["makePrediction"]
-                        and response["data"]["makePrediction"]["error"] is not None
-                    ):
-                        error_code = response["data"]["makePrediction"]["error"]["code"]
+                    try:
+                        response = self.gql.make_prediction(
+                            event.event_id, decision["id"], decision["amount"]
+                        )
+                    except RetryError:
+                        logger.exception(f"Error while trying to make prediction")
+                        return
+
+                    if response.error is not None:
+                        error_code = response.error.code
                         logger.error(
                             f"Failed to place bet, error: {error_code}",
                             extra={
@@ -788,161 +732,137 @@ class Twitch(object):
                 },
             )
 
-    def claim_bonus(self, streamer, claim_id):
+    def claim_bonus(self, streamer: Streamer, claim_id: str):
         if Settings.logger.less is False:
             logger.info(
                 f"Claiming the bonus for {streamer}!",
                 extra={"emoji": ":gift:", "event": Events.BONUS_CLAIM},
             )
-
-        json_data = copy.deepcopy(GQLOperations.ClaimCommunityPoints)
-        json_data["variables"] = {
-            "input": {"channelID": streamer.channel_id, "claimID": claim_id}
-        }
-        self.post_gql_request(json_data)
+        try:
+            self.gql.claim_community_points(streamer.channel_id, claim_id)
+        except RetryError:
+            logger.exception(
+                f"Error while trying to claim bonus for {streamer.username}"
+            )
 
     # === MOMENTS === #
-    def claim_moment(self, streamer, moment_id):
+    def claim_moment(self, streamer: Streamer, moment_id: str):
         if Settings.logger.less is False:
             logger.info(
                 f"Claiming the moment for {streamer}!",
-                extra={"emoji": ":video_camera:",
-                       "event": Events.MOMENT_CLAIM},
+                extra={"emoji": ":video_camera:", "event": Events.MOMENT_CLAIM},
             )
 
-        json_data = copy.deepcopy(GQLOperations.CommunityMomentCallout_Claim)
-        json_data["variables"] = {"input": {"momentID": moment_id}}
-        self.post_gql_request(json_data)
+        try:
+            self.gql.claim_moment(moment_id)
+        except RetryError:
+            logger.exception(
+                f"Error while trying to claim moment with id {moment_id} for {streamer.username}",
+            )
 
     # === CAMPAIGNS / DROPS / INVENTORY === #
     def __get_campaign_ids_from_streamer(self, streamer):
-        json_data = copy.deepcopy(
-            GQLOperations.DropsHighlightService_AvailableDrops)
-        json_data["variables"] = {"channelID": streamer.channel_id}
-        response = self.post_gql_request(json_data)
         try:
-            return (
-                []
-                if response["data"]["channel"]["viewerDropCampaigns"] is None
-                else [
-                    item["id"]
-                    for item in response["data"]["channel"]["viewerDropCampaigns"]
-                ]
+            return self.gql.get_available_drops(streamer.channel_id).ids
+        except RetryError:
+            logger.exception(
+                f"Error while trying to get drops campaign ids for {streamer.username}"
             )
-        except (ValueError, KeyError):
             return []
 
     def __get_inventory(self):
-        response = self.post_gql_request(GQLOperations.Inventory)
         try:
-            return (
-                response["data"]["currentUser"]["inventory"] if response != {} else {}
+            return self.gql.get_inventory()
+        except RetryError:
+            logger.exception(f"Error while trying to get user inventory")
+            return None
+
+    def __get_drops_dashboard(
+        self, status: str | None = None
+    ) -> list[DropCampaignDashboard]:
+        try:
+            campaigns = self.gql.get_viewer_drops_dashboard().campaigns or []
+            if status is not None:
+                status = status.upper()
+                campaigns = [
+                    campaign for campaign in campaigns if campaign.status == status
+                ]
+            return campaigns
+        except RetryError:
+            logger.exception(f"Error while trying to get viewer drops dashboard")
+            return []
+
+    def __get_campaigns_details(
+        self, campaigns: list[DropCampaignDashboard]
+    ) -> list[DropCampaignDetails]:
+        campaign_ids: list[str] = [c.id for c in campaigns]
+        try:
+            return [
+                response.campaign
+                for response in self.gql.get_drop_campaign_details(campaign_ids)
+            ]
+        except RetryError:
+            logger.exception(
+                f"Error while trying to get campaigns details for campaigns: {campaign_ids}"
             )
-        except (ValueError, KeyError, TypeError):
-            return {}
+            return []
 
-    def __get_drops_dashboard(self, status=None):
-        response = self.post_gql_request(GQLOperations.ViewerDropsDashboard)
-        campaigns = (
-            response.get("data", {})
-            .get("currentUser", {})
-            .get("dropCampaigns", [])
-            or []
-        )
-
-        if status is not None:
-            campaigns = (
-                list(filter(lambda x: x["status"] == status.upper(), campaigns)) or []
-            )
-
-        return campaigns
-
-    def __get_campaigns_details(self, campaigns):
-        result = []
-        chunks = create_chunks(campaigns, 20)
-        for chunk in chunks:
-            json_data = []
-            for campaign in chunk:
-                json_data.append(copy.deepcopy(
-                    GQLOperations.DropCampaignDetails))
-                json_data[-1]["variables"] = {
-                    "dropID": campaign["id"],
-                    "channelLogin": f"{self.twitch_login.get_user_id()}",
-                }
-
-            response = self.post_gql_request(json_data)
-            if not isinstance(response, list):
-                logger.debug("Unexpected campaigns response format, skipping chunk")
-                continue
-            for r in response:
-                drop_campaign = (
-                    r.get("data", {}).get("user", {}).get("dropCampaign", None)
-                )
-                if drop_campaign is not None:
-                    result.append(drop_campaign)
-        return result
-
-    def __sync_campaigns(self, campaigns):
+    def __sync_campaigns(self, campaigns: list[Campaign]) -> list[Campaign]:
         # We need the inventory only for get the real updated value/progress
         # Get data from inventory and sync current status with streamers.campaigns
         inventory = self.__get_inventory()
-        if inventory not in [None, {}] and inventory["dropCampaignsInProgress"] not in [
-            None,
-            {},
-        ]:
+        if inventory is not None and inventory.campaigns is not None:
             # Iterate all campaigns from dashboard (only active, with working drops)
             # In this array we have also the campaigns never started from us (not in nventory)
             for i in range(len(campaigns)):
                 campaigns[i].clear_drops()  # Remove all the claimed drops
                 # Iterate all campaigns currently in progress from out inventory
-                for progress in inventory["dropCampaignsInProgress"]:
-                    if progress["id"] == campaigns[i].id:
+                progress: DropCampaignInProgress  # Annoyingly the IDE thinks progress is Campaign not DropCampaign
+                for progress in inventory.campaigns:
+                    if progress.id == campaigns[i].id:
                         campaigns[i].in_inventory = True
                         campaigns[i].sync_drops(
-                            progress["timeBasedDrops"], self.claim_drop
+                            progress.time_based_drops, self.claim_drop
                         )
                         # Remove all the claimed drops
                         campaigns[i].clear_drops()
                         break
         return campaigns
 
-    def claim_drop(self, drop):
+    def claim_drop(self, drop: Drop):
+        if drop.drop_instance_id is None:
+            logger.debug(f"Unable to claim drop '{drop.id}', no instance id'")
+            return False
         logger.info(
             f"Claim {drop}", extra={"emoji": ":package:", "event": Events.DROP_CLAIM}
         )
-
-        json_data = copy.deepcopy(GQLOperations.DropsPage_ClaimDropRewards)
-        json_data["variables"] = {
-            "input": {"dropInstanceID": drop.drop_instance_id}}
-        response = self.post_gql_request(json_data)
         try:
-            # response["data"]["claimDropRewards"] can be null and respose["data"]["errors"] != []
-            # or response["data"]["claimDropRewards"]["status"] === DROP_INSTANCE_ALREADY_CLAIMED
-            if ("claimDropRewards" in response["data"]) and (
-                response["data"]["claimDropRewards"] is None
-            ):
-                return False
-            elif ("errors" in response["data"]) and (response["data"]["errors"] != []):
-                return False
-            elif ("claimDropRewards" in response["data"]) and (
-                response["data"]["claimDropRewards"]["status"]
-                in ["ELIGIBLE_FOR_ALL", "DROP_INSTANCE_ALREADY_CLAIMED"]
-            ):
-                return True
-            else:
-                return False
-        except (ValueError, KeyError):
+            response = self.gql.claim_drop_rewards(drop.drop_instance_id)
+        except RetryError:
+            logger.exception(
+                f"Error while trying to claim drop with id '{drop.drop_instance_id}'"
+            )
             return False
+        if response.status is None:
+            return False
+        if response.errors is not None and len(response.errors) > 0:
+            logger.error(
+                f"Errors while trying to claim drop with id '{drop.drop_instance_id}': {response.errors}"
+            )
+            return False
+        if response.status in ["ELIGIBLE_FOR_ALL", "DROP_INSTANCE_ALREADY_CLAIMED"]:
+            return True
+        return False
 
     def claim_all_drops_from_inventory(self):
         inventory = self.__get_inventory()
-        if inventory not in [None, {}]:
-            if inventory["dropCampaignsInProgress"] not in [None, {}]:
-                for campaign in inventory["dropCampaignsInProgress"]:
-                    for drop_dict in campaign["timeBasedDrops"]:
-                        drop = Drop(drop_dict)
-                        drop.update(drop_dict["self"])
-                        if drop.is_claimable is True:
+        if inventory is not None:
+            if inventory.campaigns is not None:
+                for campaign in inventory.campaigns:
+                    for time_based_drop in campaign.time_based_drops:
+                        drop = Drop(time_based_drop)
+                        drop.update(time_based_drop.self_edge)
+                        if drop.is_claimable:
                             drop.is_claimed = self.claim_drop(drop)
                             time.sleep(random.uniform(5, 10))
 
@@ -1003,42 +923,45 @@ class Twitch(object):
                             )
                         )
 
-            except (ValueError, KeyError, requests.exceptions.ConnectionError) as e:
+            except (
+                ValueError,
+                KeyError,
+                requests.exceptions.ConnectionError,
+                RetryError,
+            ) as e:
                 logger.error(f"Error while syncing inventory: {e}")
                 campaigns = []
                 self.__check_connection_handler(chunk_size)
 
             self.__chuncked_sleep(60, chunk_size=chunk_size)
 
-    def contribute_to_community_goals(self, streamer):
+    def contribute_to_community_goals(self, streamer: Streamer):
         # Don't bother doing the request if no goal is currently started or in stock
         if any(
             goal.status == "STARTED" and goal.is_in_stock
             for goal in streamer.community_goals.values()
         ):
-            json_data = copy.deepcopy(GQLOperations.UserPointsContribution)
-            json_data["variables"] = {"channelLogin": streamer.username}
-            response = self.post_gql_request(json_data)
-            user_goal_contributions = response["data"]["user"]["channel"]["self"][
-                "communityPoints"
-            ]["goalContributions"]
-
+            try:
+                response = self.gql.get_user_points_contribution(streamer.username)
+            except RetryError:
+                logger.exception("Error while trying to get user points contribution")
+                return
+            user_goal_contributions = response.goal_contributions
             logger.debug(
-                f"Found {len(user_goal_contributions)} community goals for the current stream"
+                f"Found {len(user_goal_contributions)} community goals for {streamer.username}'s current stream"
             )
-
             for goal_contribution in user_goal_contributions:
-                goal_id = goal_contribution["goal"]["id"]
+                goal_id = goal_contribution.id
                 goal = streamer.community_goals[goal_id]
                 if goal is None:
                     # TODO should this trigger a new load context request
                     logger.error(
-                        f"Unable to find context data for community goal {goal_id}"
+                        f"Unable to find context data for {streamer.username}'s community goal {goal_id}"
                     )
                 else:
-                    user_stream_contribution = goal_contribution[
-                        "userPointsContributedThisStream"
-                    ]
+                    user_stream_contribution = (
+                        goal_contribution.user_points_contributed_this_stream
+                    )
                     user_left_to_contribute = (
                         goal.per_stream_user_maximum_contribution
                         - user_stream_contribution
@@ -1057,24 +980,21 @@ class Twitch(object):
                             f"Not contributing to community goal {goal.title}, user channel points {streamer.channel_points}, user stream contribution {user_stream_contribution}, all users total contribution {goal.points_contributed}"
                         )
 
-    def contribute_to_community_goal(self, streamer, goal_id, title, amount):
-        json_data = copy.deepcopy(
-            GQLOperations.ContributeCommunityPointsCommunityGoal)
-        json_data["variables"] = {
-            "input": {
-                "amount": amount,
-                "channelID": streamer.channel_id,
-                "goalID": goal_id,
-                "transactionID": token_hex(16),
-            }
-        }
-
-        response = self.post_gql_request(json_data)
-
-        error = response["data"]["contributeCommunityPointsCommunityGoal"]["error"]
-        if error:
+    def contribute_to_community_goal(
+        self, streamer: Streamer, goal_id: str, title: str, amount: int
+    ):
+        try:
+            response = self.gql.contribute_to_community_goal(
+                streamer.channel_id, goal_id, amount
+            )
+        except RetryError:
+            logger.exception(
+                f"Error while contributing to channel {streamer.username}'s community goal '{title}', amount {amount}",
+            )
+            return
+        if response.error is not None:
             logger.error(
-                f"Unable to contribute channel points to community goal '{title}', reason '{error}'"
+                f"Unable to contribute channel points to {streamer.username}'s community goal '{title}', reason '{response.error}'"
             )
         else:
             logger.info(

@@ -9,6 +9,7 @@ from TwitchChannelPointsMiner.classes.Chat import ChatPresence, ThreadChat
 from TwitchChannelPointsMiner.classes.entities.Bet import BetSettings, DelayMode
 from TwitchChannelPointsMiner.classes.entities.Stream import Stream
 from TwitchChannelPointsMiner.classes.Settings import Events, Settings
+from TwitchChannelPointsMiner.classes.gql import Properties
 from TwitchChannelPointsMiner.constants import URL
 from TwitchChannelPointsMiner.utils import _millify
 
@@ -81,7 +82,7 @@ class Streamer(object):
         "community_goals",
         "minute_watched_requests",
         "viewer_is_mod",
-        "activeMultipliers",
+        "active_multipliers",
         "irc_chat",
         "stream",
         "raid",
@@ -102,7 +103,7 @@ class Streamer(object):
         self.community_goals = {}
         self.minute_watched_requests = None
         self.viewer_is_mod = False
-        self.activeMultipliers = None
+        self.active_multipliers: list[Properties.Multiplier] | None = None
         self.irc_chat = None
 
         self.stream = Stream()
@@ -185,17 +186,17 @@ class Streamer(object):
         )
 
     def viewer_has_points_multiplier(self):
-        return self.activeMultipliers is not None and len(self.activeMultipliers) > 0
+        return self.active_multipliers is not None and len(self.active_multipliers) > 0
 
     def total_points_multiplier(self):
         return (
             sum(
                 map(
                     lambda x: x["factor"],
-                    self.activeMultipliers,
+                    self.active_multipliers,
                 ),
             )
-            if self.activeMultipliers is not None
+            if self.active_multipliers is not None
             else 0
         )
 

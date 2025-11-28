@@ -1,3 +1,6 @@
+from TwitchChannelPointsMiner.classes.gql.data.response import ChannelPointsContext
+
+
 class CommunityGoal(object):
     __slots__ = [
         "goal_id",
@@ -6,18 +9,18 @@ class CommunityGoal(object):
         "points_contributed",
         "amount_needed",
         "per_stream_user_maximum_contribution",
-        "status"
+        "status",
     ]
 
     def __init__(
-            self,
-            goal_id,
-            title,
-            is_in_stock,
-            points_contributed,
-            amount_needed,
-            per_stream_user_maximum_contribution,
-            status
+        self,
+        goal_id,
+        title,
+        is_in_stock,
+        points_contributed,
+        amount_needed,
+        per_stream_user_maximum_contribution,
+        status,
     ):
         self.goal_id = goal_id
         self.title = title
@@ -40,15 +43,15 @@ class CommunityGoal(object):
         return self.amount_needed - self.points_contributed
 
     @classmethod
-    def from_gql(cls, gql_goal):
+    def from_gql(cls, gql_goal: ChannelPointsContext.CommunityGoal):
         return cls(
-            gql_goal["id"],
-            gql_goal["title"],
-            gql_goal["isInStock"],
-            gql_goal["pointsContributed"],
-            gql_goal["amountNeeded"],
-            gql_goal["perStreamUserMaximumContribution"],
-            gql_goal["status"]
+            gql_goal.id,
+            gql_goal.title,
+            gql_goal.is_in_stock,
+            gql_goal.points_contributed,
+            gql_goal.amount_needed,
+            gql_goal.per_stream_user_maximum_contribution,
+            gql_goal.status,
         )
 
     @classmethod
@@ -60,5 +63,5 @@ class CommunityGoal(object):
             pubsub_goal["points_contributed"],
             pubsub_goal["goal_amount"],
             pubsub_goal["per_stream_maximum_user_contribution"],
-            pubsub_goal["status"]
+            pubsub_goal["status"],
         )

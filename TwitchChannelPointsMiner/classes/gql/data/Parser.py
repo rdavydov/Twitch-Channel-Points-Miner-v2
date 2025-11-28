@@ -552,6 +552,8 @@ def drop_campaign_details_parser(value: Any) -> Drops.DropCampaignDetails:
         status=parse_expected_value(value, "status", expect_str),
         game=parse_expected_value(value, "game", drops_game_details_parser),
         allow_channel_ids=allow_channel_ids,
+        start_at=parse_expected_value(value, "startAt", expect_iso_8601),
+        end_at=parse_expected_value(value, "endAt", expect_iso_8601),
         time_based_drops=parse_expected_value(
             value, "timeBasedDrops", list_parser(time_based_drop_details_parser)
         ),

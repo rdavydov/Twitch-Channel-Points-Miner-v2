@@ -87,6 +87,8 @@ class DropCampaignDetails:
         status: str,
         game: GameDetails,
         allow_channel_ids: list[str] | None,
+        start_at: datetime,
+        end_at: datetime,
         time_based_drops: list[TimeBasedDropDetails],
     ):
         self.id = _id
@@ -94,6 +96,8 @@ class DropCampaignDetails:
         self.status = status
         self.game = game
         self.allow_channel_ids = allow_channel_ids
+        self.start_at = start_at
+        self.end_at = end_at
         self.time_based_drops = time_based_drops
 
     def __repr__(self):
