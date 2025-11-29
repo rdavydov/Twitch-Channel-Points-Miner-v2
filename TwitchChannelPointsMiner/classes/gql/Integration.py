@@ -188,7 +188,7 @@ class GQL:
         self.attempt_strategy = (
             attempt_strategy
             if attempt_strategy is not None
-            else AttemptStrategy(attempts=1, attempt_interval_seconds=3)
+            else AttemptStrategy(attempts=3, attempt_interval_seconds=1)
         )
         """Strategy for handling failed requests."""
         self.parser = parser
@@ -232,8 +232,8 @@ class GQL:
         result: SuccessResult[T] | ErrorResult, operation_name: str
     ) -> T:
         if isinstance(result, ErrorResult):
-            logger.error(
-                f"Unable to make {operation_name} request after {result.attempts} attempts. Errors: {result.errors}"
+            logger.debug(
+                f"Unable to make {operation_name} request after {result.attempts} attempts."
             )
             raise RetryError(operation_name, result.errors)
         else:
