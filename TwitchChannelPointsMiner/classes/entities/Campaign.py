@@ -1,15 +1,13 @@
 from datetime import datetime
+from typing import Callable
 
-from TwitchChannelPointsMiner.classes.entities.Drop import Drop
 from TwitchChannelPointsMiner.classes.Settings import Settings
+from TwitchChannelPointsMiner.classes.entities.Drop import Drop
+from TwitchChannelPointsMiner.classes.gql.data.response.Drops import (
+    TimeBasedDropInProgress,
+    DropCampaignDetails,
+)
 
-def parse_datetime(datetime_str):
-    for fmt in ("%Y-%m-%dT%H:%M:%S.%fZ", "%Y-%m-%dT%H:%M:%SZ"):
-        try:
-            return datetime.strptime(datetime_str, fmt)
-        except ValueError:
-            continue
-    raise ValueError(f"time data '{datetime_str}' does not match format")
 
 class Campaign(object):
     __slots__ = [
@@ -25,30 +23,26 @@ class Campaign(object):
         "channels",
     ]
 
-    def __init__(self, dict):
-        self.id = dict["id"]
-        self.game = dict["game"]
-        self.name = dict["name"]
-        self.status = dict["status"]
+    def __init__(self, data: DropCampaignDetails):
+        self.id = data.id
+        self.game = data.game
+        self.name = data.name
+        self.status = data.status
         self.channels = (
-            []
-            if dict["allow"]["channels"] is None
-            else list(map(lambda x: x["id"], dict["allow"]["channels"]))
+            data.allow_channel_ids if data.allow_channel_ids is not None else []
         )
-        self.in_inventory = False
-
-        self.end_at = parse_datetime(dict["endAt"])
-        self.start_at = parse_datetime(dict["startAt"])
+        self.end_at = data.end_at
+        self.start_at = data.start_at
         self.dt_match = self.start_at < datetime.now() < self.end_at
-
-        self.drops = list(map(lambda x: Drop(x), dict["timeBasedDrops"]))
+        self.in_inventory = False
+        self.drops = [Drop(drop) for drop in data.time_based_drops]
 
     def __repr__(self):
         return f"Campaign(id={self.id}, name={self.name}, game={self.game}, in_inventory={self.in_inventory})"
 
     def __str__(self):
         return (
-            f"{self.name}, Game: {self.game['displayName']} - Drops: {len(self.drops)} pcs. - In inventory: {self.in_inventory}"
+            f"{self.name}, Game: {self.game.display_name} - Drops: {len(self.drops)} pcs. - In inventory: {self.in_inventory}"
             if Settings.logger.less
             else self.__repr__()
         )
@@ -64,7 +58,9 @@ class Campaign(object):
         else:
             return False
 
-    def sync_drops(self, drops, callback):
+    def sync_drops(
+        self, drops: list[TimeBasedDropInProgress], callback: Callable[[Drop], bool]
+    ):
         # Iterate all the drops from inventory
         for drop in drops:
             # Iterate all the drops from out campaigns array
@@ -72,10 +68,10 @@ class Campaign(object):
             # [currentMinutesWatched, hasPreconditionsMet, dropInstanceID, isClaimed]
             for i in range(len(self.drops)):
                 current_id = self.drops[i].id
-                if drop["id"] == current_id:
-                    self.drops[i].update(drop["self"])
+                if drop.id == current_id:
+                    self.drops[i].update(drop.self_edge)
                     # If after update we all conditions are meet we can claim the drop
-                    if self.drops[i].is_claimable is True:
+                    if self.drops[i].is_claimable:
                         claimed = callback(self.drops[i])
                         self.drops[i].is_claimed = claimed
                     break
