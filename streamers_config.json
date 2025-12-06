@@ -1,0 +1,39 @@
+{
+  "streamers": [
+    {
+      "username": "donk1437",
+      "settings": {
+        "make_predictions": false,
+        "follow_raid": true,
+        "claim_drops": true,
+        "watch_streak": true,
+        "community_goals": true,
+        "bet": {
+          "strategy": "SMART",
+          "percentage": 5,
+          "stealth_mode": true,
+          "percentage_gap": 20,
+          "max_points": 1000,
+          "delay_mode": "FROM_END",
+          "delay": 6,
+          "minimum_points": 20000,
+          "filter_condition": {
+            "by": "TOTAL_USERS",
+            "where": "LTE",
+            "value": 800
+          }
+        }
+      }
+    }
+  ],
+  "global_settings": {
+    "default_bet_percentage": 5,
+    "default_max_points": 1000,
+    "default_make_predictions": false,
+    "default_strategy": "SMART"
+  },
+  "metadata": {
+    "created_by": "migrate_to_json.py",
+    "total_streamers": 1
+  }
+}
