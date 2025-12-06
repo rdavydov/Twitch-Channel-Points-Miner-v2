@@ -17,16 +17,17 @@ try:
     from dotenv import load_dotenv
 
     load_dotenv()
-    print("✅ Environment variables loaded from .env")
+    print("Environment variables loaded from .env")
 except ImportError:
-    print("⚠️ python-dotenv not installed, using default values")
+    print("python-dotenv not installed, using default values")
 
-TWITCH_USERNAME = os.getenv("TWITCH_USERNAME", "arsene144")
-TWITCH_PASSWORD = os.getenv("TWITCH_PASSWORD", "write-your-secure-psw")
-TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "8180467830:AAHKkivatT_oWSElQW0ofSjfVkhSxhRbhAg")
-TELEGRAM_CHAT_ID = int(os.getenv("TELEGRAM_CHAT_ID", "1294936940"))
+TWITCH_USERNAME = os.getenv("TWITCH_USERNAME")
+TWITCH_PASSWORD = os.getenv("TWITCH_PASSWORD")
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+TELEGRAM_CHAT_ID = int(os.getenv("TELEGRAM_CHAT_ID"))
 ANALYTICS_HOST = os.getenv("ANALYTICS_HOST", "127.0.0.1")
 ANALYTICS_PORT = int(os.getenv("ANALYTICS_PORT", "5000"))
+
 
 twitch_miner = TwitchChannelPointsMiner(
     username=TWITCH_USERNAME,
@@ -85,7 +86,7 @@ def start_telegram_bot(miner_instance):
     bot_thread.name = "Telegram Bot Thread"
     bot_thread.start()
 
-    logging.info("🤖 Telegram management bot started!")
+    logging.info("Telegram management bot started!")
     return bot
 
 
@@ -94,14 +95,14 @@ def main():
     print("""
 ╔═══════════════════════════════════════════════════════════════╗
 ║                                                               ║
-║   🎮 Twitch Channel Points Miner - Dynamic Edition 🤖        ║
+║   \U0001F3AE Twitch Channel Points Miner - Dynamic Edition \U0001F916        ║
 ║                                                               ║
-║   ✨ Features:                                                ║
+║   \u2728 Features:                                                ║
 ║   • Dynamic streamer management via Telegram                 ║
 ║   • Modify settings without restart                          ║
 ║   • Configuration stored in JSON                             ║
 ║                                                               ║
-║   📱 Available Telegram commands:                            ║
+║   \U0001F4CB Available Telegram commands:                            ║
 ║   • /start - Show help                                       ║
 ║   • /add <username> - Add a streamer                         ║
 ║   • /remove <username> - Remove a streamer                   ║
@@ -112,19 +113,19 @@ def main():
 ╚═══════════════════════════════════════════════════════════════╝
     """)
 
-    print("📂 Loading configuration from streamers_config.json...")
+    print("Loading configuration from streamers_config.json...")
     streamers = load_streamers_from_config()
 
     if not streamers:
-        print("⚠️ No streamers loaded! Check your configuration file.")
-        print("💡 A default file has been created. Edit it and restart the script.")
+        print("No streamers loaded! Check your configuration file.")
+        print("A default file has been created. Edit it and restart the script.")
         return
 
-    print(f"✅ {len(streamers)} streamers loaded successfully!\n")
+    print(f"{len(streamers)} streamers loaded successfully!\n")
 
     telegram_bot = start_telegram_bot(twitch_miner)
 
-    print("🚀 Starting mining...\n")
+    print("Starting mining...\n")
     print("=" * 60)
 
     twitch_miner.mine(

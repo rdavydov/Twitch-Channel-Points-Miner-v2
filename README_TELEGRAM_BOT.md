@@ -1,110 +1,110 @@
-# 🤖 Twitch Channel Points Miner - Bot Telegram de Gestion Dynamique
+# 🤖 Twitch Channel Points Miner - Telegram Bot for Dynamic Management
 
-## 📋 Vue d'ensemble
+## 📋 Overview
 
-Ce système vous permet de **gérer vos streamers et paramètres via Telegram SANS redémarrer le programme**. Fini les modifications manuelles dans le code !
+This system allows you to **manage your streamers and settings via Telegram WITHOUT restarting the program**. No more manual code modifications!
 
 ---
 
 ## 🚀 Installation
 
-### 1️⃣ Installer les dépendances Python
+### 1️⃣ Install Python Dependencies
 
 ```bash
-pip install python-telegram-bot
+pip install python-telegram-bot python-dotenv
 ```
 
-### 2️⃣ Structure des fichiers
+### 2️⃣ File Structure
 
-Placez ces nouveaux fichiers dans le même dossier que votre `main.py` :
+Place these new files in the same folder as your `main.py`:
 
 ```
-votre-projet/
-├── main.py (votre ancien fichier)
-├── main_dynamic.py (nouveau - à utiliser)
-├── TelegramBot.py (nouveau)
-├── config_loader.py (nouveau)
-├── streamers_config.json (nouveau - sera créé automatiquement)
-└── TwitchChannelPointsMiner/ (dossier existant)
+your-project/
+├── main.py (your old file)
+├── main_dynamic.py (new - use this)
+├── TelegramBot.py (new)
+├── config_loader.py (new)
+├── streamers_config.json (new - auto-created)
+└── TwitchChannelPointsMiner/ (existing folder)
 ```
 
-### 3️⃣ Configuration initiale
+### 3️⃣ Initial Configuration
 
-1. **Éditez `main_dynamic.py`** :
-   - Remplacez `"write-your-secure-psw"` par votre vrai mot de passe Twitch
-   - Vérifiez que votre token Telegram et chat_id sont corrects
+1. **Edit `main_dynamic.py`**:
+   - Replace `"write-your-secure-psw"` with your real Twitch password
+   - Verify your Telegram token and chat_id are correct
 
-2. **Créez votre fichier de configuration** :
-   - Copiez le contenu de `streamers_config.json` fourni
-   - Modifiez la liste des streamers selon vos besoins
-   - Sauvegardez le fichier dans le dossier du projet
+2. **Create your configuration file**:
+   - Copy the provided `streamers_config.json` content
+   - Modify the streamer list according to your needs
+   - Save the file in the project folder
 
 ---
 
-## 🎮 Utilisation
+## 🎮 Usage
 
-### Démarrer le miner
+### Start the Miner
 
 ```bash
 python main_dynamic.py
 ```
 
-Le programme va :
-1. ✅ Charger les streamers depuis `streamers_config.json`
-2. ✅ Démarrer le bot Telegram
-3. ✅ Lancer le mining normalement
+The program will:
+1. ✅ Load streamers from `streamers_config.json`
+2. ✅ Start the Telegram bot
+3. ✅ Launch mining normally
 
-### Commandes Telegram disponibles
+### Available Telegram Commands
 
-#### 📋 Gestion des streamers
+#### 📋 Streamer Management
 
-| Commande | Description | Exemple |
-|----------|-------------|---------|
-| `/start` ou `/help` | Afficher l'aide complète | `/start` |
-| `/add <username>` | Ajouter un nouveau streamer | `/add ninja` |
-| `/remove <username>` | Retirer un streamer | `/remove ninja` |
-| `/list` | Voir tous les streamers configurés | `/list` |
-| `/status` | Statut en temps réel (online/offline) | `/status` |
+| Command | Description | Example |
+|---------|-------------|---------|
+| `/start` or `/help` | Show complete help | `/start` |
+| `/add <username>` | Add a new streamer | `/add ninja` |
+| `/remove <username>` | Remove a streamer | `/remove ninja` |
+| `/list` | View all configured streamers | `/list` |
+| `/status` | Real-time status (online/offline) | `/status` |
 
-#### ⚙️ Modification des paramètres
+#### ⚙️ Settings Modification
 
-| Commande | Description | Exemple |
-|----------|-------------|---------|
-| `/set_bet <username> <percentage>` | Modifier le % de bet | `/set_bet suns1de999 10` |
-| `/set_max_points <username> <points>` | Modifier le max de points à bet | `/set_max_points ohnepixel 5000` |
-| `/enable_predictions <username>` | Activer les prédictions | `/enable_predictions dorozea` |
-| `/disable_predictions <username>` | Désactiver les prédictions | `/disable_predictions dorozea` |
+| Command | Description | Example |
+|---------|-------------|---------|
+| `/set_bet <username> <percentage>` | Modify bet % | `/set_bet suns1de999 10` |
+| `/set_max_points <username> <points>` | Modify max points to bet | `/set_max_points ohnepixel 5000` |
+| `/enable_predictions <username>` | Enable predictions | `/enable_predictions dorozea` |
+| `/disable_predictions <username>` | Disable predictions | `/disable_predictions dorozea` |
 
-#### 📊 Informations
+#### 📊 Information
 
-| Commande | Description |
-|----------|-------------|
-| `/stats` | Statistiques globales (points totaux, uptime, etc.) |
+| Command | Description |
+|---------|-------------|
+| `/stats` | Global statistics (total points, uptime, etc.) |
 
 ---
 
-## 🔄 Comment ça marche ?
+## 🔄 How It Works
 
 ### Architecture
 
 ```
 ┌─────────────────────┐
 │  Telegram App       │
-│  (Vous)             │
+│  (You)              │
 └──────────┬──────────┘
-           │ Commandes
+           │ Commands
            ▼
 ┌─────────────────────┐
 │  TelegramBot.py     │
-│  (Bot de gestion)   │
+│  (Management Bot)   │
 └──────────┬──────────┘
-           │ Modifie
+           │ Modifies
            ▼
 ┌─────────────────────┐
 │ streamers_config.json│
 │ (Configuration)     │
 └──────────┬──────────┘
-           │ Lu par
+           │ Read by
            ▼
 ┌─────────────────────┐
 │  main_dynamic.py    │
@@ -114,22 +114,22 @@ Le programme va :
 
 ### Workflow
 
-1. **Vous envoyez une commande** sur Telegram (ex: `/add ninja`)
-2. **Le bot modifie** `streamers_config.json`
-3. **La configuration est sauvegardée** immédiatement
-4. ⚠️ **Note actuelle** : Le miner doit être redémarré pour appliquer les changements (pour l'instant)
+1. **You send a command** on Telegram (e.g. `/add ninja`)
+2. **The bot modifies** `streamers_config.json`
+3. **Configuration is saved** immediately
+4. ⚠️ **Current note**: Miner must be restarted to apply changes (for now)
 
 ---
 
-## 📝 Format du fichier de configuration
+## 📝 Configuration File Format
 
-### Structure JSON
+### JSON Structure
 
 ```json
 {
   "streamers": [
     {
-      "username": "nom_du_streamer",
+      "username": "streamer_name",
       "settings": {
         "make_predictions": false,
         "follow_raid": true,
@@ -162,123 +162,123 @@ Le programme va :
 }
 ```
 
-### Valeurs possibles
+### Possible Values
 
-#### Strategies de bet
-- `"SMART"` - Stratégie intelligente (recommandé)
-- `"PERCENTAGE"` - Pourcentage fixe
-- `"SMART_MONEY"` - Suivre les gros parieurs
-- `"HIGH_ODDS"` - Parier sur les cotes élevées
-- `"MOST_VOTED"` - Suivre la majorité
+#### Bet Strategies
+- `"SMART"` - Smart strategy (recommended)
+- `"PERCENTAGE"` - Fixed percentage
+- `"SMART_MONEY"` - Follow big bettors
+- `"HIGH_ODDS"` - Bet on high odds
+- `"MOST_VOTED"` - Follow majority
 
-#### Delay modes
-- `"FROM_START"` - Délai depuis le début
-- `"FROM_END"` - Délai avant la fin (recommandé)
-- `"PERCENTAGE"` - Pourcentage du temps
+#### Delay Modes
+- `"FROM_START"` - Delay from start
+- `"FROM_END"` - Delay before end (recommended)
+- `"PERCENTAGE"` - Percentage of time
 
-#### Filter conditions
+#### Filter Conditions
 - `by`: `"TOTAL_USERS"`, `"TOTAL_POINTS"`, `"ODDS"`, etc.
 - `where`: `"LTE"` (≤), `"GTE"` (≥), `"LT"` (<), `"GT"` (>)
 
 ---
 
-## 🔧 Personnalisation avancée
+## 🔧 Advanced Customization
 
-### Ajouter vos propres commandes
+### Add Your Own Commands
 
-Éditez `TelegramBot.py` et ajoutez votre fonction :
+Edit `TelegramBot.py` and add your function:
 
 ```python
-async def cmd_ma_commande(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Ma commande personnalisée"""
+async def cmd_my_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """My custom command"""
     await update.message.reply_text("Hello!")
 
-# Dans start(), ajoutez :
-app.add_handler(CommandHandler("ma_commande", self.cmd_ma_commande))
+# In start(), add:
+app.add_handler(CommandHandler("my_command", self.cmd_my_command))
 ```
 
-### Modifier les paramètres par défaut
+### Modify Default Settings
 
-Éditez la section `global_settings` dans `streamers_config.json`.
-
----
-
-## ⚠️ Limitations actuelles
-
-### 🔴 Rechargement à chaud non implémenté
-
-Pour l'instant, les modifications via Telegram sont **sauvegardées dans le JSON** mais nécessitent un **redémarrage du miner** pour être appliquées.
-
-### 🟢 Ce qui fonctionne
-- ✅ Ajout/suppression de streamers dans la config
-- ✅ Modification des paramètres dans la config
-- ✅ Affichage du statut en temps réel
-- ✅ Statistiques
-
-### 🟡 Prochaines améliorations
-- 🔄 Rechargement à chaud sans redémarrage
-- 📊 Graphiques de statistiques
-- 🔔 Alertes personnalisées
-- 💾 Backup automatique de la config
+Edit the `global_settings` section in `streamers_config.json`.
 
 ---
 
-## 🆘 Dépannage
+## ⚠️ Current Limitations
 
-### Le bot ne répond pas
-- Vérifiez que le token Telegram est correct
-- Vérifiez que le bot est bien lancé (voir les logs)
-- Essayez `/start` pour vérifier la connexion
+### 🔴 Hot-reload Not Implemented
 
-### Les streamers ne se chargent pas
-- Vérifiez le format du fichier JSON
-- Regardez les logs pour les erreurs
-- Vérifiez les noms d'utilisateur (pas de majuscules inutiles)
+For now, Telegram modifications are **saved in JSON** but require **miner restart** to be applied.
 
-### Erreur de connexion Twitch
-- Vérifiez votre username et password
-- Vérifiez votre connexion Internet
-- Attendez quelques minutes (rate limiting)
+### 🟢 What Works
+- ✅ Add/remove streamers in config
+- ✅ Modify settings in config
+- ✅ Real-time status display
+- ✅ Statistics
+
+### 🟡 Future Improvements
+- 🔄 Hot-reload without restart
+- 📊 Statistics graphs
+- 🔔 Custom alerts
+- 💾 Automatic config backup
 
 ---
 
-## 📚 Ressources
+## 🆘 Troubleshooting
 
-- [Documentation Twitch API](https://dev.twitch.tv/)
+### Bot Not Responding
+- Check Telegram token is correct
+- Check bot is running (see logs)
+- Try `/start` to verify connection
+
+### Streamers Not Loading
+- Check JSON file format
+- Look at logs for errors
+- Verify usernames (no unnecessary capitals)
+
+### Twitch Connection Error
+- Check your username and password
+- Check your internet connection
+- Wait a few minutes (rate limiting)
+
+---
+
+## 📚 Resources
+
+- [Twitch API Documentation](https://dev.twitch.tv/)
 - [python-telegram-bot Docs](https://docs.python-telegram-bot.org/)
-- [Repo original du miner](https://github.com/rdavydov/Twitch-Channel-Points-Miner-v2)
+- [Original Miner Repo](https://github.com/rdavydov/Twitch-Channel-Points-Miner-v2)
 
 ---
 
-## 🎯 Migration depuis l'ancien main.py
+## 🎯 Migration from Old main.py
 
-Si vous avez déjà une liste de streamers dans votre `main.py`, vous pouvez :
+If you already have a streamer list in your `main.py`, you can:
 
-1. Utiliser le script `config_loader.py` pour exporter :
+1. Use the `config_loader.py` script to export:
    ```python
    from config_loader import export_current_config_to_json
-   export_current_config_to_json(vos_streamers)
+   export_current_config_to_json(your_streamers)
    ```
 
-2. Ou créer manuellement le JSON en copiant vos streamers
+2. Or create the JSON manually by copying your streamers
 
 ---
 
-## 💡 Conseils
+## 💡 Tips
 
-1. **Faites un backup** de votre `main.py` original
-2. **Testez d'abord** avec 2-3 streamers
-3. **Surveillez les logs** la première fois
-4. **Utilisez `/status`** régulièrement pour vérifier
-5. **Gardez `streamers_config.json`** sous contrôle de version (git)
+1. **Backup** your original `main.py`
+2. **Test first** with 2-3 streamers
+3. **Watch the logs** the first time
+4. **Use `/status`** regularly to check
+5. **Keep `streamers_config.json`** under version control (git)
 
 ---
 
 ## 🤝 Support
 
-Si vous rencontrez des problèmes :
-1. Vérifiez les logs du programme
-2. Vérifiez le format du JSON
-3. Testez les commandes Telegram une par une
+If you encounter problems:
+1. Check program logs
+2. Verify JSON format
+3. Test Telegram commands one by one
 
-Bon farming ! 🎮💰
+Happy farming! 🎮💰
