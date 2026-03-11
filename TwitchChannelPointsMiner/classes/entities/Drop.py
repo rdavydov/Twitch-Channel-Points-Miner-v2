@@ -17,6 +17,7 @@ class Drop(object):
         "name",
         "benefit",
         "minutes_required",
+        "requires_subscription",
         "has_preconditions_met",
         "current_minutes_watched",
         "drop_instance_id",
@@ -36,6 +37,7 @@ class Drop(object):
             list(set([bf["benefit"]["name"] for bf in dict["benefitEdges"]]))
         )
         self.minutes_required = dict["requiredMinutesWatched"]
+        self.requires_subscription = self.__parse_requires_subscription(dict)
 
         self.has_preconditions_met = None  # [True, False], None we don't know
         self.current_minutes_watched = 0
@@ -53,15 +55,14 @@ class Drop(object):
         self,
         progress,
     ):
-        self.has_preconditions_met = progress["hasPreconditionsMet"]
+        self.has_preconditions_met = progress.get("hasPreconditionsMet")
 
-        updated_percentage = percentage(
-            progress["currentMinutesWatched"], self.minutes_required
-        )
+        current_minutes = progress.get("currentMinutesWatched", 0)
+        updated_percentage = percentage(current_minutes, self.minutes_required)
         quarter = round((updated_percentage / 25), 4).is_integer()
         self.is_printable = (
             # The new currentMinutesWatched are GT than previous
-            progress["currentMinutesWatched"] > self.current_minutes_watched
+            current_minutes > self.current_minutes_watched
             and (
                 # The drop is printable when we have a new updated values and:
                 #  - also the percentage It's different and  quarter is True (self.current_minutes_watched != 0 for skip boostrap phase)
@@ -72,22 +73,44 @@ class Drop(object):
                     and self.current_minutes_watched != 0
                 )
                 or (
-                    progress["currentMinutesWatched"] == 1
+                    current_minutes == 1
                     and self.current_minutes_watched == 0
                 )
             )
         )
 
-        self.current_minutes_watched = progress["currentMinutesWatched"]
-        self.drop_instance_id = progress["dropInstanceID"]
-        self.is_claimed = progress["isClaimed"]
+        self.current_minutes_watched = current_minutes
+        self.drop_instance_id = progress.get("dropInstanceID")
+        self.is_claimed = progress.get("isClaimed", False)
         self.is_claimable = (
             self.is_claimed is False and self.drop_instance_id is not None
         )
         self.percentage_progress = updated_percentage
 
+    @staticmethod
+    def __parse_requires_subscription(drop_dict):
+        entitlement_limit = drop_dict.get("entitlementLimit")
+        if entitlement_limit:
+            if isinstance(entitlement_limit, dict):
+                limit_type = entitlement_limit.get("limit") or entitlement_limit.get("type")
+                if isinstance(limit_type, str) and "SUB" in limit_type.upper():
+                    return True
+            elif isinstance(entitlement_limit, str) and "SUB" in entitlement_limit.upper():
+                return True
+
+        # Fallback heuristics based on benefit name
+        for edge in drop_dict.get("benefitEdges", []):
+            if not isinstance(edge, dict):
+                continue
+            benefit = edge.get("benefit") if isinstance(edge.get("benefit"), dict) else {}
+            benefit_type = benefit.get("type") or benefit.get("name") or ""
+            if isinstance(benefit_type, str) and "SUB" in benefit_type.upper():
+                return True
+
+        return bool(drop_dict.get("isSubscriptionOnly") or drop_dict.get("subscriberOnly"))
+
     def __repr__(self):
-        return f"Drop(id={self.id}, name={self.name}, benefit={self.benefit}, minutes_required={self.minutes_required}, has_preconditions_met={self.has_preconditions_met}, current_minutes_watched={self.current_minutes_watched}, percentage_progress={self.percentage_progress}%, drop_instance_id={self.drop_instance_id}, is_claimed={self.is_claimed})"
+        return f"Drop(id={self.id}, name={self.name}, benefit={self.benefit}, minutes_required={self.minutes_required}, requires_subscription={self.requires_subscription}, has_preconditions_met={self.has_preconditions_met}, current_minutes_watched={self.current_minutes_watched}, percentage_progress={self.percentage_progress}%, drop_instance_id={self.drop_instance_id}, is_claimed={self.is_claimed})"
 
     def __str__(self):
         return (

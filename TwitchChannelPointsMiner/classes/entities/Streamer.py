@@ -22,6 +22,8 @@ class StreamerSettings(object):
         "claim_drops",
         "claim_moments",
         "watch_streak",
+        "favorite",
+        "points_limit",
         "community_goals",
         "bet",
         "chat",
@@ -34,6 +36,8 @@ class StreamerSettings(object):
         claim_drops: bool = None,
         claim_moments: bool = None,
         watch_streak: bool = None,
+        favorite: bool = None,
+        points_limit: int | None = None,
         community_goals: bool = None,
         bet: BetSettings = None,
         chat: ChatPresence = None,
@@ -43,6 +47,8 @@ class StreamerSettings(object):
         self.claim_drops = claim_drops
         self.claim_moments = claim_moments
         self.watch_streak = watch_streak
+        self.favorite = favorite
+        self.points_limit = points_limit
         self.community_goals = community_goals
         self.bet = bet
         self.chat = chat
@@ -57,6 +63,8 @@ class StreamerSettings(object):
         ]:
             if getattr(self, name) is None:
                 setattr(self, name, True)
+        if self.favorite is None:
+            self.favorite = False
         if self.community_goals is None:
             self.community_goals = False
         if self.bet is None:
@@ -65,7 +73,7 @@ class StreamerSettings(object):
             self.chat = ChatPresence.ONLINE
 
     def __repr__(self):
-        return f"BetSettings(make_predictions={self.make_predictions}, follow_raid={self.follow_raid}, claim_drops={self.claim_drops}, claim_moments={self.claim_moments}, watch_streak={self.watch_streak}, community_goals={self.community_goals}, bet={self.bet}, chat={self.chat})"
+        return f"BetSettings(make_predictions={self.make_predictions}, follow_raid={self.follow_raid}, claim_drops={self.claim_drops}, claim_moments={self.claim_moments}, watch_streak={self.watch_streak}, favorite={self.favorite}, points_limit={self.points_limit}, community_goals={self.community_goals}, bet={self.bet}, chat={self.chat})"
 
 
 class Streamer(object):
@@ -77,17 +85,24 @@ class Streamer(object):
         "stream_up",
         "online_at",
         "offline_at",
+        "channel_points_enabled",
+        "chat_banned",
         "channel_points",
         "community_goals",
         "minute_watched_requests",
         "viewer_is_mod",
         "activeMultipliers",
+        "subscription_tier",
+        "channel_points_context_at",
         "irc_chat",
         "stream",
         "raid",
         "history",
         "streamer_url",
         "mutex",
+        "watch_streak_cache",
+        "watch_streak_cache_path",
+        "watch_streak_account",
     ]
 
     def __init__(self, username, settings=None):
@@ -98,11 +113,15 @@ class Streamer(object):
         self.stream_up = 0
         self.online_at = 0
         self.offline_at = 0
+        self.channel_points_enabled = True
+        self.chat_banned = False
         self.channel_points = 0
         self.community_goals = {}
         self.minute_watched_requests = None
         self.viewer_is_mod = False
         self.activeMultipliers = None
+        self.subscription_tier = None
+        self.channel_points_context_at = 0.0
         self.irc_chat = None
 
         self.stream = Stream()
@@ -113,6 +132,9 @@ class Streamer(object):
         self.streamer_url = f"{URL}/{self.username}"
 
         self.mutex = Lock()
+        self.watch_streak_cache = None
+        self.watch_streak_cache_path = ""
+        self.watch_streak_account = None
 
     def __repr__(self):
         return f"Streamer(username={self.username}, channel_id={self.channel_id}, channel_points={_millify(self.channel_points)})"
@@ -125,35 +147,96 @@ class Streamer(object):
         )
 
     def set_offline(self):
+        now = time.time()
+        state_changed = False
         if self.is_online is True:
-            self.offline_at = time.time()
+            self.offline_at = now
             self.is_online = False
+            state_changed = True
+        elif self.offline_at == 0:
+            self.offline_at = now
+            state_changed = True
+
+        if self.watch_streak_cache is not None and self.watch_streak_account:
+            if self.offline_at:
+                self.watch_streak_cache.record_offline(
+                    self.username,
+                    self.offline_at,
+                    account_name=self.watch_streak_account,
+                )
+            for session in self.watch_streak_cache.pending_sessions(
+                account_name=self.watch_streak_account
+            ):
+                if session.streamer_login == self.username:
+                    self.watch_streak_cache.mark_ended(
+                        self.username,
+                        session.broadcast_id,
+                        ended_at=self.offline_at,
+                        account_name=self.watch_streak_account,
+                    )
+            self.watch_streak_cache.set_streamer_status(
+                self.username,
+                watch_streak_detected=False,
+                is_online=False,
+                last_stream_started_at=getattr(self.stream, "created_at", None),
+                broadcast_id=None,
+                checked_at=self.offline_at,
+                account_name=self.watch_streak_account,
+            )
 
         self.toggle_chat()
 
-        logger.info(
-            f"{self} is Offline!",
-            extra={
-                "emoji": ":sleeping:",
-                "event": Events.STREAMER_OFFLINE,
-            },
-        )
+        if state_changed:
+            logger.info(
+                f"{self} is Offline!",
+                extra={
+                    "emoji": ":sleeping:",
+                    "event": Events.STREAMER_OFFLINE,
+                },
+            )
 
     def set_online(self):
+        state_changed = False
         if self.is_online is False:
             self.online_at = time.time()
             self.is_online = True
-            self.stream.init_watch_streak()
+            state_changed = True
+            if self.stream.broadcast_id in [None, ""]:
+                self.stream.init_watch_streak()
+            if (
+                self.watch_streak_cache is not None
+                and self.watch_streak_account
+                and self.stream.broadcast_id
+            ):
+                self.watch_streak_cache.record_online(
+                    self.username,
+                    self.stream.broadcast_id,
+                    self.online_at,
+                    account_name=self.watch_streak_account,
+                )
+                self.watch_streak_cache.set_streamer_status(
+                    self.username,
+                    watch_streak_detected=(
+                        self.settings.watch_streak is True
+                        and self.stream.watch_streak_missing is False
+                    ),
+                    is_online=True,
+                    last_stream_started_at=getattr(self.stream, "created_at", None),
+                    broadcast_id=self.stream.broadcast_id,
+                    checked_at=self.online_at,
+                    account_name=self.watch_streak_account,
+                )
 
         self.toggle_chat()
 
-        logger.info(
-            f"{self} is Online!",
-            extra={
-                "emoji": ":partying_face:",
-                "event": Events.STREAMER_ONLINE,
-            },
-        )
+        if state_changed:
+            logger.info(
+                f"{self} is Online!",
+                extra={
+                    "emoji": ":partying_face:",
+                    "event": Events.STREAMER_ONLINE,
+                },
+            )
 
     def print_history(self):
         return "; ".join(
@@ -170,7 +253,36 @@ class Streamer(object):
         self.history[reason_code]["counter"] += counter
         self.history[reason_code]["amount"] += earned
 
-        if reason_code == "WATCH_STREAK":
+        if reason_code == "WATCH":
+            self.stream.watch_count = max(
+                0, int(getattr(self.stream, "watch_count", 0)) + int(counter or 0)
+            )
+
+        if reason_code is not None and "WATCH_STREAK" in str(reason_code):
+            self.stream.watch_streak_missing = False
+            if self.watch_streak_cache is not None:
+                self.watch_streak_cache.mark_claimed(
+                    self.username,
+                    broadcast_id=self.stream.broadcast_id,
+                    now=time.time(),
+                    account_name=self.watch_streak_account,
+                )
+                self.watch_streak_cache.set_streamer_status(
+                    self.username,
+                    watch_streak_detected=True,
+                    is_online=bool(self.is_online),
+                    last_stream_started_at=getattr(self.stream, "created_at", None),
+                    broadcast_id=self.stream.broadcast_id,
+                    checked_at=time.time(),
+                    account_name=self.watch_streak_account,
+                )
+                if self.watch_streak_cache_path:
+                    self.watch_streak_cache.save_to_disk_if_dirty(
+                        self.watch_streak_cache_path
+                    )
+        elif self.stream.watch_streak_missing and self.stream.watch_count >= 2:
+            # In practice, two WATCH rewards is a reliable proxy that streak
+            # progress for the current stream has already been counted.
             self.stream.watch_streak_missing = False
 
     def stream_up_elapsed(self):
@@ -180,8 +292,8 @@ class Streamer(object):
         return (
             self.settings.claim_drops is True
             and self.is_online is True
-            # and self.stream.drops_tags is True
             and self.stream.campaigns_ids != []
+            and self.has_farmable_drops()
         )
 
     def viewer_has_points_multiplier(self):
@@ -198,6 +310,23 @@ class Streamer(object):
             if self.activeMultipliers is not None
             else 0
         )
+
+    def has_farmable_drops(self):
+        campaigns = getattr(self.stream, "campaigns", []) or []
+        # If we have campaign ids but haven't synced details yet, assume there may be farmable drops.
+        if not campaigns and self.stream.campaigns_ids:
+            return True
+        if not campaigns:
+            return False
+        is_subscribed = self.subscription_tier is not None
+        for campaign in campaigns:
+            for drop in getattr(campaign, "drops", []) or []:
+                if drop.is_claimed or drop.dt_match is False:
+                    continue
+                if drop.requires_subscription and not is_subscribed:
+                    continue
+                return True
+        return False
 
     def get_prediction_window(self, prediction_window_seconds):
         delay_mode = self.settings.bet.delay_mode
@@ -270,7 +399,7 @@ class Streamer(object):
             self.irc_chat = ThreadChat(
                 self.irc_chat.username,
                 self.irc_chat.token,
-                self.username,
+                self,
             )
 
     def __join_chat(self):

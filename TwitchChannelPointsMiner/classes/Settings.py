@@ -4,6 +4,7 @@ from enum import Enum, auto
 class Priority(Enum):
     ORDER = auto()
     STREAK = auto()
+    FAVORITE = auto()
     DROPS = auto()
     SUBSCRIBED = auto()
     POINTS_ASCENDING = auto()
@@ -27,6 +28,7 @@ class Settings(object):
 class Events(Enum):
     STREAMER_ONLINE = auto()
     STREAMER_OFFLINE = auto()
+    SUBSCRIPTION = auto()
     GAIN_FOR_RAID = auto()
     GAIN_FOR_CLAIM = auto()
     GAIN_FOR_WATCH = auto()

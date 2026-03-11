@@ -31,6 +31,9 @@ class TwitchWebSocket(WebSocketApp):
 
         self.last_message_timestamp = None
         self.last_message_type_channel = None
+        # Map LISTEN nonces to topics so RESPONSE errors (e.g. ERR_BADTOPIC)
+        # can be tied back to the original subscription request.
+        self.listen_nonces = {}
 
         self.last_pong = time.time()
         self.last_ping = time.time()
@@ -44,6 +47,7 @@ class TwitchWebSocket(WebSocketApp):
         if topic.is_user_topic() and auth_token is not None:
             data["auth_token"] = auth_token
         nonce = create_nonce()
+        self.listen_nonces[nonce] = topic
         self.send({"type": "LISTEN", "nonce": nonce, "data": data})
 
     def ping(self):
@@ -55,7 +59,9 @@ class TwitchWebSocket(WebSocketApp):
             request_str = json.dumps(request, separators=(",", ":"))
             logger.debug(f"#{self.index} - Send: {request_str}")
             super().send(request_str)
-        except WebSocketConnectionClosedException:
+        except (WebSocketConnectionClosedException, OSError, RuntimeError):
+            # Network/socket errors can happen during reconnect windows; mark this
+            # socket as closed so pool health checks can reconnect it.
             self.is_closed = True
 
     def elapsed_last_pong(self):

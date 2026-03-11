@@ -23,6 +23,8 @@ class Stream(object):
         "payload",
         "watch_streak_missing",
         "minute_watched",
+        "watch_count",
+        "created_at",
         "__last_update",
         "__minute_watched_timestamp",
     ]
@@ -44,13 +46,28 @@ class Stream(object):
         self.spade_url = None
         self.payload = None
 
+        self.created_at = None
+
         self.init_watch_streak()
 
     def encode_payload(self) -> dict:
         json_event = json.dumps(self.payload, separators=(",", ":"))
         return {"data": (b64encode(json_event.encode("utf-8"))).decode("utf-8")}
 
-    def update(self, broadcast_id, title, game, tags, viewers_count):
+    def update(
+        self,
+        broadcast_id,
+        title,
+        game,
+        tags,
+        viewers_count,
+        created_at=None,
+    ):
+        if self.broadcast_id not in [None, broadcast_id]:
+            # New broadcast started while stream is still online.
+            self.init_watch_streak()
+            self.created_at = None
+
         self.broadcast_id = broadcast_id
         self.title = title.strip()
         self.game = game
@@ -58,6 +75,8 @@ class Stream(object):
         self.tags = tags or []
         # ------------------------
         self.viewers_count = viewers_count
+        if created_at is not None:
+            self.created_at = created_at
 
         self.drops_tags = (
             DROP_ID in [tag["id"] for tag in self.tags] and self.game != {}
@@ -97,6 +116,7 @@ class Stream(object):
     def init_watch_streak(self):
         self.watch_streak_missing = True
         self.minute_watched = 0
+        self.watch_count = 0
         self.__minute_watched_timestamp = 0
 
     def update_minute_watched(self):

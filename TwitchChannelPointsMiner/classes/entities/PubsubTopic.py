@@ -11,6 +11,10 @@ class PubsubTopic(object):
 
     def __str__(self):
         if self.is_user_topic():
+            if self.user_id is None:
+                raise ValueError(f"Missing user_id for topic {self.topic}")
             return f"{self.topic}.{self.user_id}"
         else:
+            if self.streamer is None or getattr(self.streamer, "channel_id", None) is None:
+                raise ValueError(f"Missing streamer channel_id for topic {self.topic}")
             return f"{self.topic}.{self.streamer.channel_id}"

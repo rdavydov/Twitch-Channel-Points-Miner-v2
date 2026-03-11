@@ -1,136 +1,249 @@
 # -*- coding: utf-8 -*-
+"""
+Copy this file to `run.py` and edit the values below.
+
+Most users only need to change:
+- `USERNAME`
+- `PASSWORD`
+- `STREAMERS`
+- `FOLLOWERS_ENABLED`
+- optionally `PRIORITY_ORDER`
+
+This example is intentionally biased toward a safe first run:
+- optional notifications stay disabled
+- `PASSWORD = None` prompts at startup instead of storing it in the file
+- fork-specific streak and export settings are still shown, but kept grouped
+"""
 
 import logging
-from colorama import Fore
 from TwitchChannelPointsMiner import TwitchChannelPointsMiner
-from TwitchChannelPointsMiner.logger import LoggerSettings, ColorPalette
 from TwitchChannelPointsMiner.classes.Chat import ChatPresence
-from TwitchChannelPointsMiner.classes.Discord import Discord
-from TwitchChannelPointsMiner.classes.Webhook import Webhook
-from TwitchChannelPointsMiner.classes.Telegram import Telegram
-from TwitchChannelPointsMiner.classes.Matrix import Matrix
-from TwitchChannelPointsMiner.classes.Pushover import Pushover
-from TwitchChannelPointsMiner.classes.Gotify import Gotify
-from TwitchChannelPointsMiner.classes.Settings import Priority, Events, FollowersOrder
-from TwitchChannelPointsMiner.classes.entities.Bet import Strategy, BetSettings, Condition, OutcomeKeys, FilterCondition, DelayMode
-from TwitchChannelPointsMiner.classes.entities.Streamer import Streamer, StreamerSettings
+from TwitchChannelPointsMiner.classes.Settings import FollowersOrder, Priority
+from TwitchChannelPointsMiner.classes.entities.Bet import (
+    BetSettings,
+    Condition,
+    DelayMode,
+    FilterCondition,
+    OutcomeKeys,
+    Strategy,
+)
+from TwitchChannelPointsMiner.classes.entities.Streamer import (
+    Streamer,
+    StreamerSettings,
+)
+from TwitchChannelPointsMiner.logger import ColorPalette, LoggerSettings
 
-twitch_miner = TwitchChannelPointsMiner(
-    username="your-twitch-username",
-    password="write-your-secure-psw",           # If no password will be provided, the script will ask interactively
-    claim_drops_startup=False,                  # If you want to auto claim all drops from Twitch inventory on the startup
-    priority=[                                  # Custom priority in this case for example:
-        Priority.STREAK,                        # - We want first of all to catch all watch streak from all streamers
-        Priority.DROPS,                         # - When we don't have anymore watch streak to catch, wait until all drops are collected over the streamers
-        Priority.ORDER                          # - When we have all of the drops claimed and no watch-streak available, use the order priority (POINTS_ASCENDING, POINTS_DESCENDING)
-    ],
-    enable_analytics=False,                     # Disables Analytics if False. Disabling it significantly reduces memory consumption
-    disable_ssl_cert_verification=False,        # Set to True at your own risk and only to fix SSL: CERTIFICATE_VERIFY_FAILED error
-    disable_at_in_nickname=False,               # Set to True if you want to check for your nickname mentions in the chat even without @ sign
-    logger_settings=LoggerSettings(
-        save=True,                              # If you want to save logs in a file (suggested)
-        console_level=logging.INFO,             # Level of logs - use logging.DEBUG for more info
-        console_username=False,                 # Adds a username to every console log line if True. Also adds it to Telegram, Discord, etc. Useful when you have several accounts
-        auto_clear=True,                        # Create a file rotation handler with interval = 1D and backupCount = 7 if True (default)
-        time_zone="",                           # Set a specific time zone for console and file loggers. Use tz database names. Example: "America/Denver"
-        file_level=logging.DEBUG,               # Level of logs - If you think the log file it's too big, use logging.INFO
-        emoji=True,                             # On Windows, we have a problem printing emoji. Set to false if you have a problem
-        less=False,                             # If you think that the logs are too verbose, set this to True
-        colored=True,                           # If you want to print colored text
-        color_palette=ColorPalette(             # You can also create a custom palette color (for the common message).
-            STREAMER_online="GREEN",            # Don't worry about lower/upper case. The script will parse all the values.
-            streamer_offline="red",             # Read more in README.md
-            BET_wiN=Fore.MAGENTA                # Color allowed are: [BLACK, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE, RESET].
+# ---------------------------------------------------------------------------
+# 1. Account
+# ---------------------------------------------------------------------------
+USERNAME = "your-twitch-username"
+PASSWORD = None  # None = prompt at startup instead of storing your password here
+
+# ---------------------------------------------------------------------------
+# 2. What the miner should watch
+# ---------------------------------------------------------------------------
+# Set this to True if you want the miner to download your followed channels too.
+FOLLOWERS_ENABLED = False
+FOLLOWERS_ORDER = FollowersOrder.ASC  # ASC = oldest follows first, DESC = newest first
+
+# Quickest possible setup:
+# STREAMERS = ["your_main_streamer"]
+#
+# You can also mix plain usernames and Streamer(...) objects.
+# Use StreamerSettings(...) only when one channel needs special behavior.
+STREAMERS = [
+    "your_main_streamer",
+    # Favorite channel: only matters if Priority.FAVORITE is enabled below.
+    Streamer(
+        "favorite_streamer",
+        settings=StreamerSettings(
+            favorite=True,
+            watch_streak=True,
         ),
-        telegram=Telegram(                                                          # You can omit or set to None if you don't want to receive updates on Telegram
-            chat_id=123456789,                                                      # Chat ID to send messages @getmyid_bot
-            token="123456789:shfuihreuifheuifhiu34578347",                          # Telegram API token @BotFather
-            events=[Events.STREAMER_ONLINE, Events.STREAMER_OFFLINE,
-                    Events.BET_LOSE, Events.CHAT_MENTION],                          # Only these events will be sent to the chat
-            disable_notification=True,                                              # Revoke the notification (sound/vibration)
-        ),
-        discord=Discord(
-            webhook_api="https://discord.com/api/webhooks/0123456789/0a1B2c3D4e5F6g7H8i9J",  # Discord Webhook URL
-            events=[Events.STREAMER_ONLINE, Events.STREAMER_OFFLINE,
-                    Events.BET_LOSE, Events.CHAT_MENTION],                                  # Only these events will be sent to the chat
-        ),
-        webhook=Webhook(
-            endpoint="https://example.com/webhook",                                                                    # Webhook URL
-            method="GET",                                                                   # GET or POST
-            events=[Events.STREAMER_ONLINE, Events.STREAMER_OFFLINE,
-                    Events.BET_LOSE, Events.CHAT_MENTION],                                  # Only these events will be sent to the endpoint
-        ),
-        matrix=Matrix(
-            username="twitch_miner",                                                   # Matrix username (without homeserver)
-            password="...",                                                            # Matrix password
-            homeserver="matrix.org",                                                   # Matrix homeserver
-            room_id="...",                                                             # Room ID
-            events=[Events.STREAMER_ONLINE, Events.STREAMER_OFFLINE, Events.BET_LOSE], # Only these events will be sent
-        ),
-        pushover=Pushover(
-            userkey="YOUR-ACCOUNT-TOKEN",                                             # Login to https://pushover.net/, the user token is on the main page
-            token="YOUR-APPLICATION-TOKEN",                                           # Create a application on the website, and use the token shown in your application
-            priority=0,                                                               # Read more about priority here: https://pushover.net/api#priority
-            sound="pushover",                                                         # A list of sounds can be found here: https://pushover.net/api#sounds
-            events=[Events.CHAT_MENTION, Events.DROP_CLAIM],                          # Only these events will be sent
-        ),
-        gotify=Gotify(
-            endpoint="https://example.com/message?token=TOKEN",
-            priority=8,
-            events=[Events.STREAMER_ONLINE, Events.STREAMER_OFFLINE,
-                    Events.BET_LOSE, Events.CHAT_MENTION], 
-        )
     ),
-    streamer_settings=StreamerSettings(
-        make_predictions=True,                  # If you want to Bet / Make prediction
-        follow_raid=True,                       # Follow raid to obtain more points
-        claim_drops=True,                       # We can't filter rewards base on stream. Set to False for skip viewing counter increase and you will never obtain a drop reward from this script. Issue #21
-        claim_moments=True,                     # If set to True, https://help.twitch.tv/s/article/moments will be claimed when available
-        watch_streak=True,                      # If a streamer go online change the priority of streamers array and catch the watch screak. Issue #11
-        community_goals=False,                  # If True, contributes the max channel points per stream to the streamers' community challenge goals
-        chat=ChatPresence.ONLINE,               # Join irc chat to increase watch-time [ALWAYS, NEVER, ONLINE, OFFLINE]
-        bet=BetSettings(
-            strategy=Strategy.SMART,            # Choose you strategy!
-            percentage=5,                       # Place the x% of your channel points
-            percentage_gap=20,                  # Gap difference between outcomesA and outcomesB (for SMART strategy)
-            max_points=50000,                   # If the x percentage of your channel points is gt bet_max_points set this value
-            stealth_mode=True,                  # If the calculated amount of channel points is GT the highest bet, place the highest value minus 1-2 points Issue #33
-            delay_mode=DelayMode.FROM_END,      # When placing a bet, we will wait until `delay` seconds before the end of the timer
-            delay=6,
-            minimum_points=20000,               # Place the bet only if we have at least 20k points. Issue #113
-            filter_condition=FilterCondition(
-                by=OutcomeKeys.TOTAL_USERS,     # Where apply the filter. Allowed [PERCENTAGE_USERS, ODDS_PERCENTAGE, ODDS, TOP_POINTS, TOTAL_USERS, TOTAL_POINTS]
-                where=Condition.LTE,            # 'by' must be [GT, LT, GTE, LTE] than value
-                value=800
-            )
-        )
-    )
+]
+
+# Optional per-streamer examples you can copy into STREAMERS:
+#
+# Streamer(
+#     "streak_streamer",
+#     settings=StreamerSettings(watch_streak=True),
+# )
+#
+# Streamer(
+#     "quiet_streamer",
+#     settings=StreamerSettings(
+#         chat=ChatPresence.NEVER,
+#         claim_drops=False,
+#     ),
+# )
+#
+# Streamer(
+#     "high_cap_streamer",
+#     settings=StreamerSettings(
+#         points_limit=150000,  # Override the global limit for just this channel
+#     ),
+# )
+#
+# Streamer(
+#     "prediction_streamer",
+#     settings=StreamerSettings(
+#         follow_raid=False,
+#         watch_streak=False,
+#         bet=BetSettings(
+#             strategy=Strategy.HIGH_ODDS,
+#             percentage=7,
+#             max_points=2500,
+#             minimum_points=5000,
+#             stealth_mode=True,
+#             delay_mode=DelayMode.FROM_END,
+#             delay=6,
+#             filter_condition=FilterCondition(
+#                 by=OutcomeKeys.PERCENTAGE_USERS,
+#                 where=Condition.GTE,
+#                 value=300,
+#             ),
+#         ),
+#     ),
+# )
+
+# ---------------------------------------------------------------------------
+# 3. Channel priority and streak behavior
+# ---------------------------------------------------------------------------
+# Twitch only awards points on up to 2 streams at the same time.
+# The priority list decides which channels win when more are live.
+PRIORITY_ORDER = [
+    Priority.STREAK,    # Try to catch watch streaks first
+    Priority.FAVORITE,  # Then prefer channels with favorite=True
+    Priority.DROPS,     # Then finish active drops
+    Priority.ORDER,     # Then follow the order from STREAMERS above
+]
+
+WATCH_STREAK_MAX_PARALLEL = 2
+WATCH_STREAK_OFFLINE_WAIT_SECONDS = 30 * 60  # 0 = more aggressive checking
+
+# ---------------------------------------------------------------------------
+# 4. Logging
+# ---------------------------------------------------------------------------
+LOGGER_SETTINGS = LoggerSettings(
+    save=True,                   # Write logs to logs/
+    console_level=logging.INFO,  # Change to logging.DEBUG when troubleshooting
+    file_level=logging.DEBUG,    # Keep file logs detailed
+    console_username=False,      # True can help if you run multiple accounts
+    auto_clear=True,             # Rotate logs daily and keep the last 7 files
+    less=False,                  # True = quieter console
+    colored=True,
+    color_palette=ColorPalette(
+        STREAMER_ONLINE="GREEN",
+        STREAMER_OFFLINE="RED",
+        BET_WIN="MAGENTA",
+    ),
 )
 
-# You can customize the settings for each streamer. If not settings were provided, the script would use the streamer_settings from TwitchChannelPointsMiner.
-# If no streamer_settings are provided in TwitchChannelPointsMiner the script will use default settings.
-# The streamers array can be a String -> username or Streamer instance.
+# ---------------------------------------------------------------------------
+# 5. Default behavior for all channels
+# ---------------------------------------------------------------------------
+# These defaults apply to every streamer unless that streamer overrides them.
+# `points_limit` skips channels that already have at least that many points.
+# Set it to `None` to disable the limit. Pending watch streaks still bypass it.
+DEFAULT_STREAMER_SETTINGS = StreamerSettings(
+    make_predictions=True,
+    follow_raid=True,
+    claim_drops=True,
+    claim_moments=True,
+    watch_streak=True,
+    points_limit=None,
+    community_goals=False,
+    chat=ChatPresence.ONLINE,
+    bet=BetSettings(
+        strategy=Strategy.SMART,
+        percentage=5,
+        percentage_gap=20,
+        max_points=50000,
+        minimum_points=20000,
+        stealth_mode=True,
+        delay_mode=DelayMode.FROM_END,
+        delay=6,
+        filter_condition=FilterCondition(
+            by=OutcomeKeys.TOTAL_USERS,
+            where=Condition.LTE,
+            value=800,
+        ),
+    ),
+)
 
-# The settings priority are: settings in mine function, settings in TwitchChannelPointsMiner instance, default settings.
-# For example, if in the mine function you don't provide any value for 'make_prediction' but you have set it on TwitchChannelPointsMiner instance, the script will take the value from here.
-# If you haven't set any value even in the instance the default one will be used
+# ---------------------------------------------------------------------------
+# 6. Miner startup
+# ---------------------------------------------------------------------------
+CLAIM_DROPS_ON_STARTUP = False
+ENABLE_ANALYTICS = False
+DISABLE_SSL_CERT_VERIFICATION = False
+MATCH_MENTIONS_WITHOUT_AT = False
 
-#twitch_miner.analytics(host="127.0.0.1", port=5000, refresh=5, days_ago=7)   # Start the Analytics web-server
+twitch_miner = TwitchChannelPointsMiner(
+    username=USERNAME,
+    password=PASSWORD,
+    claim_drops_startup=CLAIM_DROPS_ON_STARTUP,
+    priority=PRIORITY_ORDER,
+    enable_analytics=ENABLE_ANALYTICS,
+    disable_ssl_cert_verification=DISABLE_SSL_CERT_VERIFICATION,
+    disable_at_in_nickname=MATCH_MENTIONS_WITHOUT_AT,
+    watch_streak_max_parallel=WATCH_STREAK_MAX_PARALLEL,
+    watch_streak_min_offline_seconds=WATCH_STREAK_OFFLINE_WAIT_SECONDS,
+    logger_settings=LOGGER_SETTINGS,
+    streamer_settings=DEFAULT_STREAMER_SETTINGS,
+)
+
+# Useful files written under logs/:
+# - report_YYYY-MM-DD_<account>.xlsx
+# - watch_streak_cache.<account>.json
+# - daily_points_baseline.<account>.json
+#
+# Optional notifications:
+# Keep these disabled until you have real credentials. Matrix logs in during
+# startup, and webhook-style integrations will try to send requests when events happen.
+#
+# Example imports if you want to enable them:
+# from TwitchChannelPointsMiner.classes.Discord import Discord
+# from TwitchChannelPointsMiner.classes.Gotify import Gotify
+# from TwitchChannelPointsMiner.classes.Matrix import Matrix
+# from TwitchChannelPointsMiner.classes.Pushover import Pushover
+# from TwitchChannelPointsMiner.classes.Settings import Events
+# from TwitchChannelPointsMiner.classes.Telegram import Telegram
+# from TwitchChannelPointsMiner.classes.Webhook import Webhook
+#
+# Example events list:
+# [
+#     Events.STREAMER_ONLINE,
+#     Events.STREAMER_OFFLINE,
+#     Events.SUBSCRIPTION,
+#     Events.BET_LOSE,
+#     Events.CHAT_MENTION,
+# ]
+#
+# Minimal Discord example:
+# LOGGER_SETTINGS = LoggerSettings(
+#     ...,
+#     discord=Discord(
+#         webhook_api="https://discord.com/api/webhooks/...",
+#         events=[Events.SUBSCRIPTION],
+#     ),
+# )
+#
+# `Events.SUBSCRIPTION` comes from Twitch IRC `USERNOTICE` messages, so the
+# streamer's chat setting must not be `ChatPresence.NEVER`.
+# It is self-only: it alerts when your account gets a sub/resub/subgift/upgrade,
+# and ignores other viewers' subscription events.
+
+# Settings priority is:
+# 1. Settings passed directly in mine(...)
+# 2. Settings passed to TwitchChannelPointsMiner(...)
+# 3. Default settings
+
+# twitch_miner.analytics(host="127.0.0.1", port=5000, refresh=5, days_ago=7)
 
 twitch_miner.mine(
-    [
-        Streamer("streamer-username01", settings=StreamerSettings(make_predictions=True  , follow_raid=False , claim_drops=True  , watch_streak=True , community_goals=False , bet=BetSettings(strategy=Strategy.SMART      , percentage=5 , stealth_mode=True,  percentage_gap=20 , max_points=234   , filter_condition=FilterCondition(by=OutcomeKeys.TOTAL_USERS,      where=Condition.LTE, value=800 ) ) )),
-        Streamer("streamer-username02", settings=StreamerSettings(make_predictions=False , follow_raid=True  , claim_drops=False ,                                             bet=BetSettings(strategy=Strategy.PERCENTAGE , percentage=5 , stealth_mode=False, percentage_gap=20 , max_points=1234  , filter_condition=FilterCondition(by=OutcomeKeys.TOTAL_POINTS,     where=Condition.GTE, value=250 ) ) )),
-        Streamer("streamer-username03", settings=StreamerSettings(make_predictions=True  , follow_raid=False ,                     watch_streak=True , community_goals=True  , bet=BetSettings(strategy=Strategy.SMART      , percentage=5 , stealth_mode=False, percentage_gap=30 , max_points=50000 , filter_condition=FilterCondition(by=OutcomeKeys.ODDS,             where=Condition.LT,  value=300 ) ) )),
-        Streamer("streamer-username04", settings=StreamerSettings(make_predictions=False , follow_raid=True  ,                     watch_streak=True ,                                                                                                                                                                                                                                                       )),
-        Streamer("streamer-username05", settings=StreamerSettings(make_predictions=True  , follow_raid=True  , claim_drops=True ,  watch_streak=True , community_goals=True  , bet=BetSettings(strategy=Strategy.HIGH_ODDS  , percentage=7 , stealth_mode=True,  percentage_gap=20 , max_points=90    , filter_condition=FilterCondition(by=OutcomeKeys.PERCENTAGE_USERS, where=Condition.GTE, value=300 ) ) )),
-        Streamer("streamer-username06"),
-        Streamer("streamer-username07"),
-        Streamer("streamer-username08"),
-        "streamer-username09",
-        "streamer-username10",
-        "streamer-username11"
-    ],                                  # Array of streamers (order = priority)
-    followers=False,                    # Automatic download the list of your followers
-    followers_order=FollowersOrder.ASC  # Sort the followers list by follow date. ASC or DESC
+    STREAMERS,
+    followers=FOLLOWERS_ENABLED,
+    followers_order=FOLLOWERS_ORDER,
 )

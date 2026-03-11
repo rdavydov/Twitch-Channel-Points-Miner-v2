@@ -48,6 +48,16 @@ class WebSocketsPool:
         self.__submit(-1, topic)
 
     def __submit(self, index, topic):
+        try:
+            str(topic)
+        except Exception as exc:
+            logger.warning(
+                "Skipping invalid PubSub topic '%s' (%s)",
+                getattr(topic, "topic", topic.__class__.__name__),
+                exc,
+            )
+            return
+
         # Topic in topics should never happen. Anyway prevent any types of duplicates
         if topic not in self.ws[index].topics:
             self.ws[index].topics.append(topic)
@@ -91,10 +101,26 @@ class WebSocketsPool:
             self.ws[index].close()
 
     @staticmethod
+    def _log_ws_throttled(ws, level, key, message, *args, ttl=60):
+        cache = getattr(ws, "_last_ws_log", None)
+        if cache is None:
+            cache = {}
+            setattr(ws, "_last_ws_log", cache)
+        now = time.time()
+        last_logged = cache.get(key, 0)
+        if now - last_logged >= ttl:
+            logger.log(level, message, *args)
+            cache[key] = now
+
+    @staticmethod
     def on_open(ws):
         def run():
             ws.is_opened = True
-            ws.ping()
+            try:
+                ws.ping()
+            except Exception:
+                WebSocketsPool.handle_reconnection(ws)
+                return
 
             for topic in ws.pending_topics:
                 ws.listen(topic, ws.twitch.twitch_login.get_auth_token())
@@ -103,7 +129,11 @@ class WebSocketsPool:
                 # Else: the ws is currently in reconnecting phase, you can't do ping or other operation.
                 # Probably this ws will be closed very soon with ws.is_closed = True
                 if ws.is_reconnecting is False:
-                    ws.ping()  # We need ping for keep the connection alive
+                    try:
+                        ws.ping()  # We need ping for keep the connection alive
+                    except Exception:
+                        WebSocketsPool.handle_reconnection(ws)
+                        return
                     time.sleep(random.uniform(25, 30))
 
                     if ws.elapsed_last_pong() > 5:
@@ -120,7 +150,29 @@ class WebSocketsPool:
     def on_error(ws, error):
         # Connection lost | [WinError 10054] An existing connection was forcibly closed by the remote host
         # Connection already closed | Connection is already closed (raise WebSocketConnectionClosedException)
-        logger.error(f"#{ws.index} - WebSocket error: {error}")
+        error_message = str(error)
+        normalized = error_message.lower()
+        transient_patterns = (
+            "ping pong failed",
+            "connection is already closed",
+            "broken pipe",
+            "bad file descriptor",
+            "timed out",
+            "ssl",
+        )
+        is_transient = any(pattern in normalized for pattern in transient_patterns)
+        level = logging.WARNING if is_transient else logging.ERROR
+        ttl = 120 if is_transient else 30
+        key = ("on_error", "transient" if is_transient else error_message)
+        WebSocketsPool._log_ws_throttled(
+            ws,
+            level,
+            key,
+            "#%s - WebSocket error: %s",
+            ws.index,
+            error_message,
+            ttl=ttl,
+        )
 
     @staticmethod
     def on_close(ws, close_status_code, close_reason):
@@ -425,26 +477,60 @@ class WebSocketsPool:
                         exc_info=True,
                     )
 
-        elif response["type"] == "RESPONSE" and len(response.get("error", "")) > 0:
-            # raise RuntimeError(f"Error while trying to listen for a topic: {response}")
+        elif response["type"] == "RESPONSE":
+            nonce = response.get("nonce")
+            topic = None
+            if nonce and hasattr(ws, "listen_nonces"):
+                topic = ws.listen_nonces.pop(nonce, None)
+
             error_message = response.get("error", "")
-            logger.error(f"Error while trying to listen for a topic: {error_message}")
-            
-            # Check if the error message indicates an authentication issue (ERR_BADAUTH)
-            if "ERR_BADAUTH" in error_message:
-                # Inform the user about the potential outdated cookie file
-                username = ws.twitch.twitch_login.username
-                logger.error(f"Received the ERR_BADAUTH error, most likely you have an outdated cookie file \"cookies\\{username}.pkl\". Delete this file and try again.")
-                # Attempt to delete the outdated cookie file
-                # try:
-                #     cookie_file_path = os.path.join("cookies", f"{username}.pkl")
-                #     if os.path.exists(cookie_file_path):
-                #         os.remove(cookie_file_path)
-                #         logger.info(f"Deleted outdated cookie file for user: {username}")
-                #     else:
-                #         logger.warning(f"Cookie file not found for user: {username}")
-                # except Exception as e:
-                #     logger.error(f"Error occurred while deleting cookie file: {str(e)}")
+            if len(error_message) > 0:
+                if "ERR_BADTOPIC" in error_message:
+                    if topic is not None:
+                        if topic in ws.topics:
+                            ws.topics.remove(topic)
+                        if topic in ws.pending_topics:
+                            ws.pending_topics.remove(topic)
+                        try:
+                            topic_label = str(topic)
+                        except Exception:
+                            topic_label = getattr(topic, "topic", "<unknown-topic>")
+                        logger.warning(
+                            "#%s - Dropping invalid PubSub topic after ERR_BADTOPIC: %s",
+                            ws.index,
+                            topic_label,
+                        )
+                    else:
+                        logger.warning(
+                            "#%s - Received ERR_BADTOPIC but no matching LISTEN nonce was found",
+                            ws.index,
+                        )
+                    return
+
+                # raise RuntimeError(f"Error while trying to listen for a topic: {response}")
+                logger.error(
+                    "Error while trying to listen for a topic: %s",
+                    error_message,
+                )
+
+                # Check if the error message indicates an authentication issue (ERR_BADAUTH)
+                if "ERR_BADAUTH" in error_message:
+                    # Inform the user about the potential outdated cookie file
+                    username = ws.twitch.twitch_login.username
+                    logger.error(
+                        'Received the ERR_BADAUTH error, most likely you have an outdated cookie file "cookies\\%s.pkl". Delete this file and try again.',
+                        username,
+                    )
+                    # Attempt to delete the outdated cookie file
+                    # try:
+                    #     cookie_file_path = os.path.join("cookies", f"{username}.pkl")
+                    #     if os.path.exists(cookie_file_path):
+                    #         os.remove(cookie_file_path)
+                    #         logger.info(f"Deleted outdated cookie file for user: {username}")
+                    #     else:
+                    #         logger.warning(f"Cookie file not found for user: {username}")
+                    # except Exception as e:
+                    #     logger.error(f"Error occurred while deleting cookie file: {str(e)}")
 
         elif response["type"] == "RECONNECT":
             logger.info(f"#{ws.index} - Reconnection required")

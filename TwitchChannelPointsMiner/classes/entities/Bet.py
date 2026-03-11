@@ -262,8 +262,8 @@ class Bet(object):
                 else key.replace("decision", "total")
             )
             if key in [OutcomeKeys.TOTAL_USERS, OutcomeKeys.TOTAL_POINTS]:
-                compared_value = (
-                    self.outcomes[0][fixed_key] + self.outcomes[1][fixed_key]
+                compared_value = sum(
+                    outcome[fixed_key] for outcome in self.outcomes
                 )
             else:
                 #outcome_index = char_decision_as_index(self.decision["choice"])

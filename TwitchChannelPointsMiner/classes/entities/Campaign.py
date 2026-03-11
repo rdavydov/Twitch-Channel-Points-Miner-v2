@@ -1,7 +1,11 @@
+import logging
 from datetime import datetime
 
 from TwitchChannelPointsMiner.classes.entities.Drop import Drop
 from TwitchChannelPointsMiner.classes.Settings import Settings
+
+logger = logging.getLogger(__name__)
+
 
 def parse_datetime(datetime_str):
     for fmt in ("%Y-%m-%dT%H:%M:%S.%fZ", "%Y-%m-%dT%H:%M:%SZ"):
@@ -72,8 +76,18 @@ class Campaign(object):
             # [currentMinutesWatched, hasPreconditionsMet, dropInstanceID, isClaimed]
             for i in range(len(self.drops)):
                 current_id = self.drops[i].id
-                if drop["id"] == current_id:
-                    self.drops[i].update(drop["self"])
+                if drop.get("id") == current_id:
+                    progress = drop.get("self", {})
+                    self.drops[i].update(progress)
+                    updated = self.drops[i].current_minutes_watched
+                    if Settings.logger.console_level <= logging.DEBUG:
+                        logger.debug(
+                            "Drop %s progress: %s/%s minutes (%d%%)",
+                            current_id,
+                            updated,
+                            self.drops[i].minutes_required,
+                            self.drops[i].percentage_progress,
+                        )
                     # If after update we all conditions are meet we can claim the drop
                     if self.drops[i].is_claimable is True:
                         claimed = callback(self.drops[i])

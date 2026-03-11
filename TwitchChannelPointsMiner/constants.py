@@ -31,10 +31,11 @@ USER_AGENTS = {
 }
 
 BRANCH = "master"
-GITHUB_url = (
-    "https://raw.githubusercontent.com/rdavydov/Twitch-Channel-Points-Miner-v2/"
-    + BRANCH
-)
+FORK_OWNER = "Armi1014"
+FORK_REPO = "Twitch-Channel-Points-Miner-v2"
+GITHUB_REPO_URL = f"https://github.com/{FORK_OWNER}/{FORK_REPO}"
+GITHUB_RAW_BASE_URL = f"https://raw.githubusercontent.com/{FORK_OWNER}/{FORK_REPO}/"
+GITHUB_url = GITHUB_RAW_BASE_URL + BRANCH
 
 
 class GQLOperations:
@@ -63,7 +64,7 @@ class GQLOperations:
         "extensions": {
             "persistedQuery": {
                 "version": 1,
-                "sha256Hash": "a5f2e34d626a9f4f5c0204f910bab2194948a9502089be558bb6e779a9e1b3d2",
+                "sha256Hash": "e785b65ff71ad7b363b34878335f27dd9372869ad0c5740a130b9268bcdbe7e7",
             }
         },
     }
@@ -99,7 +100,7 @@ class GQLOperations:
         "extensions": {
             "persistedQuery": {
                 "version": 1,
-                "sha256Hash": "1530a003a7d374b0380b79db0be0534f30ff46e61cffa2bc0e2468a909fbc024",
+                "sha256Hash": "374314de591e69925fce3ddc2bcf085796f56ebb8cad67a0daa3165c03adc345",
             }
         },
     }
@@ -207,6 +208,27 @@ class GQLOperations:
             "persistedQuery": {
                 "version": 1,
                 "sha256Hash": "eecf815273d3d949e5cf0085cc5084cd8a1b5b7b6f7990cf43cb0beadf546907",
+            }
+        },
+    }
+    RewardList = {
+        "operationName": "RewardList",
+        "variables": {
+            "shouldIncludeAllSuspendedStreaks": False,
+        },
+        "extensions": {
+            "persistedQuery": {
+                "version": 1,
+                "sha256Hash": "0b1471876d7647993731b9e3c6a13bf304c67fb31d07f06a945d42286ee377c4",
+            }
+        },
+    }
+    ChatRoomBanStatus = {
+        "operationName": "ChatRoomBanStatus",
+        "extensions": {
+            "persistedQuery": {
+                "version": 1,
+                "sha256Hash": "319f2a9a3ac7ddecd7925944416c14b818b65676ab69da604460b68938d22bea",
             }
         },
     }
