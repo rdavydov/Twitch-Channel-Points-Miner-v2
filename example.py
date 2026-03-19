@@ -14,6 +14,7 @@ from TwitchChannelPointsMiner.classes.Gotify import Gotify
 from TwitchChannelPointsMiner.classes.Settings import Priority, Events, FollowersOrder
 from TwitchChannelPointsMiner.classes.entities.Bet import Strategy, BetSettings, Condition, OutcomeKeys, FilterCondition, DelayMode
 from TwitchChannelPointsMiner.classes.entities.Streamer import Streamer, StreamerSettings
+from TwitchChannelPointsMiner.utils import AttemptStrategy
 
 twitch_miner = TwitchChannelPointsMiner(
     username="your-twitch-username",
@@ -104,6 +105,10 @@ twitch_miner = TwitchChannelPointsMiner(
                 value=800
             )
         )
+    ),
+    gql=AttemptStrategy(
+        attempts=3,                             # Number of attempts to make per GQL request
+        attempt_interval_seconds=1              # Number of seconds to wait between attempts
     )
 )
 

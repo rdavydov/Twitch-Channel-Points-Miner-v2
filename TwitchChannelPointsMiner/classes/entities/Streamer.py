@@ -9,8 +9,9 @@ from TwitchChannelPointsMiner.classes.Chat import ChatPresence, ThreadChat
 from TwitchChannelPointsMiner.classes.entities.Bet import BetSettings, DelayMode
 from TwitchChannelPointsMiner.classes.entities.Stream import Stream
 from TwitchChannelPointsMiner.classes.Settings import Events, Settings
+from TwitchChannelPointsMiner.classes.gql import Properties
 from TwitchChannelPointsMiner.constants import URL
-from TwitchChannelPointsMiner.utils import _millify
+from TwitchChannelPointsMiner.utils import millify
 
 logger = logging.getLogger(__name__)
 
@@ -81,7 +82,7 @@ class Streamer(object):
         "community_goals",
         "minute_watched_requests",
         "viewer_is_mod",
-        "activeMultipliers",
+        "active_multipliers",
         "irc_chat",
         "stream",
         "raid",
@@ -102,7 +103,7 @@ class Streamer(object):
         self.community_goals = {}
         self.minute_watched_requests = None
         self.viewer_is_mod = False
-        self.activeMultipliers = None
+        self.active_multipliers: list[Properties.Multiplier] | None = None
         self.irc_chat = None
 
         self.stream = Stream()
@@ -115,11 +116,11 @@ class Streamer(object):
         self.mutex = Lock()
 
     def __repr__(self):
-        return f"Streamer(username={self.username}, channel_id={self.channel_id}, channel_points={_millify(self.channel_points)})"
+        return f"Streamer(username={self.username}, channel_id={self.channel_id}, channel_points={millify(self.channel_points)})"
 
     def __str__(self):
         return (
-            f"{self.username} ({_millify(self.channel_points)} points)"
+            f"{self.username} ({millify(self.channel_points)} points)"
             if Settings.logger.less
             else self.__repr__()
         )
@@ -158,7 +159,7 @@ class Streamer(object):
     def print_history(self):
         return "; ".join(
             [
-                f"{key} ({self.history[key]['counter']} times, {_millify(self.history[key]['amount'])} gained)"
+                f"{key} ({self.history[key]['counter']} times, {millify(self.history[key]['amount'])} gained)"
                 for key in sorted(self.history)
                 if self.history[key]["counter"] != 0
             ]
@@ -185,17 +186,17 @@ class Streamer(object):
         )
 
     def viewer_has_points_multiplier(self):
-        return self.activeMultipliers is not None and len(self.activeMultipliers) > 0
+        return self.active_multipliers is not None and len(self.active_multipliers) > 0
 
     def total_points_multiplier(self):
         return (
             sum(
                 map(
                     lambda x: x["factor"],
-                    self.activeMultipliers,
+                    self.active_multipliers,
                 ),
             )
-            if self.activeMultipliers is not None
+            if self.active_multipliers is not None
             else 0
         )
 

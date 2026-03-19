@@ -4,6 +4,11 @@ import time
 from base64 import b64encode
 
 from TwitchChannelPointsMiner.classes.Settings import Settings
+from TwitchChannelPointsMiner.classes.entities.Campaign import Campaign
+from TwitchChannelPointsMiner.classes.gql import Tag
+from TwitchChannelPointsMiner.classes.gql.data.response.BroadcastSettings import (
+    GameBroadcastSettings,
+)
 from TwitchChannelPointsMiner.constants import DROP_ID
 
 logger = logging.getLogger(__name__)
@@ -30,18 +35,18 @@ class Stream(object):
     def __init__(self):
         self.broadcast_id = None
 
-        self.title = None
-        self.game = {}
-        self.tags = []
+        self.title: str | None = None
+        self.game: GameBroadcastSettings | None = None
+        self.tags: list[Tag] = []
 
-        self.drops_tags = False
-        self.campaigns = []
-        self.campaigns_ids = []
+        self.drops_tags: bool = False
+        self.campaigns: list[Campaign] = []
+        self.campaigns_ids: list[str] = []
 
         self.viewers_count = 0
         self.__last_update = 0
 
-        self.spade_url = None
+        self.spade_url: str | None = None
         self.payload = None
 
         self.init_watch_streak()
@@ -50,7 +55,14 @@ class Stream(object):
         json_event = json.dumps(self.payload, separators=(",", ":"))
         return {"data": (b64encode(json_event.encode("utf-8"))).decode("utf-8")}
 
-    def update(self, broadcast_id, title, game, tags, viewers_count):
+    def update(
+        self,
+        broadcast_id: str,
+        title: str,
+        game: GameBroadcastSettings | None,
+        tags: list[Tag],
+        viewers_count: int,
+    ):
         self.broadcast_id = broadcast_id
         self.title = title.strip()
         self.game = game
@@ -59,8 +71,8 @@ class Stream(object):
         # ------------------------
         self.viewers_count = viewers_count
 
-        self.drops_tags = (
-            DROP_ID in [tag["id"] for tag in self.tags] and self.game != {}
+        self.drops_tags = (DROP_ID in [tag.id for tag in self.tags]) and (
+            self.game is not None
         )
         self.__last_update = time.time()
 
@@ -76,17 +88,17 @@ class Stream(object):
         return (
             None
             if self.tags == []
-            else ", ".join([tag["localizedName"] for tag in self.tags])
+            else ", ".join([tag.localized_name for tag in self.tags])
         )
 
     def __str_game(self):
-        return None if self.game in [{}, None] else self.game["displayName"]
+        return None if self.game is None else self.game.display_name
 
     def game_name(self):
-        return None if self.game in [{}, None] else self.game["name"]
-    
+        return None if self.game is None else self.game.name
+
     def game_id(self):
-        return None if self.game in [{}, None] else self.game["id"]
+        return None if self.game is None else self.game.id
 
     def update_required(self):
         return self.__last_update == 0 or self.update_elapsed() >= 120

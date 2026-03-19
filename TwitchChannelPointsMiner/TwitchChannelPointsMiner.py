@@ -21,14 +21,16 @@ from TwitchChannelPointsMiner.classes.Exceptions import StreamerDoesNotExistExce
 from TwitchChannelPointsMiner.classes.Settings import FollowersOrder, Priority, Settings
 from TwitchChannelPointsMiner.classes.Twitch import Twitch
 from TwitchChannelPointsMiner.classes.WebSocketsPool import WebSocketsPool
+from TwitchChannelPointsMiner.classes.gql.Integration import GQLFactory, GQL
 from TwitchChannelPointsMiner.logger import LoggerSettings, configure_loggers
 from TwitchChannelPointsMiner.utils import (
-    _millify,
+    millify,
     at_least_one_value_in_settings_is,
     check_versions,
     get_user_agent,
     internet_connection_available,
     set_default_settings,
+    AttemptStrategy,
 )
 
 # Suppress:
@@ -85,6 +87,8 @@ class TwitchChannelPointsMiner:
         logger_settings: LoggerSettings = LoggerSettings(),
         # Default values for all streamers
         streamer_settings: StreamerSettings = StreamerSettings(),
+        # GQL Integration
+        gql: GQL | AttemptStrategy | GQLFactory | None = None
     ):
         # Fixes TypeError: 'NoneType' object is not subscriptable
         if not username or username == "your-twitch-username":
@@ -137,7 +141,18 @@ class TwitchChannelPointsMiner:
 
         # user_agent = get_user_agent("FIREFOX")
         user_agent = get_user_agent("CHROME")
-        self.twitch = Twitch(self.username, user_agent, password)
+
+        if gql is None:
+            # Use the default factory
+            gql = GQLFactory()
+        elif isinstance(gql, AttemptStrategy):
+            # Convenience for the expected most common use case where gql is provided
+            gql = GQLFactory(attempt_strategy=gql)
+        elif not isinstance(gql, GQLFactory):
+            # Invalid argument type
+            raise ValueError(f"gql must be an instance of be one of None, AttemptStrategy, or GQLFactory")
+
+        self.twitch = Twitch(self.username, user_agent, password, gql_factory=gql)
 
         self.claim_drops_startup = claim_drops_startup
         self.priority = priority if isinstance(priority, list) else [priority]
@@ -278,7 +293,7 @@ class TwitchChannelPointsMiner:
                         if streamer.settings.chat != ChatPresence.NEVER:
                             streamer.irc_chat = ThreadChat(
                                 self.username,
-                                self.twitch.twitch_login.get_auth_token(),
+                                self.twitch.client_session.login.get_auth_token(),
                                 streamer.username,
                             )
                         self.streamers.append(streamer)
@@ -341,7 +356,7 @@ class TwitchChannelPointsMiner:
             )
 
             # Subscribe to community-points-user. Get update for points spent or gains
-            user_id = self.twitch.twitch_login.get_user_id()
+            user_id = self.twitch.client_session.login.get_user_id()
             # print(f"!!!!!!!!!!!!!! USER_ID: {user_id}")
 
             # Fixes 'ERR_BADAUTH'
@@ -499,9 +514,9 @@ class TwitchChannelPointsMiner:
                 streamer_highlight = Fore.YELLOW
                 
                 streamer_gain = (
-                    f"{streamer_highlight}{self.streamers[streamer_index]}{Fore.RESET}, Total Points Gained: {_millify(gained)}"
+                    f"{streamer_highlight}{self.streamers[streamer_index]}{Fore.RESET}, Total Points Gained: {millify(gained)}"
                     if Settings.logger.less
-                    else f"{streamer_highlight}{repr(self.streamers[streamer_index])}{Fore.RESET}, Total Points Gained (after farming - before farming): {_millify(gained)}"
+                    else f"{streamer_highlight}{repr(self.streamers[streamer_index])}{Fore.RESET}, Total Points Gained (after farming - before farming): {millify(gained)}"
                 )
                 
                 indent = ' ' * 25

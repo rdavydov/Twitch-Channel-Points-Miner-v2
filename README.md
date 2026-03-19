@@ -52,6 +52,8 @@ Read more about the channel points [here](https://help.twitch.tv/s/article/chann
         - [Bet strategy](#bet-strategy)
     - [FilterCondition](#filtercondition)
         - [Example](#example)
+    - [GQL](#gql)
+      - [Examples](#examples)
 6. 📈 [Analytics](#analytics)
 7. 🍪 [Migrating from an old repository (the original one)](#migrating-from-an-old-repository-the-original-one)
 8. 🪟 [Windows](#windows)
@@ -201,6 +203,7 @@ from TwitchChannelPointsMiner.classes.Gotify import Gotify
 from TwitchChannelPointsMiner.classes.Settings import Priority, Events, FollowersOrder
 from TwitchChannelPointsMiner.classes.entities.Bet import Strategy, BetSettings, Condition, OutcomeKeys, FilterCondition, DelayMode
 from TwitchChannelPointsMiner.classes.entities.Streamer import Streamer, StreamerSettings
+from TwitchChannelPointsMiner.utils import AttemptStrategy
 
 twitch_miner = TwitchChannelPointsMiner(
     username="your-twitch-username",
@@ -291,6 +294,10 @@ twitch_miner = TwitchChannelPointsMiner(
                 value=800
             )
         )
+    ),
+    gql=AttemptStrategy(
+        attempts=3,                             # Number of attempts to make per GQL request
+        attempt_interval_seconds=1              # Number of seconds to wait between attempts
     )
 )
 
@@ -340,7 +347,7 @@ twitch_miner.mine(followers=True, blacklist=["user1", "user2"])  # Blacklist exa
 
 ### By cloning the repository
 1. Clone this repository `git clone https://github.com/rdavydov/Twitch-Channel-Points-Miner-v2`
-2. Install all the requirements `pip install -r requirements.txt` . If you have problems with requirements, make sure to have at least Python3.6. You could also try to create a _virtualenv_ and then install all the requirements
+2. Install all the requirements `pip install -r requirements.txt` . If you have problems with requirements, make sure to have at least Python3.12. You could also try to create a _virtualenv_ and then install all the requirements
 ```sh
 pip install virtualenv
 virtualenv -p python3 venv
@@ -659,6 +666,55 @@ Here's a concrete example. Let's suppose we have a bet that is opened with a tim
 - **FROM_START** with `delay=20`: The bet will be placed 20s after the bet is opened
 - **FROM_END** with `delay=20`: The bet will be placed 20s before the end of the bet (so 9mins 40s after the bet is opened)
 - **PERCENTAGE** with `delay=0.2`: The bet will be placed when the timer went down by 20% (so 2mins after the bet is opened)
+
+### GQL
+
+Defines how the miner interacts with the Twitch GQL (Graph Query Language) API. The default behaviour is to make up to 3
+attempts with a 1-second delay between attempts. However, some responses shouldn't be retried, so in those cases we stop
+making attempts early.
+
+| Key                      | Type | Default | Description                                                                                                                                       |
+|--------------------------|------|---------|---------------------------------------------------------------------------------------------------------------------------------------------------|
+| attempts                 | int  | 3       | The number of attempts the miner will make per request to the Twitch GQL API.<br/>Must be at least 1 in order to make any requests.               |
+| attempt_interval_seconds | int  | 1       | The number of seconds the miner will wait in between attempts.                                                                                    |
+
+#### Examples
+```python
+gql=None
+```
+In this case the default behaviour will be used, which is the miner will make up to 3 attempts at each request with a
+1-second delay between each request. Omitting the `gql` key (and value) will also cause the miner to use this default
+behaviour.
+
+```python
+gql=AttemptStrategy(
+   attempts=5,
+   attempt_interval_seconds=2
+)
+```
+In this case the miner will make up 5 attempts at each request with a 2-second delay between each request.
+
+```python
+gql=GQLFactory(
+   attempt_strategy=AttemptStrategy(
+      attempts=3,
+      attempt_interval_seconds=1
+   ),
+   parser=Parser(),
+   post_request
+)
+```
+> [!IMPORTANT]
+> This is intended for advanced users only.
+
+You can completely override the GQL implementation by providing
+a [GQLFactory](/TwitchChannelPointsMiner/classes/gql/Integration.py) instance. The base usage allows you to
+override the `attempt_strategy`, `parser`, and `post_request`. `attempt_strategy` has already been covered, but it
+allows you to define how the GQL integration makes attempts at each request. `parser` is the class responsible for
+parsing the json returned from the GQL API into usable types. `post_request` is the function that can make web requests
+to the API. We don't expect most users to need to do more than override the `attempt_strategy`, which is why we allow
+passing that directly to the value of `gql`. Advanced users can also override the factory type for even more
+customization, perhaps returning a custom subclass of `GQL` that overrides the original behaviour entirely.
 
 ## Analytics
 We have recently introduced a little frontend where you can show with a chart you points trend. The script will spawn a Flask web-server on your machine where you can select binding address and port.

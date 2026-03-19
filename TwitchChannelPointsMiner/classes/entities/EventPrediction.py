@@ -1,7 +1,7 @@
 from TwitchChannelPointsMiner.classes.entities.Bet import Bet
 from TwitchChannelPointsMiner.classes.entities.Streamer import Streamer
 from TwitchChannelPointsMiner.classes.Settings import Settings
-from TwitchChannelPointsMiner.utils import _millify, float_round
+from TwitchChannelPointsMiner.utils import millify, float_round
 
 
 class EventPrediction(object):
@@ -86,7 +86,7 @@ class EventPrediction(object):
         )
 
         self.result = {
-            "string": f"{result_type}, {action}: {points['prefix']}{_millify(points['gained'])}",
+            "string": f"{result_type}, {action}: {points['prefix']}{millify(points['gained'])}",
             "type": result_type,
             "gained": points["gained"],
         }
