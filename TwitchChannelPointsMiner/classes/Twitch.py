@@ -197,8 +197,8 @@ class Twitch(object):
                 streamer.set_offline()
 
     def get_channel_id(self, streamer_username):
-        json_data = copy.deepcopy(GQLOperations.ReportMenuItem)
-        json_data["variables"] = {"channelLogin": streamer_username}
+        json_data = copy.deepcopy(GQLOperations.GetIDFromLogin)
+        json_data["variables"]["login"] = streamer_username
         json_response = self.post_gql_request(json_data)
         if (
             "data" not in json_response
@@ -392,20 +392,30 @@ class Twitch(object):
                         # Please perform a manually update and check if the user it's online
                         self.check_streamer_online(streamers[index])
 
-                streamers_watching = []
-                for prior in priority:
-                    if prior == Priority.ORDER and len(streamers_watching) < 2:
-                        # Get the first 2 items, they are already in order
-                        streamers_watching += streamers_index[:2]
+                """
+                Twitch has a limit - you can't watch more than 2 channels at one time.
+                We'll take the first two streamers from the final list as they have the highest priority.
+                """
+                max_watch_amount = 2
+                streamers_watching = set()
 
-                    elif (
-                        prior in [Priority.POINTS_ASCENDING,
-                                  Priority.POINTS_DESCENDING]
-                        and len(streamers_watching) < 2
-                    ):
+                def remaining_watch_amount():
+                    return max_watch_amount - len(streamers_watching)
+
+                for prior in priority:
+                    if remaining_watch_amount() <= 0:
+                        break
+
+                    if prior == Priority.ORDER:
+                        # Get the first 2 items, they are already in order
+                        streamers_watching.update(streamers_index[:remaining_watch_amount()])
+
+                    elif prior in [Priority.POINTS_ASCENDING, Priority.POINTS_DESCENDING]:
                         items = [
-                            {"points": streamers[index].channel_points,
-                                "index": index}
+                            {
+                                "points": streamers[index].channel_points,
+                                "index": index
+                            }
                             for index in streamers_index
                         ]
                         items = sorted(
@@ -415,10 +425,9 @@ class Twitch(object):
                                 True if prior == Priority.POINTS_DESCENDING else False
                             ),
                         )
-                        streamers_watching += [item["index"]
-                                               for item in items][:2]
+                        streamers_watching.update([item["index"] for item in items][:remaining_watch_amount()])
 
-                    elif prior == Priority.STREAK and len(streamers_watching) < 2:
+                    elif prior == Priority.STREAK:
                         """
                         Check if we need need to change priority based on watch streak
                         Viewers receive points for returning for x consecutive streams.
@@ -441,18 +450,18 @@ class Twitch(object):
                                 # fix #425
                                 and streamers[index].stream.minute_watched < 7
                             ):
-                                streamers_watching.append(index)
-                                if len(streamers_watching) == 2:
+                                streamers_watching.add(index)
+                                if remaining_watch_amount() <= 0:
                                     break
 
-                    elif prior == Priority.DROPS and len(streamers_watching) < 2:
+                    elif prior == Priority.DROPS:
                         for index in streamers_index:
                             if streamers[index].drops_condition() is True:
-                                streamers_watching.append(index)
-                                if len(streamers_watching) == 2:
+                                streamers_watching.add(index)
+                                if remaining_watch_amount() <= 0:
                                     break
 
-                    elif prior == Priority.SUBSCRIBED and len(streamers_watching) < 2:
+                    elif prior == Priority.SUBSCRIBED:
                         streamers_with_multiplier = [
                             index
                             for index in streamers_index
@@ -464,13 +473,9 @@ class Twitch(object):
                             ),
                             reverse=True,
                         )
-                        streamers_watching += streamers_with_multiplier[:2]
+                        streamers_watching.update(streamers_with_multiplier[:remaining_watch_amount()])
 
-                """
-                Twitch has a limit - you can't watch more than 2 channels at one time.
-                We take the first two streamers from the list as they have the highest priority (based on order or WatchStreak).
-                """
-                streamers_watching = streamers_watching[:2]
+                streamers_watching = list(streamers_watching)[:max_watch_amount]
 
                 for index in streamers_watching:
                     # next_iteration = time.time() + 60 / len(streamers_watching)
@@ -487,8 +492,8 @@ class Twitch(object):
                             "isLive": True,
                             "isVod": False,
                             "vodID": "",
-                            # "playerType": "site"
-                            "playerType": "picture-by-picture",
+                            "playerType": "site"
+                            # "playerType": "picture-by-picture",
                         }
 
                         # Get signature and value using the post_gql_request method
@@ -826,12 +831,16 @@ class Twitch(object):
 
     def __get_drops_dashboard(self, status=None):
         response = self.post_gql_request(GQLOperations.ViewerDropsDashboard)
-        campaigns = response["data"]["currentUser"]["dropCampaigns"] or []
+        campaigns = (
+            response.get("data", {})
+            .get("currentUser", {})
+            .get("dropCampaigns", [])
+            or []
+        )
 
         if status is not None:
             campaigns = (
-                list(filter(lambda x: x["status"] ==
-                     status.upper(), campaigns)) or []
+                list(filter(lambda x: x["status"] == status.upper(), campaigns)) or []
             )
 
         return campaigns
@@ -850,9 +859,15 @@ class Twitch(object):
                 }
 
             response = self.post_gql_request(json_data)
+            if not isinstance(response, list):
+                logger.debug("Unexpected campaigns response format, skipping chunk")
+                continue
             for r in response:
-                if r["data"]["user"] is not None:
-                    result.append(r["data"]["user"]["dropCampaign"])
+                drop_campaign = (
+                    r.get("data", {}).get("user", {}).get("dropCampaign", None)
+                )
+                if drop_campaign is not None:
+                    result.append(drop_campaign)
         return result
 
     def __sync_campaigns(self, campaigns):
@@ -921,6 +936,7 @@ class Twitch(object):
 
     def sync_campaigns(self, streamers, chunk_size=3):
         campaigns_update = 0
+        campaigns = []
         while self.running:
             try:
                 # Get update from dashboard each 60minutes
@@ -977,6 +993,7 @@ class Twitch(object):
 
             except (ValueError, KeyError, requests.exceptions.ConnectionError) as e:
                 logger.error(f"Error while syncing inventory: {e}")
+                campaigns = []
                 self.__check_connection_handler(chunk_size)
 
             self.__chuncked_sleep(60, chunk_size=chunk_size)
