@@ -59,6 +59,7 @@ twitch_miner = TwitchChannelPointsMiner(
             method="GET",                                                                   # GET or POST
             events=[Events.STREAMER_ONLINE, Events.STREAMER_OFFLINE,
                     Events.BET_LOSE, Events.CHAT_MENTION],                                  # Only these events will be sent to the endpoint
+            timeout=5
         ),
         matrix=Matrix(
             username="twitch_miner",                                                   # Matrix username (without homeserver)
