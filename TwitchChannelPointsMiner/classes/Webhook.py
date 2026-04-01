@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 class Webhook(object):
     __slots__ = ["endpoint", "method", "events", "timeout"]
 
-    def __init__(self, endpoint: str, method: str, events: list, timeout: int = 10):
+    def __init__(self, endpoint: str, method: str, events: list, timeout: int = 1):
         self.endpoint = endpoint
         self.method = method
         self.events = [str(e) for e in events]

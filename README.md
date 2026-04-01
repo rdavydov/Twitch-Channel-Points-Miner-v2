@@ -536,7 +536,7 @@ You can use generic webhook
 | `endpoint`           | string        	   |           | webhook url                                                                                                                           |
 | `method`             | string        	   |           | The key-value pairs `event_name` and `message` are included in the body for `POST` requests or as query parameters for `GET` requests |
 | `events`   	         | list              | 	         | Only these events will be sent to the endpoint. Array of Event. or str                                                                |
-| `timeout`   	        | int               | 10	       | Timeout in seconds                                                                                                                    |
+| `timeout`   	        | int               | 1 	       | Timeout in seconds                                                                                                                    |
 
 ```python
 Webhook(
