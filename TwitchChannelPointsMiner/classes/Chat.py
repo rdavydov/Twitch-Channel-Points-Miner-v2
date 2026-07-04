@@ -1,9 +1,12 @@
+import functools
 import logging
+import ssl
 import time
 from enum import Enum, auto
 from threading import Thread
 
 from irc.bot import SingleServerIRCBot
+from irc.connection import Factory
 
 from TwitchChannelPointsMiner.constants import IRC, IRC_PORT
 from TwitchChannelPointsMiner.classes.Settings import Events, Settings
@@ -26,9 +29,16 @@ class ClientIRC(SingleServerIRCBot):
         self.token = token
         self.channel = "#" + channel
         self.__active = False
+        ssl_context = ssl.create_default_context()
+        ssl_factory = Factory(
+            wrapper=functools.partial(ssl_context.wrap_socket, server_hostname=IRC)
+        )
 
         super(ClientIRC, self).__init__(
-            [(IRC, IRC_PORT, f"oauth:{token}")], username, username
+            [(IRC, IRC_PORT, f"oauth:{token}")],
+            username,
+            username,
+            connect_factory=ssl_factory,
         )
 
     def on_welcome(self, client, event):
@@ -42,13 +52,15 @@ class ClientIRC(SingleServerIRCBot):
                 self.reactor.process_once(timeout=0.2)
                 time.sleep(0.01)
             except Exception as e:
+                if self.__active is False:
+                    break
                 logger.error(
                     f"Exception raised: {e}. Thread is active: {self.__active}"
                 )
 
     def die(self, msg="Bye, cruel world!"):
-        self.connection.disconnect(msg)
         self.__active = False
+        self.connection.disconnect(msg)
 
     """
     def on_join(self, connection, event):
