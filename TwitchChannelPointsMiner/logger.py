@@ -220,13 +220,11 @@ class GlobalFormatter(logging.Formatter):
         skip_discord = False if hasattr(
             record, "skip_discord") is False else True
 
-        if (
-            self.settings.discord is not None
-            and skip_discord is False
-            and self.settings.discord.webhook_api
-            != "https://discord.com/api/webhooks/0123456789/0a1B2c3D4e5F6g7H8i9J"
-        ):
-            self.settings.discord.send(record.msg, record.event)
+        if self.settings.discord is not None and skip_discord is False:
+            instances = self.settings.discord if isinstance(self.settings.discord, list) else [self.settings.discord]
+            for instance in instances:
+                if instance.webhook_api != "https://discord.com/api/webhooks/0123456789/0a1B2c3D4e5F6g7H8i9J":
+                    instance.send(record.msg, record.event)
 
     def webhook(self, record):
         skip_webhook = False if hasattr(

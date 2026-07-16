@@ -15,6 +15,36 @@ from TwitchChannelPointsMiner.classes.Settings import Priority, Events, Follower
 from TwitchChannelPointsMiner.classes.entities.Bet import Strategy, BetSettings, Condition, OutcomeKeys, FilterCondition, DelayMode
 from TwitchChannelPointsMiner.classes.entities.Streamer import Streamer, StreamerSettings
 
+# 🟢 Stream Status
+discord_stream = Discord(
+    webhook_api="https://discord.com/api/webhooks/0123456789/0a1B2c3D4e5F6g7H8i9J",
+    events=[Events.STREAMER_ONLINE, Events.STREAMER_OFFLINE]
+)
+
+# 🎁 Drops
+discord_drops = Discord(
+    webhook_api="https://discord.com/api/webhooks/0123456789/0a1B2c3D4e5F6g7H8i9J",
+    events=[Events.DROP_CLAIM, Events.DROP_STATUS]
+)
+
+# 💰 Points & Rewards
+discord_points = Discord(
+    webhook_api="https://discord.com/api/webhooks/0123456789/0a1B2c3D4e5F6g7H8i9J",
+    events=[
+        Events.GAIN_FOR_WATCH,
+        Events.GAIN_FOR_WATCH_STREAK,
+        Events.GAIN_FOR_CLAIM,
+        Events.GAIN_FOR_RAID,
+        Events.BONUS_CLAIM,
+    ]
+)
+
+# ⚔️ Raids & Moments
+discord_raids = Discord(
+    webhook_api="https://discord.com/api/webhooks/0123456789/0a1B2c3D4e5F6g7H8i9J",
+    events=[Events.JOIN_RAID, Events.MOMENT_CLAIM]
+)
+
 twitch_miner = TwitchChannelPointsMiner(
     username="your-twitch-username",
     password="write-your-secure-psw",           # If no password will be provided, the script will ask interactively
@@ -42,17 +72,13 @@ twitch_miner = TwitchChannelPointsMiner(
             streamer_offline="red",             # Read more in README.md
             BET_wiN=Fore.MAGENTA                # Color allowed are: [BLACK, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE, RESET].
         ),
+        discord=[discord_stream, discord_drops, discord_points, discord_raids],
         telegram=Telegram(                                                          # You can omit or set to None if you don't want to receive updates on Telegram
             chat_id=123456789,                                                      # Chat ID to send messages @getmyid_bot
             token="123456789:shfuihreuifheuifhiu34578347",                          # Telegram API token @BotFather
             events=[Events.STREAMER_ONLINE, Events.STREAMER_OFFLINE,
                     Events.BET_LOSE, Events.CHAT_MENTION],                          # Only these events will be sent to the chat
             disable_notification=True,                                              # Revoke the notification (sound/vibration)
-        ),
-        discord=Discord(
-            webhook_api="https://discord.com/api/webhooks/0123456789/0a1B2c3D4e5F6g7H8i9J",  # Discord Webhook URL
-            events=[Events.STREAMER_ONLINE, Events.STREAMER_OFFLINE,
-                    Events.BET_LOSE, Events.CHAT_MENTION],                                  # Only these events will be sent to the chat
         ),
         webhook=Webhook(
             endpoint="https://example.com/webhook",                                                                    # Webhook URL
