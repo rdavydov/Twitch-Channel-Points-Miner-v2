@@ -141,13 +141,16 @@ class Twitch(object):
             headers = {"User-Agent": USER_AGENTS["Linux"]["FIREFOX"]}
 
             main_page_request = requests.get(
-                streamer.streamer_url, headers=headers)
+                streamer.streamer_url, **self.__request_options(headers=headers)
+            )
             response = main_page_request.text
             # logger.info(response)
             regex_settings = "(https://static.twitchcdn.net/config/settings.*?js|https://assets.twitch.tv/config/settings.*?.js)"
             settings_url = re.search(regex_settings, response).group(1)
 
-            settings_request = requests.get(settings_url, headers=headers)
+            settings_request = requests.get(
+                settings_url, **self.__request_options(headers=headers)
+            )
             response = settings_request.text
             regex_spade = '"spade_url":"(.*?)"'
             streamer.stream.spade_url = re.search(
@@ -273,20 +276,27 @@ class Twitch(object):
             )
             self.__chuncked_sleep(random_sleep * 60, chunk_size=chunk_size)
 
+    def __request_options(self, **kwargs):
+        if Settings.disable_ssl_cert_verification is True:
+            kwargs["verify"] = False
+        return kwargs
+
     def post_gql_request(self, json_data):
         try:
             response = requests.post(
                 GQLOperations.url,
-                json=json_data,
-                headers={
-                    "Authorization": f"OAuth {self.twitch_login.get_auth_token()}",
-                    "Client-Id": CLIENT_ID,
-                    # "Client-Integrity": self.post_integrity(),
-                    "Client-Session-Id": self.client_session,
-                    "Client-Version": self.update_client_version(),
-                    "User-Agent": self.user_agent,
-                    "X-Device-Id": self.device_id,
-                },
+                **self.__request_options(
+                    json=json_data,
+                    headers={
+                        "Authorization": f"OAuth {self.twitch_login.get_auth_token()}",
+                        "Client-Id": CLIENT_ID,
+                        # "Client-Integrity": self.post_integrity(),
+                        "Client-Session-Id": self.client_session,
+                        "Client-Version": self.update_client_version(),
+                        "User-Agent": self.user_agent,
+                        "X-Device-Id": self.device_id,
+                    },
+                ),
             )
             logger.debug(
                 f"Data: {json_data}, Status code: {response.status_code}, Content: {response.text}"
@@ -356,7 +366,7 @@ class Twitch(object):
 
     def update_client_version(self):
         try:
-            response = requests.get(URL)
+            response = requests.get(URL, **self.__request_options())
             if response.status_code != 200:
                 logger.debug(
                     f"Error with update_client_version: {response.status_code}"
@@ -533,8 +543,10 @@ class Twitch(object):
                         # Get list of video qualities
                         responseBroadcastQualities = requests.get(
                             RequestBroadcastQualitiesURL,
-                            headers={"User-Agent": self.user_agent},
-                            timeout=20,
+                            **self.__request_options(
+                                headers={"User-Agent": self.user_agent},
+                                timeout=20,
+                            ),
                         )  # timeout=60
                         logger.debug(
                             f"Send RequestBroadcastQualitiesURL request for {streamers[index]} - Status code: {responseBroadcastQualities.status_code}"
@@ -552,8 +564,10 @@ class Twitch(object):
                         # Get list of video URLs
                         responseStreamURLList = requests.get(
                             BroadcastLowestQualityURL,
-                            headers={"User-Agent": self.user_agent},
-                            timeout=20,
+                            **self.__request_options(
+                                headers={"User-Agent": self.user_agent},
+                                timeout=20,
+                            ),
                         )  # timeout=60
                         logger.debug(
                             f"Send BroadcastLowestQualityURL request for {streamers[index]} - Status code: {responseStreamURLList.status_code}"
@@ -570,8 +584,10 @@ class Twitch(object):
                         # Perform a HEAD request to simulate watching the stream
                         responseStreamLowestQualityURL = requests.head(
                             StreamLowestQualityURL,
-                            headers={"User-Agent": self.user_agent},
-                            timeout=20,
+                            **self.__request_options(
+                                headers={"User-Agent": self.user_agent},
+                                timeout=20,
+                            ),
                         )  # timeout=60
                         logger.debug(
                             f"Send StreamLowestQualityURL request for {streamers[index]} - Status code: {responseStreamLowestQualityURL.status_code}"
@@ -582,10 +598,12 @@ class Twitch(object):
                         ##################################
                         response = requests.post(
                             streamers[index].stream.spade_url,
-                            data=streamers[index].stream.encode_payload(),
-                            headers={"User-Agent": self.user_agent},
-                            # timeout=60,
-                            timeout=20,
+                            **self.__request_options(
+                                data=streamers[index].stream.encode_payload(),
+                                headers={"User-Agent": self.user_agent},
+                                # timeout=60,
+                                timeout=20,
+                            ),
                         )
                         logger.debug(
                             f"Send minute watched request for {streamers[index]} - Status code: {response.status_code}"
