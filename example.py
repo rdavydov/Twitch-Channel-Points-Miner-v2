@@ -55,10 +55,11 @@ twitch_miner = TwitchChannelPointsMiner(
                     Events.BET_LOSE, Events.CHAT_MENTION],                                  # Only these events will be sent to the chat
         ),
         webhook=Webhook(
-            endpoint="https://example.com/webhook",                                                                    # Webhook URL
-            method="GET",                                                                   # GET or POST
+            endpoint="https://example.com/webhook",                                 # Webhook URL
+            method="GET",                                                           # GET or POST
             events=[Events.STREAMER_ONLINE, Events.STREAMER_OFFLINE,
-                    Events.BET_LOSE, Events.CHAT_MENTION],                                  # Only these events will be sent to the endpoint
+                    Events.BET_LOSE, Events.CHAT_MENTION],                          # Only these events will be sent to the endpoint
+            timeout=5,                                                              # in seconds
         ),
         matrix=Matrix(
             username="twitch_miner",                                                   # Matrix username (without homeserver)
