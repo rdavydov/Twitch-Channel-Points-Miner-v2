@@ -214,6 +214,7 @@ twitch_miner = TwitchChannelPointsMiner(
     enable_analytics=False,			# Disables Analytics if False. Disabling it significantly reduces memory consumption
     disable_ssl_cert_verification=False,	# Set to True at your own risk and only to fix SSL: CERTIFICATE_VERIFY_FAILED error
     disable_at_in_nickname=False,               # Set to True if you want to check for your nickname mentions in the chat even without @ sign
+    use_hermes=False,                           # Set to True if you want to use the Hermes WebSocket API instead of the PubSub WebSocket API
     logger_settings=LoggerSettings(
         save=True,                              # If you want to save logs in a file (suggested)
         console_level=logging.INFO,             # Level of logs - use logging.DEBUG for more info
@@ -340,7 +341,7 @@ twitch_miner.mine(followers=True, blacklist=["user1", "user2"])  # Blacklist exa
 
 ### By cloning the repository
 1. Clone this repository `git clone https://github.com/rdavydov/Twitch-Channel-Points-Miner-v2`
-2. Install all the requirements `pip install -r requirements.txt` . If you have problems with requirements, make sure to have at least Python3.6. You could also try to create a _virtualenv_ and then install all the requirements
+2. Install all the requirements `pip install -r requirements.txt` . If you have problems with requirements, make sure to have at least Python3.12. You could also try to create a _virtualenv_ and then install all the requirements
 ```sh
 pip install virtualenv
 virtualenv -p python3 venv

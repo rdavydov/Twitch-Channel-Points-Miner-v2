@@ -27,6 +27,7 @@ twitch_miner = TwitchChannelPointsMiner(
     enable_analytics=False,                     # Disables Analytics if False. Disabling it significantly reduces memory consumption
     disable_ssl_cert_verification=False,        # Set to True at your own risk and only to fix SSL: CERTIFICATE_VERIFY_FAILED error
     disable_at_in_nickname=False,               # Set to True if you want to check for your nickname mentions in the chat even without @ sign
+    use_hermes=False,                           # Set to True if you want to use the Hermes WebSocket API instead of the PubSub WebSocket API
     logger_settings=LoggerSettings(
         save=True,                              # If you want to save logs in a file (suggested)
         console_level=logging.INFO,             # Level of logs - use logging.DEBUG for more info
