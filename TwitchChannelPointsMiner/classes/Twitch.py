@@ -373,7 +373,7 @@ class Twitch(object):
             logger.error(f"Error with update_client_version: {e}")
             return self.client_version
 
-    def send_minute_watched_events(self, streamers, priority, chunk_size=3):
+    def send_minute_watched_events(self, streamers, priorities, chunk_size=3):
         while self.running:
             try:
                 streamers_index = [
@@ -402,15 +402,29 @@ class Twitch(object):
                 def remaining_watch_amount():
                     return max_watch_amount - len(streamers_watching)
 
-                for prior in priority:
+                def add_to_watching(*streamer_indices: int):
+                    """
+                    Adds 1 or more streamer indices to the watch set and returns whether the set has more room.
+                    :param streamer_indices: The indices to add.
+                    :return: True if the set has room, False if it's full.
+                    """
+                    for streamer_index in streamer_indices:
+                        if remaining_watch_amount() > 0:
+                            streamers_watching.add(streamer_index)
+                        else:
+                            return False
+                    return remaining_watch_amount() > 0
+
+                for priority in priorities:
                     if remaining_watch_amount() <= 0:
                         break
 
-                    if prior == Priority.ORDER:
+                    if priority == Priority.ORDER:
                         # Get the first 2 items, they are already in order
-                        streamers_watching.update(streamers_index[:remaining_watch_amount()])
+                        if not add_to_watching(*streamers_index):
+                            break
 
-                    elif prior in [Priority.POINTS_ASCENDING, Priority.POINTS_DESCENDING]:
+                    elif priority in [Priority.POINTS_ASCENDING, Priority.POINTS_DESCENDING]:
                         items = [
                             {
                                 "points": streamers[index].channel_points,
@@ -422,12 +436,13 @@ class Twitch(object):
                             items,
                             key=lambda x: x["points"],
                             reverse=(
-                                True if prior == Priority.POINTS_DESCENDING else False
+                                True if priority == Priority.POINTS_DESCENDING else False
                             ),
                         )
-                        streamers_watching.update([item["index"] for item in items][:remaining_watch_amount()])
+                        if not add_to_watching(*[item["index"] for item in items]):
+                            break
 
-                    elif prior == Priority.STREAK:
+                    elif priority == Priority.STREAK:
                         """
                         Check if we need need to change priority based on watch streak
                         Viewers receive points for returning for x consecutive streams.
@@ -436,32 +451,30 @@ class Twitch(object):
                         """
                         for index in streamers_index:
                             if (
-                                streamers[index].settings.watch_streak is True
-                                and streamers[index].stream.watch_streak_missing is True
-                                and (
+                                    streamers[index].settings.watch_streak is True
+                                    and streamers[index].stream.watch_streak_missing is True
+                                    and (
                                     streamers[index].offline_at == 0
                                     or (
-                                        (time.time() -
-                                         streamers[index].offline_at)
-                                        // 60
+                                            (time.time() -
+                                             streamers[index].offline_at)
+                                            // 60
                                     )
                                     > 30
-                                )
-                                # fix #425
-                                and streamers[index].stream.minute_watched < 7
+                            )
+                                    # fix #425
+                                    and streamers[index].stream.minute_watched < 7
                             ):
-                                streamers_watching.add(index)
-                                if remaining_watch_amount() <= 0:
+                                if not add_to_watching(index):
                                     break
 
-                    elif prior == Priority.DROPS:
+                    elif priority == Priority.DROPS:
                         for index in streamers_index:
                             if streamers[index].drops_condition() is True:
-                                streamers_watching.add(index)
-                                if remaining_watch_amount() <= 0:
+                                if not add_to_watching(index):
                                     break
 
-                    elif prior == Priority.SUBSCRIBED:
+                    elif priority == Priority.SUBSCRIBED:
                         streamers_with_multiplier = [
                             index
                             for index in streamers_index
@@ -469,11 +482,11 @@ class Twitch(object):
                         ]
                         streamers_with_multiplier = sorted(
                             streamers_with_multiplier,
-                            key=lambda x: streamers[x].total_points_multiplier(
-                            ),
+                            key=lambda x: streamers[x].total_points_multiplier(),
                             reverse=True,
                         )
-                        streamers_watching.update(streamers_with_multiplier[:remaining_watch_amount()])
+                        if not add_to_watching(*streamers_with_multiplier):
+                            break
 
                 streamers_watching = list(streamers_watching)[:max_watch_amount]
 
