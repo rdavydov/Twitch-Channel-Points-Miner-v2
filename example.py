@@ -79,7 +79,19 @@ twitch_miner = TwitchChannelPointsMiner(
             priority=8,
             events=[Events.STREAMER_ONLINE, Events.STREAMER_OFFLINE,
                     Events.BET_LOSE, Events.CHAT_MENTION], 
-        )
+        ),
+        hooks=[
+            Discord(
+                webhook_api="https://discord.com/api/webhooks/0123456789/0a1B2c3D4e5F6g7H8i9J",
+                events=[Events.GAIN_FOR_RAID, Events.GAIN_FOR_WATCH,
+                        Events.GAIN_FOR_CLAIM, Events.GAIN_FOR_WATCH_STREAK],
+            ),
+            Discord(
+                webhook_api="https://discord.com/api/webhooks/9876543210/78ad737ba0e951cdfbde",
+                events=[Events.BET_GENERAL, Events.BET_LOSE,
+                        Events.BET_WIN, Events.BET_REFUND],
+            )
+        ]                                                                             # Add any additional log hooks to this list, in this example 2 different discord webhooks get 2 different types of Events
     ),
     streamer_settings=StreamerSettings(
         make_predictions=True,                  # If you want to Bet / Make prediction

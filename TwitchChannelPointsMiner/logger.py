@@ -12,6 +12,7 @@ import emoji
 from colorama import Fore, init
 
 from TwitchChannelPointsMiner.classes.Discord import Discord
+from TwitchChannelPointsMiner.classes.EventHook import EventHook
 from TwitchChannelPointsMiner.classes.Webhook import Webhook
 from TwitchChannelPointsMiner.classes.Matrix import Matrix
 from TwitchChannelPointsMiner.classes.Settings import Events
@@ -81,6 +82,7 @@ class LoggerSettings:
         "matrix",
         "pushover",
         "gotify",
+        "hooks",
         "username"
     ]
 
@@ -90,19 +92,20 @@ class LoggerSettings:
         less: bool = False,
         console_level: int = logging.INFO,
         console_username: bool = False,
-        time_zone: str or None = None,
+        time_zone: str | None = None,
         file_level: int = logging.DEBUG,
         emoji: bool = platform.system() != "Windows",
         colored: bool = False,
         color_palette: ColorPalette = ColorPalette(),
         auto_clear: bool = True,
-        telegram: Telegram or None = None,
-        discord: Discord or None = None,
-        webhook: Webhook or None = None,
-        matrix: Matrix or None = None,
-        pushover: Pushover or None = None,
-        gotify: Gotify or None = None,
-        username: str or None = None
+        telegram: Telegram | None = None,
+        discord: Discord | None = None,
+        webhook: Webhook | None = None,
+        matrix: Matrix | None = None,
+        pushover: Pushover | None = None,
+        gotify: Gotify |None = None,
+        hooks: list[EventHook] | None = None,
+        username: str | None = None
     ):
         self.save = save
         self.less = less
@@ -120,6 +123,10 @@ class LoggerSettings:
         self.matrix = matrix
         self.pushover = pushover
         self.gotify = gotify
+        self.hooks = hooks if hooks is not None else []
+        named_hooks: list[EventHook | None] = [self.telegram, self.discord, self.webhook, self.matrix, self.pushover,
+                                               self.gotify]
+        self.hooks.extend(hook for hook in named_hooks if hook is not None)
         self.username = username
 
 
@@ -191,12 +198,8 @@ class GlobalFormatter(logging.Formatter):
         record.msg = self.settings.username + record.msg
 
         if hasattr(record, "event"):
-            self.telegram(record)
-            self.discord(record)
-            self.webhook(record)
-            self.matrix(record)
-            self.pushover(record)
-            self.gotify(record)
+            for hook in self.settings.hooks:
+                hook.validate_and_send(record)
 
             if self.settings.colored is True:
                 record.msg = (
@@ -204,78 +207,6 @@ class GlobalFormatter(logging.Formatter):
                 )
 
         return super().format(record)
-
-    def telegram(self, record):
-        skip_telegram = False if hasattr(
-            record, "skip_telegram") is False else True
-
-        if (
-            self.settings.telegram is not None
-            and skip_telegram is False
-            and self.settings.telegram.chat_id != 123456789
-        ):
-            self.settings.telegram.send(record.msg, record.event)
-
-    def discord(self, record):
-        skip_discord = False if hasattr(
-            record, "skip_discord") is False else True
-
-        if (
-            self.settings.discord is not None
-            and skip_discord is False
-            and self.settings.discord.webhook_api
-            != "https://discord.com/api/webhooks/0123456789/0a1B2c3D4e5F6g7H8i9J"
-        ):
-            self.settings.discord.send(record.msg, record.event)
-
-    def webhook(self, record):
-        skip_webhook = False if hasattr(
-            record, "skip_webhook") is False else True
-
-        if (
-            self.settings.webhook is not None
-            and skip_webhook is False
-            and self.settings.webhook.endpoint
-            != "https://example.com/webhook"
-        ):
-            self.settings.webhook.send(record.msg, record.event)
-
-    def matrix(self, record):
-        skip_matrix = False if hasattr(
-            record, "skip_matrix") is False else True
-
-        if (
-            self.settings.matrix is not None
-            and skip_matrix is False
-            and self.settings.matrix.room_id != "..."
-            and self.settings.matrix.access_token
-        ):
-            self.settings.matrix.send(record.msg, record.event)
-
-    def pushover(self, record):
-        skip_pushover = False if hasattr(
-            record, "skip_pushover") is False else True
-
-        if (
-            self.settings.pushover is not None
-            and skip_pushover is False
-            and self.settings.pushover.userkey != "YOUR-ACCOUNT-TOKEN"
-            and self.settings.pushover.token != "YOUR-APPLICATION-TOKEN"
-        ):
-            self.settings.pushover.send(record.msg, record.event)
-
-    def gotify(self, record):
-        skip_gotify = False if hasattr(
-            record, "skip_gotify") is False else True
-
-        if (
-            self.settings.gotify is not None
-            and skip_gotify is False
-            and self.settings.gotify.endpoint
-            != "https://example.com/message?token=TOKEN"
-        ):
-            self.settings.gotify.send(record.msg, record.event)
-
 
 def configure_loggers(username, settings):
     if settings.colored is True:
