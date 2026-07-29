@@ -2,11 +2,12 @@ import json
 import logging
 import os
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from threading import Lock
 
 from TwitchChannelPointsMiner.classes.Chat import ChatPresence, ThreadChat
 from TwitchChannelPointsMiner.classes.entities.Bet import BetSettings, DelayMode
+from TwitchChannelPointsMiner.classes.entities.EventPrediction import EventPrediction
 from TwitchChannelPointsMiner.classes.entities.Stream import Stream
 from TwitchChannelPointsMiner.classes.Settings import Events, Settings
 from TwitchChannelPointsMiner.constants import URL
@@ -78,6 +79,7 @@ class Streamer(object):
         "online_at",
         "offline_at",
         "channel_points",
+        "event_predictions",
         "community_goals",
         "minute_watched_requests",
         "viewer_is_mod",
@@ -93,12 +95,14 @@ class Streamer(object):
     def __init__(self, username, settings=None):
         self.username: str = username.lower().strip()
         self.channel_id: str = ""
-        self.settings = settings
+        self.settings: StreamerSettings = settings
         self.is_online = False
         self.stream_up = 0
         self.online_at = 0
         self.offline_at = 0
         self.channel_points = 0
+        self.event_predictions: dict[str, EventPrediction] = {}
+        """The EventPredictions for this Streamer, each mapped to their 'event_id' property."""
         self.community_goals = {}
         self.minute_watched_requests = None
         self.viewer_is_mod = False
@@ -199,7 +203,14 @@ class Streamer(object):
             else 0
         )
 
-    def get_prediction_window(self, prediction_window_seconds):
+    def get_bet_wait_duration(self, prediction_window_seconds: float) -> float:
+        """
+        Gets the duration of time to wait, in seconds, relative to the start of an event, before placing a bet for the
+        given prediction window duration.
+
+        :param prediction_window_seconds: The length of time an event is open for predictions.
+        :return: The amount of time to wait in seconds.
+        """
         delay_mode = self.settings.bet.delay_mode
         delay = self.settings.bet.delay
         if delay_mode == DelayMode.FROM_START:
@@ -210,6 +221,21 @@ class Streamer(object):
             return prediction_window_seconds * delay
         else:
             return prediction_window_seconds
+
+    def get_time_until_place_bet(
+        self, event: EventPrediction, current_timestamp: datetime
+    ) -> float:
+        """
+        Gets the duration of time to wait, in seconds, relative to the given timestamp, before placing a bet for the
+        event with the given id.
+
+        :param event: The event.
+        :param current_timestamp: The time relative to which to measure the duration.
+        :return: The duration of time to wait in seconds.
+        """
+        bet_wait_time = self.get_bet_wait_duration(event.prediction_window_seconds)
+        place_bet_at = event.created_at + timedelta(seconds=bet_wait_time)
+        return (place_bet_at - current_timestamp).total_seconds()
 
     # === ANALYTICS === #
     def persistent_annotations(self, event_type, event_text):

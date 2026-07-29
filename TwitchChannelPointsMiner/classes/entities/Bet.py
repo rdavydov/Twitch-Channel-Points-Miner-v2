@@ -1,82 +1,151 @@
-import copy
 from enum import Enum, auto
-from random import uniform
-
-from millify import millify
-
-#from TwitchChannelPointsMiner.utils import char_decision_as_index, float_round
-from TwitchChannelPointsMiner.utils import float_round
 
 
 class Strategy(Enum):
+    """Enum representing a Strategy for placing Bets on EventPredictions."""
+
     MOST_VOTED = auto()
+    """
+    Selects the Outcome with the most number of users. For example:
+        If Outcome A has 10 users and Outcome B has 20 users then Outcome B will be selected since 20 > 10.
+    """
     HIGH_ODDS = auto()
+    """
+    Selects the Outcome with the highest odds. For example:
+        If the odds of Outcome A are 3.1 and B are 1.2 then Outcome A would be selected since 3.1 > 1.2.
+    """
     PERCENTAGE = auto()
+    """
+    Selects the Outcome with the greatest percentage of channel points. Similar to SMART_MONEY. For example:
+        if Outcome A has a total of 150 channel points wagered and B has 50 then Outcome A would be selected since 150 > 50.
+        (as a percentage that's 150 + 50 = 200 total points on the event, A has 150/200 = 75%, B has 50/200 = 25% and 75% > 25%)
+    """
     SMART_MONEY = auto()
+    """
+    Selects the Outcome with the highest number of total channel points wagered. Similar to PERCENTAGE. For example:
+        If outcome A has a total of 150 channel points wagered and B has 50 then outcome A would be selected since 150 > 50.
+    """
     SMART = auto()
+    """
+    Works with events with 2 outcomes.
+    Calculates the difference between the percentage of users on both outcomes.
+    If the difference is less than the 'percentage_gap' in the streamer's BetSettings then the option with the highest odds will be selected.
+    Otherwise the option with the highest total users will be selected.
+    """
     NUMBER_1 = auto()
+    """Selects the first outcome."""
     NUMBER_2 = auto()
+    """Selects the second outcome."""
     NUMBER_3 = auto()
+    """Selects the third outcome."""
     NUMBER_4 = auto()
+    """Selects the fourth outcome."""
     NUMBER_5 = auto()
+    """Selects the fifth outcome."""
     NUMBER_6 = auto()
+    """Selects the sixth outcome."""
     NUMBER_7 = auto()
+    """Selects the seventh outcome."""
     NUMBER_8 = auto()
+    """Selects the eighth outcome."""
+    NUMBER_9 = auto()
+    """Selects the ninth outcome."""
+    NUMBER_10 = auto()
+    """Selects the tenth outcome."""
 
     def __str__(self):
         return self.name
 
 
 class Condition(Enum):
+    """Enum representing numeric comparisons."""
+
     GT = auto()
+    """Greater than."""
     LT = auto()
+    """Less than."""
     GTE = auto()
+    """Greater than or equal than."""
     LTE = auto()
+    """Less than or equal than."""
 
     def __str__(self):
         return self.name
 
 
-class OutcomeKeys(object):
-    # Real key on Bet dict ['']
+class OutcomeKeys(str, Enum):
+    """Enum representing EventPrediction and Outcome values that can be used in betting strategies."""
+
     PERCENTAGE_USERS = "percentage_users"
+    """The percentage of users on a given outcome relative to the whole event."""
     ODDS_PERCENTAGE = "odds_percentage"
+    """The estimated probability of a given outcome, calculated from the outcome's odds (probability = 1 / odds)."""
     ODDS = "odds"
+    """The odds of a given outcome, calculated as the outcome's total points over the event's total points."""
     TOP_POINTS = "top_points"
-    # Real key on Bet dict [''] - Sum()
+    """The greatest number of points for an outcome."""
     TOTAL_USERS = "total_users"
+    """The total number of users for an event/outcome."""
     TOTAL_POINTS = "total_points"
-    # This key does not exist
+    """The total number of points for an event/outcome."""
     DECISION_USERS = "decision_users"
+    """The total number of users for the decided outcome. Used to decide whether a bet should be skipped."""
     DECISION_POINTS = "decision_points"
+    """The total number of points for the decided outcome. Used to decide whether a bet should be skipped."""
+
+    def __str__(self):
+        return self.name
 
 
 class DelayMode(Enum):
+    """
+    Represents an anchor point in time from which to measure.
+    This is used to decide when to place a bet relative to times in the lifecycle of a EventPrediction.
+    """
+
     FROM_START = auto()
+    """Measure time relative to the start of the event."""
     FROM_END = auto()
+    """Measure time relative to the end of the event."""
     PERCENTAGE = auto()
+    """
+    Measure time relative to the start of the event as a percentage of the length of the event.
+    e.g. If the event if 120 seconds long and the delay is 0.2 then the bet will be attempted at 0.2 * 120 = 24 seconds from the start of the event.
+    """
 
     def __str__(self):
         return self.name
 
 
 class FilterCondition(object):
+    """
+    An object representing a filter to use when deciding to skip bets.
+    e.g.
+        FilterCondition(OutcomeKeys.TOTAL_POINTS, Condition.GT, 5000)
+        would mean that the given outcome needs more than 5000 total points wagered to be acceptable.
+    """
+
     __slots__ = [
         "by",
         "where",
         "value",
     ]
 
-    def __init__(self, by=None, where=None, value=None, decision=None):
+    def __init__(self, by: OutcomeKeys, where: Condition, value: int | float):
         self.by = by
+        """The property of the outcome to check. Should be one of the OutcomeKeys static members."""
         self.where = where
+        """The type of comparison to make."""
         self.value = value
+        """The value against which to compare the property."""
 
     def __repr__(self):
         return f"FilterCondition(by={self.by.upper()}, where={self.where}, value={self.value})"
 
 
 class BetSettings(object):
+    """Settings for placing bets on EventPredictions."""
+
     __slots__ = [
         "strategy",
         "percentage",
@@ -102,16 +171,26 @@ class BetSettings(object):
         delay_mode: DelayMode = None,
     ):
         self.strategy = strategy
+        """The Strategy to employ when selecting an event outcome."""
         self.percentage = percentage
+        """The maximum percentage of points to wager."""
         self.percentage_gap = percentage_gap
+        """The value to use when selecting an outcome for Strategy.SMART."""
         self.max_points = max_points
+        """The maximum absolute number of points to wager."""
         self.minimum_points = minimum_points
+        """The minimum absolute number of points the user needs to have in order to a bet."""
         self.stealth_mode = stealth_mode
+        """Whether to limit the bet amount to the maximum number of points already wagered on the selected outcome."""
         self.filter_condition = filter_condition
+        """The filter to use when deciding whether to skip a selected bet."""
         self.delay = delay
+        """The delay amount to use when deciding the amount of time to wait before placing a bet."""
         self.delay_mode = delay_mode
+        """The anchor point to use when calculating the bet time."""
 
     def default(self):
+        """Sets any missing values to their defaults."""
         self.strategy = self.strategy if self.strategy is not None else Strategy.SMART
         self.percentage = self.percentage if self.percentage is not None else 5
         self.percentage_gap = (
@@ -134,212 +213,22 @@ class BetSettings(object):
 
 
 class Bet(object):
-    __slots__ = ["outcomes", "decision", "total_users", "total_points", "settings"]
+    """Represents a Bet made for an EventPrediction Outcome. It can create a new Prediction or update an existing one."""
 
-    def __init__(self, outcomes: list, settings: BetSettings):
-        self.outcomes = outcomes
-        self.__clear_outcomes()
-        self.decision: dict = {}
-        self.total_users = 0
-        self.total_points = 0
-        self.settings = settings
+    __slots__ = ["outcome_id", "points"]
 
-    def update_outcomes(self, outcomes):
-        for index in range(0, len(self.outcomes)):
-            self.outcomes[index][OutcomeKeys.TOTAL_USERS] = int(
-                outcomes[index][OutcomeKeys.TOTAL_USERS]
-            )
-            self.outcomes[index][OutcomeKeys.TOTAL_POINTS] = int(
-                outcomes[index][OutcomeKeys.TOTAL_POINTS]
-            )
-            if outcomes[index]["top_predictors"] != []:
-                # Sort by points placed by other users
-                outcomes[index]["top_predictors"] = sorted(
-                    outcomes[index]["top_predictors"],
-                    key=lambda x: x["points"],
-                    reverse=True,
-                )
-                # Get the first elements (most placed)
-                top_points = outcomes[index]["top_predictors"][0]["points"]
-                self.outcomes[index][OutcomeKeys.TOP_POINTS] = top_points
-
-        # Inefficient, but otherwise outcomekeys are represented wrong
-        self.total_points = 0
-        self.total_users = 0
-        for index in range(0, len(self.outcomes)):
-            self.total_users += self.outcomes[index][OutcomeKeys.TOTAL_USERS]
-            self.total_points += self.outcomes[index][OutcomeKeys.TOTAL_POINTS]
-
-        if (
-            self.total_users > 0
-            and self.total_points > 0
-        ):
-            for index in range(0, len(self.outcomes)):
-                self.outcomes[index][OutcomeKeys.PERCENTAGE_USERS] = float_round(
-                    (100 * self.outcomes[index][OutcomeKeys.TOTAL_USERS]) / self.total_users
-                )
-                self.outcomes[index][OutcomeKeys.ODDS] = float_round(
-                    #self.total_points / max(self.outcomes[index][OutcomeKeys.TOTAL_POINTS], 1)
-                    0
-                    if self.outcomes[index][OutcomeKeys.TOTAL_POINTS] == 0
-                    else self.total_points / self.outcomes[index][OutcomeKeys.TOTAL_POINTS]
-                )
-                self.outcomes[index][OutcomeKeys.ODDS_PERCENTAGE] = float_round(
-                    #100 / max(self.outcomes[index][OutcomeKeys.ODDS], 1)
-                    0
-                    if self.outcomes[index][OutcomeKeys.ODDS] == 0
-                    else 100 / self.outcomes[index][OutcomeKeys.ODDS]
-                )
-
-        self.__clear_outcomes()
+    def __init__(self, outcome_id: str, points: int):
+        self.outcome_id = outcome_id
+        """The id of the Outcome on which the bet should be placed."""
+        self.points = points
+        """The amount of channel points to wager."""
 
     def __repr__(self):
-        return f"Bet(total_users={millify(self.total_users)}, total_points={millify(self.total_points)}), decision={self.decision})\n\t\tOutcome A({self.get_outcome(0)})\n\t\tOutcome B({self.get_outcome(1)})"
+        return f"Bet(outcome_id='{self.outcome_id}', points={self.points})"
 
-    def get_decision(self, parsed=False):
-        #decision = self.outcomes[0 if self.decision["choice"] == "A" else 1]
-        decision = self.outcomes[self.decision["choice"]]
-        return decision if parsed is False else Bet.__parse_outcome(decision)
-
-    @staticmethod
-    def __parse_outcome(outcome):
-        return f"{outcome['title']} ({outcome['color']}), Points: {millify(outcome[OutcomeKeys.TOTAL_POINTS])}, Users: {millify(outcome[OutcomeKeys.TOTAL_USERS])} ({outcome[OutcomeKeys.PERCENTAGE_USERS]}%), Odds: {outcome[OutcomeKeys.ODDS]} ({outcome[OutcomeKeys.ODDS_PERCENTAGE]}%)"
-
-    def get_outcome(self, index):
-        return Bet.__parse_outcome(self.outcomes[index])
-
-    def __clear_outcomes(self):
-        for index in range(0, len(self.outcomes)):
-            keys = copy.deepcopy(list(self.outcomes[index].keys()))
-            for key in keys:
-                if key not in [
-                    OutcomeKeys.TOTAL_USERS,
-                    OutcomeKeys.TOTAL_POINTS,
-                    OutcomeKeys.TOP_POINTS,
-                    OutcomeKeys.PERCENTAGE_USERS,
-                    OutcomeKeys.ODDS,
-                    OutcomeKeys.ODDS_PERCENTAGE,
-                    "title",
-                    "color",
-                    "id",
-                ]:
-                    del self.outcomes[index][key]
-            for key in [
-                OutcomeKeys.PERCENTAGE_USERS,
-                OutcomeKeys.ODDS,
-                OutcomeKeys.ODDS_PERCENTAGE,
-                OutcomeKeys.TOP_POINTS,
-            ]:
-                if key not in self.outcomes[index]:
-                    self.outcomes[index][key] = 0
-
-    '''def __return_choice(self, key) -> str:
-        return "A" if self.outcomes[0][key] > self.outcomes[1][key] else "B"'''
-
-    def __return_choice(self, key) -> int:
-        largest=0
-        for index in range(0, len(self.outcomes)):
-            if self.outcomes[index][key] > self.outcomes[largest][key]:
-                largest = index
-        return largest
-
-    def __return_number_choice(self, number) -> int:
-        if (len(self.outcomes) > number):
-            return number
-        else:
-            return 0
-
-    def skip(self) -> bool:
-        if self.settings.filter_condition is not None:
-            # key == by , condition == where
-            key = self.settings.filter_condition.by
-            condition = self.settings.filter_condition.where
-            value = self.settings.filter_condition.value
-
-            fixed_key = (
-                key
-                if key not in [OutcomeKeys.DECISION_USERS, OutcomeKeys.DECISION_POINTS]
-                else key.replace("decision", "total")
-            )
-            if key in [OutcomeKeys.TOTAL_USERS, OutcomeKeys.TOTAL_POINTS]:
-                compared_value = (
-                    self.outcomes[0][fixed_key] + self.outcomes[1][fixed_key]
-                )
-            else:
-                #outcome_index = char_decision_as_index(self.decision["choice"])
-                outcome_index = self.decision["choice"]
-                compared_value = self.outcomes[outcome_index][fixed_key]
-
-            # Check if condition is satisfied
-            if condition == Condition.GT:
-                if compared_value > value:
-                    return False, compared_value
-            elif condition == Condition.LT:
-                if compared_value < value:
-                    return False, compared_value
-            elif condition == Condition.GTE:
-                if compared_value >= value:
-                    return False, compared_value
-            elif condition == Condition.LTE:
-                if compared_value <= value:
-                    return False, compared_value
-            return True, compared_value  # Else skip the bet
-        else:
-            return False, 0  # Default don't skip the bet
-
-    def calculate(self, balance: int) -> dict:
-        self.decision = {"choice": None, "amount": 0, "id": None}
-        if self.settings.strategy == Strategy.MOST_VOTED:
-            self.decision["choice"] = self.__return_choice(OutcomeKeys.TOTAL_USERS)
-        elif self.settings.strategy == Strategy.HIGH_ODDS:
-            self.decision["choice"] = self.__return_choice(OutcomeKeys.ODDS)
-        elif self.settings.strategy == Strategy.PERCENTAGE:
-            self.decision["choice"] = self.__return_choice(OutcomeKeys.ODDS_PERCENTAGE)
-        elif self.settings.strategy == Strategy.SMART_MONEY:
-            self.decision["choice"] = self.__return_choice(OutcomeKeys.TOP_POINTS)
-        elif self.settings.strategy == Strategy.NUMBER_1:
-            self.decision["choice"] = self.__return_number_choice(0)
-        elif self.settings.strategy == Strategy.NUMBER_2:
-            self.decision["choice"] = self.__return_number_choice(1)
-        elif self.settings.strategy == Strategy.NUMBER_3:
-            self.decision["choice"] = self.__return_number_choice(2)
-        elif self.settings.strategy == Strategy.NUMBER_4:
-            self.decision["choice"] = self.__return_number_choice(3)
-        elif self.settings.strategy == Strategy.NUMBER_5:
-            self.decision["choice"] = self.__return_number_choice(4)
-        elif self.settings.strategy == Strategy.NUMBER_6:
-            self.decision["choice"] = self.__return_number_choice(5)
-        elif self.settings.strategy == Strategy.NUMBER_7:
-            self.decision["choice"] = self.__return_number_choice(6)
-        elif self.settings.strategy == Strategy.NUMBER_8:
-            self.decision["choice"] = self.__return_number_choice(7)
-        elif self.settings.strategy == Strategy.SMART:
-            difference = abs(
-                self.outcomes[0][OutcomeKeys.PERCENTAGE_USERS]
-                - self.outcomes[1][OutcomeKeys.PERCENTAGE_USERS]
-            )
-            self.decision["choice"] = (
-                self.__return_choice(OutcomeKeys.ODDS)
-                if difference < self.settings.percentage_gap
-                else self.__return_choice(OutcomeKeys.TOTAL_USERS)
-            )
-
-        if self.decision["choice"] is not None:
-            #index = char_decision_as_index(self.decision["choice"])
-            index = self.decision["choice"]
-            self.decision["id"] = self.outcomes[index]["id"]
-            self.decision["amount"] = min(
-                int(balance * (self.settings.percentage / 100)),
-                self.settings.max_points,
-            )
-            if (
-                self.settings.stealth_mode is True
-                and self.decision["amount"]
-                >= self.outcomes[index][OutcomeKeys.TOP_POINTS]
-            ):
-                reduce_amount = uniform(1, 5)
-                self.decision["amount"] = (
-                    self.outcomes[index][OutcomeKeys.TOP_POINTS] - reduce_amount
-                )
-            self.decision["amount"] = int(self.decision["amount"])
-        return self.decision
+    def __eq__(self, other):
+        return (
+            isinstance(other, Bet)
+            and self.outcome_id == other.outcome_id
+            and self.points == other.points
+        )
