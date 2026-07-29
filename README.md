@@ -198,6 +198,7 @@ from TwitchChannelPointsMiner.classes.Discord import Discord
 from TwitchChannelPointsMiner.classes.Webhook import Webhook
 from TwitchChannelPointsMiner.classes.Telegram import Telegram
 from TwitchChannelPointsMiner.classes.Gotify import Gotify
+from TwitchChannelPointsMiner.classes.Ntfy import Ntfy
 from TwitchChannelPointsMiner.classes.Settings import Priority, Events, FollowersOrder
 from TwitchChannelPointsMiner.classes.entities.Bet import Strategy, BetSettings, Condition, OutcomeKeys, FilterCondition, DelayMode
 from TwitchChannelPointsMiner.classes.entities.Streamer import Streamer, StreamerSettings
@@ -266,6 +267,12 @@ twitch_miner = TwitchChannelPointsMiner(
             priority=8,
             events=[Events.STREAMER_ONLINE, Events.STREAMER_OFFLINE,
                     Events.BET_LOSE, Events.CHAT_MENTION], 
+        ),
+        ntfy=Ntfy(
+            endpoint="https://ntfy.example.com/mytopic",
+            priority=2,
+            events=[Events.STREAMER_ONLINE, Events.STREAMER_OFFLINE,
+                    Events.BET_LOSE, Events.CHAT_MENTION],
         )
     ),
     streamer_settings=StreamerSettings(
@@ -542,6 +549,26 @@ Webhook(
    method="GET",
    events=[Events.STREAMER_ONLINE, Events.STREAMER_OFFLINE,
                     Events.BET_LOSE, Events.CHAT_MENTION],
+)
+```
+
+#### Ntfy
+Receive messages via Ntfy (https://docs.ntfy.sh/)
+
+| Key                  | Type              | Default   | Description                                                            |
+|--------------------- |-------------------|-----------|------------------------------------------------------------------------|
+| `endpoint`           | string            |           | Ntfy instance url including the topic                                  |
+| `token`              | string            | `None`    | Your access token if the topic is protected, in the form of "tk_....." |
+| `priority`           | int               | `3`       | The Ntfy priority for the messages, ranging from 1 to 5                |
+| `events`             | list              |           | Only these events will be sent to the endpoint. Array of Event. or str |
+
+```python
+Ntfy(
+    endpoint="https://ntfy.example.com/mytopic",
+    token="tk_YOUR_ACCESS_TOKEN",
+    priority=4,
+    events=[Events.STREAMER_ONLINE, Events.STREAMER_OFFLINE,
+            Events.BET_LOSE, Events.CHAT_MENTION],
 )
 ```
 
