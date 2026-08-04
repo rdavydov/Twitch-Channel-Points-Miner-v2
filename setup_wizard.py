@@ -7,6 +7,7 @@ lets you paste either a settings.json blob or a run.py blob, saves it to disk,
 then re-execs the process so main.py finds the config on the next boot.
 """
 
+import hmac
 import json
 import os
 import sys
@@ -18,6 +19,13 @@ os.environ.setdefault("WERKZEUG_RUN_MAIN", "false")
 from flask import Flask, Response, request
 
 _SETUP_PORT = int(os.environ.get("SETUP_PORT", os.environ.get("ANALYTICS_PORT", "5005")))
+# Bind host is configurable so the wizard need not be exposed on all interfaces.
+# Defaults to 0.0.0.0 for container/Dokploy bootstrap compatibility.
+_SETUP_HOST = os.environ.get("SETUP_HOST", "0.0.0.0")
+# Optional shared secret. When set, the save endpoint (which can write an
+# arbitrary run.py that is later executed) requires a matching X-Setup-Token
+# header, closing the unauthenticated-RCE window while no config exists.
+_SETUP_TOKEN = os.environ.get("SETUP_TOKEN", "").strip()
 
 _HTML = """<!DOCTYPE html>
 <html lang="en">
@@ -111,7 +119,9 @@ function save() {
   var btn = document.getElementById('savebtn');
   btn.disabled = true;
   setStatus('info', 'Saving…');
-  fetch('/api/setup/save', {
+  var _tok = new URLSearchParams(window.location.search).get('token') || '';
+  var _url = '/api/setup/save' + (_tok ? ('?token=' + encodeURIComponent(_tok)) : '');
+  fetch(_url, {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({mode: mode, content: text})
@@ -152,6 +162,11 @@ def run_setup_wizard():
     @app.route("/api/setup/save", methods=["POST"])
     def setup_save():
         try:
+            if _SETUP_TOKEN:
+                provided = (request.headers.get("X-Setup-Token", "")
+                            or request.args.get("token", "")).strip()
+                if not hmac.compare_digest(provided, _SETUP_TOKEN):
+                    return {"ok": False, "error": "Unauthorized"}, 401
             body = request.get_json(force=True, silent=True) or {}
             mode = body.get("mode", "json")
             content = body.get("content", "").strip()
@@ -195,6 +210,12 @@ def run_setup_wizard():
         """Re-exec this process so main.py picks up the new config file."""
         os.execv(sys.executable, [sys.executable] + sys.argv)
 
-    print(f"[setup] No config found. Setup wizard running at http://0.0.0.0:{_SETUP_PORT}/")
+    print(f"[setup] No config found. Setup wizard running at http://{_SETUP_HOST}:{_SETUP_PORT}/")
     print(f"[setup] Open the URL in your browser, paste settings.json or run.py, and click Save & Start.")
-    app.run(host="0.0.0.0", port=_SETUP_PORT, threaded=True, debug=False, use_reloader=False)
+    if _SETUP_TOKEN:
+        print("[setup] Auth enabled — append ?token=<SETUP_TOKEN> to the URL.")
+    elif _SETUP_HOST == "0.0.0.0":
+        print("[setup] WARNING: wizard is unauthenticated and bound to 0.0.0.0. "
+              "It can write/execute an arbitrary run.py. Set SETUP_TOKEN and/or "
+              "SETUP_HOST=127.0.0.1 if the port is network-reachable.")
+    app.run(host=_SETUP_HOST, port=_SETUP_PORT, threaded=True, debug=False, use_reloader=False)

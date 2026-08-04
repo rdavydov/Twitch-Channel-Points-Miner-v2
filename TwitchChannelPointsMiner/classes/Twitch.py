@@ -494,8 +494,9 @@ class Twitch(object):
                             "isLive": True,
                             "isVod": False,
                             "vodID": "",
-                            "playerType": "site"
+                            "playerType": "site",
                             # "playerType": "picture-by-picture",
+                            "platform": "web"
                         }
 
                         # Get signature and value using the post_gql_request method
@@ -675,6 +676,11 @@ class Twitch(object):
 
         response = self.post_gql_request(json_data)
         if response != {}:
+            if "data" not in response or response["data"] is None:
+                logger.warning(
+                    f"Invalid response from load_channel_points_context for {streamer.username}: {response}"
+                )
+                return
             if response["data"]["community"] is None:
                 raise StreamerDoesNotExistException
             channel = response["data"]["community"]["channel"]

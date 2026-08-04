@@ -71,6 +71,12 @@ class TwitchChannelPointsMiner:
         "queue_listener",
         "_settings_mtime",
         "_settings_path",
+        "_blacklist",
+        "_followers_enabled",
+        "_followers_order",
+        "_user_id",
+        "_predictions_user_subscribed",
+        "_follower_sync_minutes",
     ]
 
     def __init__(
@@ -152,6 +158,21 @@ class TwitchChannelPointsMiner:
 
         self._settings_mtime = 0.0
         self._settings_path = ""
+
+        # Runtime auto-reload of newly followed channels (no restart needed).
+        self._blacklist: list = []
+        self._followers_enabled = False
+        self._followers_order = FollowersOrder.ASC
+        self._user_id = None
+        self._predictions_user_subscribed = False
+        # How often to re-sync the follower list, in minutes (0 disables).
+        # Override with the FOLLOWER_SYNC_MINUTES env var.
+        try:
+            self._follower_sync_minutes = int(
+                os.environ.get("FOLLOWER_SYNC_MINUTES", "30")
+            )
+        except ValueError:
+            self._follower_sync_minutes = 30
 
         self.session_id = str(uuid.uuid4())
         self.running = False
@@ -303,6 +324,12 @@ class TwitchChannelPointsMiner:
             if self.claim_drops_startup is True:
                 self.twitch.claim_all_drops_from_inventory()
 
+            # Remember these so the main loop can re-sync newly followed
+            # channels at runtime without a restart.
+            self._blacklist = blacklist
+            self._followers_enabled = followers
+            self._followers_order = followers_order
+
             streamers_name: list = []
             streamers_dict: dict = {}
 
@@ -421,6 +448,9 @@ class TwitchChannelPointsMiner:
                 logger.error("No user_id, exiting...")
                 self.end(0, 0)
 
+            # Keep the user_id around for runtime streamer additions.
+            self._user_id = user_id
+
             self.ws_pool.submit(
                 PubsubTopic(
                     "community-points-user-v1",
@@ -436,6 +466,7 @@ class TwitchChannelPointsMiner:
                         user_id=user_id,
                     )
                 )
+                self._predictions_user_subscribed = True
 
             for streamer in self.streamers:
                 self.ws_pool.submit(
@@ -462,6 +493,7 @@ class TwitchChannelPointsMiner:
 
             refresh_context = time.time()
             last_settings_check = time.time()
+            last_follower_sync = time.time()
             while self.running:
                 time.sleep(random.uniform(20, 60))
 
@@ -472,6 +504,19 @@ class TwitchChannelPointsMiner:
                         self._check_settings_reload()
                     except Exception:
                         logger.debug("Settings reload check failed", exc_info=True)
+
+                # Periodically pick up newly followed channels without a restart.
+                if (
+                    self._followers_enabled is True
+                    and self._follower_sync_minutes > 0
+                    and ((time.time() - last_follower_sync) // 60)
+                    >= self._follower_sync_minutes
+                ):
+                    last_follower_sync = time.time()
+                    try:
+                        self._sync_followers()
+                    except Exception:
+                        logger.debug("Follower re-sync failed", exc_info=True)
 
                 # Do an external control for WebSocket. Check if the thread is running
                 # Check if is not None because maybe we have already created a new connection on array+1 and now index is None
@@ -493,6 +538,114 @@ class TwitchChannelPointsMiner:
                             self.twitch.load_channel_points_context(
                                 self.streamers[index]
                             )
+
+    def _sync_followers(self):
+        """Re-fetch the follower list and start mining any newly followed
+        channels at runtime, without requiring a restart."""
+        if self.ws_pool is None:
+            return
+        followers_array = self.twitch.get_followers(order=self._followers_order)
+        known = {s.username.lower() for s in self.streamers}
+        blacklist = self._blacklist or []
+        new_usernames = [
+            u for u in followers_array
+            if u.lower() not in known and u.lower() not in blacklist
+        ]
+        if not new_usernames:
+            return
+        logger.info(
+            f"Found {len(new_usernames)} newly followed channel(s) — "
+            "adding them without a restart.",
+            extra={"emoji": ":clipboard:"},
+        )
+        added = 0
+        for username in new_usernames:
+            time.sleep(random.uniform(0.3, 0.7))
+            if self._add_streamer_runtime(username) is True:
+                added += 1
+        if added:
+            logger.info(
+                f"Now mining {added} additional channel(s) "
+                f"(total {len(self.streamers)}).",
+                extra={"emoji": ":sparkles:"},
+            )
+
+    def _add_streamer_runtime(self, username) -> bool:
+        """Fully wire up a single streamer (settings, points context, online
+        check and PubSub topics) after the miner is already running. Mirrors the
+        per-streamer setup done in run(). Returns True on success."""
+        username = username.lower().strip()
+        try:
+            streamer = Streamer(username)
+            streamer.channel_id = self.twitch.get_channel_id(username)
+            streamer.settings = set_default_settings(
+                streamer.settings, Settings.streamer_settings
+            )
+            streamer.settings.bet = set_default_settings(
+                streamer.settings.bet, Settings.streamer_settings.bet
+            )
+            if streamer.settings.chat != ChatPresence.NEVER:
+                streamer.irc_chat = ThreadChat(
+                    self.username,
+                    self.twitch.twitch_login.get_auth_token(),
+                    streamer.username,
+                )
+        except StreamerDoesNotExistException:
+            logger.info(
+                f"Streamer {username} does not exist",
+                extra={"emoji": ":cry:"},
+            )
+            return False
+
+        self.streamers.append(streamer)
+
+        try:
+            self.twitch.load_channel_points_context(streamer)
+            self.twitch.check_streamer_online(streamer)
+        except StreamerDoesNotExistException:
+            logger.info(
+                f"Streamer {streamer.username} does not exist",
+                extra={"emoji": ":cry:"},
+            )
+            # Roll back so we don't keep a half-initialised streamer.
+            self.streamers.remove(streamer)
+            return False
+
+        self.original_streamers.append(streamer.channel_points)
+
+        # The minute-watcher and sync-campaigns threads already iterate the
+        # shared self.streamers list, so the new streamer is watched on their
+        # next pass. We only need to subscribe its PubSub topics here.
+        self.ws_pool.submit(
+            PubsubTopic("video-playback-by-id", streamer=streamer)
+        )
+        if streamer.settings.follow_raid is True:
+            self.ws_pool.submit(PubsubTopic("raid", streamer=streamer))
+        if streamer.settings.make_predictions is True:
+            self.ws_pool.submit(
+                PubsubTopic("predictions-channel-v1", streamer=streamer)
+            )
+            # If no streamer needed predictions at startup, the user-level
+            # predictions topic was never subscribed — subscribe it now.
+            if self._predictions_user_subscribed is False and self._user_id:
+                self.ws_pool.submit(
+                    PubsubTopic("predictions-user-v1", user_id=self._user_id)
+                )
+                self._predictions_user_subscribed = True
+        if streamer.settings.claim_moments is True:
+            self.ws_pool.submit(
+                PubsubTopic("community-moments-channel-v1", streamer=streamer)
+            )
+        if streamer.settings.community_goals is True:
+            self.ws_pool.submit(
+                PubsubTopic("community-points-channel-v1", streamer=streamer)
+            )
+
+        logger.info(
+            f"Started mining {streamer}",
+            extra={"emoji": ":sparkles:"},
+        )
+        return True
 
     def end(self, signum, frame):
         if not self.running:
