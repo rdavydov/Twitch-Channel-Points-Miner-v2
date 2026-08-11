@@ -1849,20 +1849,18 @@ class Twitch(object):
             elif prior == Priority.STREAK:
                 session = self._ensure_watch_streak_session(streamer, now)
                 eligible = self._session_is_eligible(session, streamer, now)
-                attempts = session.attempts if session is not None else float("inf")
-                next_retry_at = (
-                    session.next_retry_at
-                    if session is not None and session.next_retry_at is not None
-                    else 0
-                )
-                stream_created_at = (
-                    streamer.stream.created_at
-                    if getattr(streamer.stream, "created_at", None) is not None
-                    else streamer.online_at or now
-                )
-                key_parts.append(
-                    (0 if eligible else 1, next_retry_at, stream_created_at, attempts)
-                )
+                if eligible:
+                    attempts = session.attempts
+                    next_retry_at = session.next_retry_at or 0
+                    stream_created_at = (
+                        streamer.stream.created_at
+                        if getattr(streamer.stream, "created_at", None) is not None
+                        else streamer.online_at or now
+                    )
+                    key_parts.append((0, next_retry_at, stream_created_at, attempts))
+                else:
+                    # Let later priorities break ties once no streak attempt is needed.
+                    key_parts.append((1, 0, 0, 0))
             else:
                 key_parts.append(0)
         return tuple(key_parts)
