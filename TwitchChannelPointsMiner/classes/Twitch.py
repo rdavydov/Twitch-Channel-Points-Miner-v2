@@ -2931,7 +2931,27 @@ class Twitch(object):
         json_data["variables"] = {
             "input": {"channelID": streamer.channel_id, "claimID": claim_id}
         }
-        self.post_gql_request(json_data)
+        response = self.post_gql_request(json_data)
+        operation_name = json_data.get("operationName")
+        if (
+            not isinstance(response, dict)
+            or self._log_gql_errors(operation_name, response)
+            or not isinstance(response.get("data"), dict)
+            or response["data"].get("claimCommunityPoints") is None
+        ):
+            return
+
+        if (
+            self.watch_streak_cache is not None
+            and streamer.is_online is True
+            and streamer.stream.broadcast_id
+            and streamer.stream.watch_streak_missing is not False
+            and self._streamer_can_attempt_watch_streak(streamer)
+        ):
+            self.record_watch_streak_evidence(
+                streamer,
+                evidence_source="bonus_claim",
+            )
 
     # === MOMENTS === #
     def claim_moment(self, streamer, moment_id):

@@ -954,6 +954,95 @@ class WatchStreakMilestoneTest(unittest.TestCase):
         self.assertIsNotNone(session)
         self.assertFalse(session.claimed)
 
+    def test_successful_bonus_claim_triggers_streak_verification(self):
+        Settings.logger = SimpleNamespace(less=True)
+        twitch = Twitch("bonus-evidence-test", "ua")
+        twitch.watch_streak_cache = WatchStreakCache(
+            default_account_name="bonus-evidence-test"
+        )
+        streamer = self._make_streamer("streamer")
+        streamer.is_online = True
+        streamer.stream.broadcast_id = "broadcast-bonus-1"
+        streamer.stream.watch_streak_missing = True
+
+        response = {
+            "data": {
+                "claimCommunityPoints": {
+                    "claim": {"id": "claim-1"},
+                }
+            }
+        }
+        with patch.object(
+            Twitch,
+            "post_gql_request",
+            return_value=response,
+        ) as mocked_post, patch.object(
+            Twitch,
+            "record_watch_streak_evidence",
+            autospec=True,
+        ) as mocked_evidence:
+            twitch.claim_bonus(streamer, "claim-1")
+
+        mocked_post.assert_called_once()
+        self.assertEqual(
+            mocked_post.call_args.args[0]["variables"]["input"],
+            {"channelID": streamer.channel_id, "claimID": "claim-1"},
+        )
+        mocked_evidence.assert_called_once_with(
+            twitch,
+            streamer,
+            evidence_source="bonus_claim",
+        )
+
+    def test_failed_bonus_claim_does_not_trigger_streak_verification(self):
+        Settings.logger = SimpleNamespace(less=True)
+        twitch = Twitch("bonus-error-test", "ua")
+        twitch.watch_streak_cache = WatchStreakCache(
+            default_account_name="bonus-error-test"
+        )
+        streamer = self._make_streamer("streamer")
+        streamer.is_online = True
+        streamer.stream.broadcast_id = "broadcast-bonus-2"
+        streamer.stream.watch_streak_missing = True
+
+        with patch.object(
+            Twitch,
+            "post_gql_request",
+            return_value={"errors": [{"message": "claim failed"}]},
+        ), patch.object(
+            Twitch,
+            "record_watch_streak_evidence",
+            autospec=True,
+        ) as mocked_evidence:
+            twitch.claim_bonus(streamer, "claim-2")
+
+        mocked_evidence.assert_not_called()
+
+    def test_startup_bonus_claim_does_not_create_streak_evidence(self):
+        Settings.logger = SimpleNamespace(less=True)
+        twitch = Twitch("bonus-startup-test", "ua")
+        twitch.watch_streak_cache = WatchStreakCache(
+            default_account_name="bonus-startup-test"
+        )
+        streamer = self._make_streamer("streamer")
+        streamer.is_online = False
+        streamer.stream.watch_streak_missing = True
+
+        with patch.object(
+            Twitch,
+            "post_gql_request",
+            return_value={
+                "data": {"claimCommunityPoints": {"claim": {"id": "claim-3"}}}
+            },
+        ), patch.object(
+            Twitch,
+            "record_watch_streak_evidence",
+            autospec=True,
+        ) as mocked_evidence:
+            twitch.claim_bonus(streamer, "claim-3")
+
+        mocked_evidence.assert_not_called()
+
     def test_set_online_does_not_reset_detected_streak_state(self):
         streamer = self._make_streamer("streamer")
         Settings.logger = SimpleNamespace(less=True)
