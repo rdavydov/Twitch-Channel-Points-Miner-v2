@@ -194,6 +194,7 @@ class TwitchChannelPointsMiner:
                 refresh=refresh,
                 days_ago=days_ago,
                 username=self.username,
+                miner=self,
             )
             http_server.daemon = True
             http_server.name = "Analytics Thread"

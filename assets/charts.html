@@ -1,209 +1,197 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Twitch-Channel-Points-Miner-v2</title>
-    <link rel="icon" type="image/png" sizes="32x32"
-        href="https://static.twitchcdn.net/assets/favicon-32-e29e246c157142c94346.png">
-    <link rel="icon" type="image/png" sizes="16x16"
-        href="https://static.twitchcdn.net/assets/favicon-16-52e571ffea063af7a7f4.png">
-
+    <link rel="icon" type="image/png" sizes="32x32" href="https://static.twitchcdn.net/assets/favicon-32-e29e246c157142c94346.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="https://static.twitchcdn.net/assets/favicon-16-52e571ffea063af7a7f4.png">
     <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.42.0"></script>
     <script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.min.js"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.css" rel="stylesheet" />
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.6.1/css/bulma.css" rel="stylesheet" />
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet"
-        integrity="sha512-1ycn6IcaQQ40/MKBW2W4Rhis/DbILU74C1vSrLJxCq57o941Ym01SwNsOMqvEBFlcgUa6xLiPY/NS5R+E6ztJQ=="
-        crossorigin="anonymous" referrerpolicy="no-referrer" />
-
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet" />
     <link href="{{url_for('static', filename='dark-theme.css')}}" rel="stylesheet" />
     <link href="{{url_for('static', filename='style.css')}}" rel="stylesheet" />
-
 </head>
-
-<body style="height: 100vh;">
-    <div class="container has-text-centered" style="height: 100vh;">
-        <div class="columns" id="header">
-            <div class="column has-text-right">
-                <a href="https://github.com/rdavydov/Twitch-Channel-Points-Miner-v2" target="_blank"><img
-                        style="margin-top: -20px;" width="600px" src="{{url_for('static', filename='banner.png')}}"
-                        alt="banner"></a>
+<body>
+    <nav class="topbar" id="header">
+        <div class="topbar-left">
+            <a href="https://github.com/rdavydov/Twitch-Channel-Points-Miner-v2" target="_blank"><img width="420" src="{{url_for('static', filename='banner.png')}}" alt="banner"></a>
+        </div>
+        <div class="topbar-right">
+            <div class="header-stats" id="overview-stats">
+                <span class="stat" title="Total streamers"><i class="fa-solid fa-users"></i> <b id="stat-streamers">-</b> streamers</span>
+                <span class="stat" title="Total points"><i class="fa-solid fa-coins"></i> <b id="stat-points">-</b></span>
+                <span class="stat" title="Total gained"><i class="fa-solid fa-arrow-trend-up"></i> +<b id="stat-gained">-</b></span>
+                <span class="stat" title="Win rate"><i class="fa-solid fa-trophy"></i> <b id="stat-winrate">-</b>% WR</span>
             </div>
-            <div class="column is-4 has-text-left" style="margin-top: 35px;">
-                <table>
-                    <tr>
-                        <td><a href="https://github.com/Tkd-Alex" target="_blank">Tkd-Alex</a></td>
-                        <td><a href="https://github.com/rdavydov" target="_blank">rdavydov</a></td>
-                    </tr>
-                    <tr>
-                        <td><a href="https://github.com/Tkd-Alex/Twitch-Channel-Points-Miner-v2/blob/master/LICENSE">
-                                <img alt="License"
-                                    src="https://img.shields.io/github/license/Tkd-Alex/Twitch-Channel-Points-Miner-v2" /></a>
-                        </td>
-                        <td><a href="https://github.com/rdavydov/Twitch-Channel-Points-Miner-v2/blob/master/LICENSE">
-                                <img alt="License"
-                                    src="https://img.shields.io/github/license/rdavydov/Twitch-Channel-Points-Miner-v2" /></a>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td><a href="https://www.python.org/downloads/release/python-360/">
-                                <img alt="Python3"
-                                    src="https://img.shields.io/badge/built%20for-Python≥3.6-red.svg?style=flat"></a>
-                        </td>
-                        <td><a href="https://www.python.org/downloads/release/python-360/">
-                                <img alt="Python3"
-                                    src="https://img.shields.io/badge/built%20for-Python≥3.6-red.svg?style=flat"></a>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td><a href="https://github.com/Tkd-Alex/Twitch-Channel-Points-Miner-v2/pulls">
-                                <img alt="PRsWelcome"
-                                    src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat" /></a>
-                        </td>
-                        <td><a href="https://github.com/rdavydov/Twitch-Channel-Points-Miner-v2/pulls">
-                                <img alt="PRsWelcome"
-                                    src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat" /></a>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td><a href="https://github.com/Tkd-Alex/Twitch-Channel-Points-Miner-v2/stargazers">
-                                <img alt="GitHub Repo stars"
-                                    src="https://img.shields.io/github/stars/Tkd-Alex/Twitch-Channel-Points-Miner-v2" /></a>
-                        </td>
-                        <td><a href="https://github.com/rdavydov/Twitch-Channel-Points-Miner-v2/stargazers">
-                                <img alt="GitHub Repo stars"
-                                    src="https://img.shields.io/github/stars/rdavydov/Twitch-Channel-Points-Miner-v2" /></a>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td><a
-                                href="https://github.com/Tkd-Alex/Twitch-Channel-Points-Miner-v2/issues?q=is%3Aissue+is%3Aclosed">
-                                <img alt="GitHub closed issues"
-                                    src="https://img.shields.io/github/issues-closed/Tkd-Alex/Twitch-Channel-Points-Miner-v2"></a>
-                        </td>
-                        <td><a
-                                href="https://github.com/rdavydov/Twitch-Channel-Points-Miner-v2/issues?q=is%3Aissue+is%3Aclosed">
-                                <img alt="GitHub closed issues"
-                                    src="https://img.shields.io/github/issues-closed/rdavydov/Twitch-Channel-Points-Miner-v2"></a>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td><a href="https://github.com/Tkd-Alex/Twitch-Channel-Points-Miner-v2">
-                                <img alt="GitHub last commit"
-                                    src="https://img.shields.io/github/last-commit/Tkd-Alex/Twitch-Channel-Points-Miner-v2" /></a>
-                        </td>
-                        <td><a href="https://github.com/rdavydov/Twitch-Channel-Points-Miner-v2">
-                                <img alt="GitHub last commit"
-                                    src="https://img.shields.io/github/last-commit/rdavydov/Twitch-Channel-Points-Miner-v2" /></a>
-                        </td>
-                    </tr>
-                </table>
+            <div class="topbar-actions">
+                <label class="toggle"><input type="checkbox" checked id="dark-mode"> Dark</label>
+                <label class="toggle"><input type="checkbox" checked id="toggle-header"> Header</label>
+                <a href="/logs" class="btn-small" target="_blank"><i class="fa-solid fa-file-lines"></i> Logs</a>
             </div>
         </div>
+    </nav>
 
-        <div class="columns">
-            <div class="column is-narrow has-text-center">
-                <div class="dropdown">
-                    <div class="dropdown-trigger">
-                        <button class="button" aria-haspopup="true" aria-controls="dropdown-menu">
-                            <span id="sorting-by"></span>
-                            <span class="icon is-small">
-                                <i class="fas fa-angle-down" aria-hidden="true"></i>
-                            </span>
-                        </button>
-                    </div>
+    <div class="tabs-nav">
+        <button class="tab-btn active" data-tab="dashboard"><i class="fa-solid fa-chart-line"></i> Dashboard</button>
+        <button class="tab-btn" data-tab="history"><i class="fa-solid fa-clock-rotate-left"></i> Bet History</button>
+        <button class="tab-btn" data-tab="config"><i class="fa-solid fa-gear"></i> Config</button>
+    </div>
+
+    <!-- DASHBOARD TAB -->
+    <div id="tab-dashboard" class="tab-pane active">
+        <div class="controls-bar">
+            <div class="control-group">
+                <div class="dropdown" id="sort-dropdown">
+                    <button class="button" aria-haspopup="true"><span id="sorting-by">Name ascending</span> <i class="fa-solid fa-angle-down"></i></button>
                     <div class="dropdown-menu" id="dropdown-menu" role="menu">
                         <div class="dropdown-content">
-                            <a href="#" class="dropdown-item" onClick="changeSortBy(this)">
-                                Name ascending
-                            </a>
-                            <a href="#" class="dropdown-item" onClick="changeSortBy(this)">
-                                Name descending
-                            </a>
-                            <a href="#" class="dropdown-item" onClick="changeSortBy(this)">
-                                Points ascending
-                            </a>
-                            <a href="#" class="dropdown-item" onClick="changeSortBy(this)">
-                                Points descending
-                            </a>
-                            <a href="#" class="dropdown-item" onClick="changeSortBy(this)">
-                                Last activity ascending
-                            </a>
-                            <a href="#" class="dropdown-item" onClick="changeSortBy(this)">
-                                Last activity descending
-                            </a>
+                            <a href="#" class="dropdown-item" onClick="changeSortBy(this)">Name ascending</a>
+                            <a href="#" class="dropdown-item" onClick="changeSortBy(this)">Name descending</a>
+                            <a href="#" class="dropdown-item" onClick="changeSortBy(this)">Points ascending</a>
+                            <a href="#" class="dropdown-item" onClick="changeSortBy(this)">Points descending</a>
+                            <a href="#" class="dropdown-item" onClick="changeSortBy(this)">Gained ascending</a>
+                            <a href="#" class="dropdown-item" onClick="changeSortBy(this)">Gained descending</a>
+                            <a href="#" class="dropdown-item" onClick="changeSortBy(this)">Last activity ascending</a>
+                            <a href="#" class="dropdown-item" onClick="changeSortBy(this)">Last activity descending</a>
                         </div>
                     </div>
                 </div>
-            </div>
-            <div class="column is-2 has-text-left">
-                <input class="input" type="date" id="startDate">
-            </div>
-            <div class="column is-2 has-text-left">
-                <input class="input" type="date" id="endDate">
-            </div>
-            <div class="column has-text-right" style="margin: auto">
-                <button id="auto-update-log">⏸️</button>
-                <label class="checkbox checkbox-label">
-                    Log
-                    <input type="checkbox" id="log">
-                </label>
-                <label class="checkbox checkbox-label">
-                    Annotations
-                    <input type="checkbox" checked="true" id="annotations">
-                </label>
-                <label class="checkbox checkbox-label">
-                    Dark mode
-                    <input type="checkbox" checked="true" id="dark-mode">
-                </label>
-                <label class="checkbox checkbox-label">
-                    Header
-                    <input type="checkbox" checked="true" id="toggle-header">
-                </label>
-            </div>
-        </div>
-        <div class="columns">
-            <div class="column is-narrow">
-                <div class="tabs">
-                    <ul id="streamers-list"></ul>
+                <div class="search-box">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" id="streamer-search" placeholder="Filter streamers..." autocomplete="off">
                 </div>
             </div>
-            <div class="column">
-                <div class="box" id="chart" style="padding: 0.30rem;"></div>
+            <div class="control-group">
+                <div class="preset-group">
+                    <button class="preset-btn active" data-days="7">7D</button>
+                    <button class="preset-btn" data-days="30">30D</button>
+                    <button class="preset-btn" data-days="90">90D</button>
+                    <button class="preset-btn" data-days="all">All</button>
+                </div>
+                <input class="input date-input" type="date" id="startDate">
+                <input class="input date-input" type="date" id="endDate">
+                <select id="agg-select" class="input" title="Aggregation">
+                    <option value="raw">Raw</option>
+                    <option value="30Min" selected>30 min</option>
+                    <option value="1H">1 hour</option>
+                    <option value="6H">6 hours</option>
+                    <option value="1D">1 day</option>
+                </select>
+            </div>
+            <div class="control-group right">
+                <label class="toggle"><input type="checkbox" id="compare-mode"> Compare</label>
+                <label class="toggle"><input type="checkbox" checked id="annotations"> Annotations</label>
+                <button class="btn-small" id="btn-export" title="Export CSV"><i class="fa-solid fa-download"></i> Export</button>
+                <button class="btn-small" id="btn-reset-zoom"><i class="fa-solid fa-magnifying-glass-minus"></i> Reset zoom</button>
+                <label class="toggle"><input type="checkbox" id="log"> Log</label>
             </div>
         </div>
-        <div class="columns">
-            <div class="column is-12">
-                <div class="box" id="log-box" style="padding: 0.30rem; display: none;">
-                    <pre id="log-content">In your run.py file set save=True in logger_settings to save logs to a file.&#10;&#13;</pre>
+
+        <div class="dashboard-grid">
+            <aside class="streamers-panel">
+                <div class="panel-header">
+                    <span>Streamers</span>
+                    <span class="badge" id="streamer-count">0</span>
                 </div>
+                <ul id="streamers-list" class="streamers-list"></ul>
+            </aside>
+            <main class="chart-panel">
+                <div class="chart-header">
+                    <h2 id="chart-title">Select a streamer</h2>
+                    <div class="chart-stats" id="chart-stats"></div>
+                </div>
+                <div class="box" id="chart"></div>
+                <div class="gain-breakdown" id="gain-breakdown"></div>
+                <div class="box" id="log-box" style="display:none;">
+                    <div class="box-header">Live Log <button id="auto-update-log" title="Pause/Resume">⏸️</button></div>
+                    <pre id="log-content">In your run.py file set save=True in logger_settings to save logs to a file.</pre>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- HISTORY TAB -->
+    <div id="tab-history" class="tab-pane">
+        <div class="history-controls">
+            <div class="control-group">
+                <select id="history-streamer-filter" class="input"><option value="">All streamers</option></select>
+                <select id="history-type-filter" class="input">
+                    <option value="">All types</option>
+                    <option value="WIN">Wins</option>
+                    <option value="LOSE">Losses</option>
+                    <option value="BET_PLACED">Bets placed</option>
+                    <option value="WATCH_STREAK">Watch streaks</option>
+                </select>
+                <input type="text" id="history-search" class="input" placeholder="Search text...">
+                <button class="btn-small" id="btn-history-refresh"><i class="fa-solid fa-rotate"></i> Refresh</button>
+            </div>
+            <div class="history-summary" id="history-summary"></div>
+        </div>
+        <div class="table-wrapper">
+            <table class="history-table">
+                <thead>
+                    <tr>
+                        <th data-sort="datetime">Time <i class="fa-solid fa-sort"></i></th>
+                        <th data-sort="streamer">Streamer <i class="fa-solid fa-sort"></i></th>
+                        <th data-sort="type">Type <i class="fa-solid fa-sort"></i></th>
+                        <th>Details</th>
+                        <th data-sort="balance">Balance <i class="fa-solid fa-sort"></i></th>
+                    </tr>
+                </thead>
+                <tbody id="history-body"><tr><td colspan="5" class="empty">Loading...</td></tr></tbody>
+            </table>
+        </div>
+        <div class="pagination" id="history-pagination"></div>
+    </div>
+
+    <!-- CONFIG TAB -->
+    <div id="tab-config" class="tab-pane">
+        <div class="config-layout">
+            <div class="config-card">
+                <h3><i class="fa-solid fa-globe"></i> Global Settings <span class="subtitle">Applied to all streamers unless overridden</span></h3>
+                <div id="global-config-form"></div>
+                <div class="form-actions">
+                    <button class="btn-primary" id="btn-save-global"><i class="fa-solid fa-floppy-disk"></i> Save Global Settings</button>
+                    <span id="global-save-status" class="save-status"></span>
+                </div>
+            </div>
+            <div class="config-card">
+                <div class="card-header-row">
+                    <h3><i class="fa-solid fa-users-gear"></i> Per-Channel Settings</h3>
+                    <div class="add-streamer-row">
+                        <input type="text" id="new-streamer-name" class="input" placeholder="streamer username">
+                        <button class="btn-small" id="btn-add-streamer"><i class="fa-solid fa-plus"></i> Add</button>
+                    </div>
+                </div>
+                <div id="per-channel-list"></div>
+            </div>
+            <div class="config-card">
+                <h3><i class="fa-solid fa-list-ol"></i> Priority Order</h3>
+                <p class="help">Drag to reorder or edit priority list (STREAK, DROPS, ORDER, etc.)</p>
+                <div id="priority-editor"></div>
+                <button class="btn-small" id="btn-save-priority">Save Priority</button>
             </div>
         </div>
     </div>
-</body>
 
 <script type="text/javascript">
-    // n.b. Seems that we are unable to call Flask variable in JS code imported from JS file.
-    // That's why "link[href='{{url_for('static', filename='dark-theme.css')}}']", {{ refresh }}, {{ daysAgo }} are here.
-
     function toggleDarkMode() {
         var darkMode = $('#dark-mode').prop("checked")
         $("link[href='{{url_for('static', filename='dark-theme.css')}}']").prop("disabled", !darkMode);
-        chart.updateOptions({
-            colors: darkMode === true ? ["#f9826c"] : ['#008ffb'],
-            chart: {
-                foreColor: darkMode === true ? "#fff" : '#373d3f'
-            },
-            tooltip: {
-                theme: darkMode === true ? "dark" : "light"
-            }
-        })
+        if (window.chart) {
+            chart.updateOptions({
+                colors: darkMode === true ? ["#f9826c"] : ['#008ffb'],
+                chart: { foreColor: darkMode === true ? "#fff" : '#373d3f' },
+                tooltip: { theme: darkMode === true ? "dark" : "light" },
+                grid: { borderColor: darkMode ? '#3a3d52' : '#e0e0e0' }
+            })
+        }
+        localStorage.setItem("dark-mode", darkMode)
     }
     var refresh = parseInt("{{ refresh }}");
     var daysAgo = parseInt("{{ daysAgo }}");
 </script>
 <script type="text/javascript" src="{{url_for('static', filename='script.js')}}"></script>
-
+</body>
 </html>
