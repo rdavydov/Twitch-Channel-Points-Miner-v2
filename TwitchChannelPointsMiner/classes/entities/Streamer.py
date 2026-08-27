@@ -184,6 +184,11 @@ class Streamer(object):
             and self.stream.campaigns_ids != []
         )
 
+    def has_drops_available(self):
+        # Check if there are actual drops available (via campaigns_ids + non-empty campaigns)
+        # campaigns_ids is updated directly, so it's more reliable than stream.campaigns
+        return self.settings.claim_drops is True and self.stream.campaigns_ids != []
+
     def viewer_has_points_multiplier(self):
         return self.activeMultipliers is not None and len(self.activeMultipliers) > 0
 

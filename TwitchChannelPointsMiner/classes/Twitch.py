@@ -64,6 +64,8 @@ class Twitch(object):
         "client_session",
         "client_version",
         "twilight_build_id_pattern",
+        "_reported_completed_drops",
+        "_reported_skipped_drops",
     ]
 
     def __init__(self, username, user_agent, password=None):
@@ -85,6 +87,8 @@ class Twitch(object):
         self.twilight_build_id_pattern = re.compile(
             r'window\.__twilightBuildID\s*=\s*"([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})"'
         )
+        self._reported_completed_drops = set()
+        self._reported_skipped_drops = set()
 
     def login(self):
         if not os.path.isfile(self.cookies_file):
@@ -373,7 +377,14 @@ class Twitch(object):
             logger.error(f"Error with update_client_version: {e}")
             return self.client_version
 
-    def send_minute_watched_events(self, streamers, priority, chunk_size=3):
+    def send_minute_watched_events(
+        self,
+        streamers,
+        priority,
+        watch_only_drops=False,
+        stop_watch_when_drops_completed=False,
+        chunk_size=3,
+    ):
         while self.running:
             try:
                 streamers_index = [
@@ -391,6 +402,64 @@ class Twitch(object):
                         # Why this user It's currently online but the last updated was more than 10minutes ago?
                         # Please perform a manually update and check if the user it's online
                         self.check_streamer_online(streamers[index])
+
+                if stop_watch_when_drops_completed is True:
+                    original_indices = list(streamers_index)
+                    streamers_index = [
+                        index for index in streamers_index
+                        if streamers[index].has_drops_available()
+                    ]
+                    removed = [
+                        streamers[index].username
+                        for index in original_indices
+                        if index not in streamers_index
+                    ]
+                    # Remove streamers from reported set if they now have drops again
+                    self._reported_completed_drops -= set(
+                        streamers[index].username
+                        for index in streamers_index
+                        if streamers[index].username in self._reported_completed_drops
+                    )
+                    new_removed = [
+                        username
+                        for username in removed
+                        if username not in self._reported_completed_drops
+                    ]
+                    self._reported_completed_drops.update(removed)
+                    if new_removed:
+                        logger.info(
+                            f"Stopped watching completed-drop channels: {', '.join(new_removed)}",
+                            extra={"emoji": ":package:", "event": Events.DROP_STATUS},
+                        )
+
+                if watch_only_drops is True:
+                    original_indices = list(streamers_index)
+                    streamers_index = [
+                        index for index in streamers_index
+                        if streamers[index].drops_condition() is True
+                    ]
+                    removed = [
+                        streamers[index].username
+                        for index in original_indices
+                        if index not in streamers_index
+                    ]
+                    # Remove streamers from reported set if they now pass drops condition
+                    self._reported_skipped_drops -= set(
+                        streamers[index].username
+                        for index in streamers_index
+                        if streamers[index].username in self._reported_skipped_drops
+                    )
+                    new_removed = [
+                        username
+                        for username in removed
+                        if username not in self._reported_skipped_drops
+                    ]
+                    self._reported_skipped_drops.update(removed)
+                    if new_removed:
+                        logger.info(
+                            f"Watch-only drops active, skipped channels: {', '.join(new_removed)}",
+                            extra={"emoji": ":eyes:", "event": Events.DROP_STATUS},
+                        )
 
                 """
                 Twitch has a limit - you can't watch more than 2 channels at one time.
