@@ -42,24 +42,31 @@ twitch_miner = TwitchChannelPointsMiner(
             streamer_offline="red",             # Read more in README.md
             BET_wiN=Fore.MAGENTA                # Color allowed are: [BLACK, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE, RESET].
         ),
-        telegram=Telegram(                                                          # You can omit or set to None if you don't want to receive updates on Telegram
-            chat_id=123456789,                                                      # Chat ID to send messages @getmyid_bot
-            token="123456789:shfuihreuifheuifhiu34578347",                          # Telegram API token @BotFather
-            events=[Events.STREAMER_ONLINE, Events.STREAMER_OFFLINE,
-                    Events.BET_LOSE, Events.CHAT_MENTION],                          # Only these events will be sent to the chat
-            disable_notification=True,                                              # Revoke the notification (sound/vibration)
-        ),
-        discord=Discord(
-            webhook_api="https://discord.com/api/webhooks/0123456789/0a1B2c3D4e5F6g7H8i9J",  # Discord Webhook URL
-            events=[Events.STREAMER_ONLINE, Events.STREAMER_OFFLINE,
-                    Events.BET_LOSE, Events.CHAT_MENTION],                                  # Only these events will be sent to the chat
-        ),
-        webhook=Webhook(
-            endpoint="https://example.com/webhook",                                                                    # Webhook URL
-            method="GET",                                                                   # GET or POST
-            events=[Events.STREAMER_ONLINE, Events.STREAMER_OFFLINE,
-                    Events.BET_LOSE, Events.CHAT_MENTION],                                  # Only these events will be sent to the endpoint
-        ),
+        # Example with multiple Telegram chats - you can use a single object or a list of objects
+        telegram=Telegram(                                                               # Second Telegram chat for critical events only
+                chat_id=987654321,                                                  # Different chat ID
+                token="987654321:anotherBotTokenHere12345",                         # Different bot token
+                events=[Events.BET_LOSE, Events.CHAT_MENTION],                      # Only send important events to this chat
+                disable_notification=False,                                         # Enable notifications for this chat
+            ),
+        # Example with multiple Discord channels - you can use a single object or a list of objects
+        discord=[
+            Discord(
+                webhook_api="https://discord.com/api/webhooks/0123456789/0a1B2c3D4e5F6g7H8i9J",  # Discord Webhook URL for channel 1
+                events=[Events.STREAMER_ONLINE, Events.STREAMER_OFFLINE],                        # Send only online/offline to this channel
+            ),
+            Discord(
+                webhook_api="https://discord.com/api/webhooks/1234567890/1a2B3c4D5e6F7g8H9i0J",  # Discord Webhook URL for channel 2
+                events=[Events.BET_LOSE, Events.CHAT_MENTION],                                   # Send only bets and mentions to this channel
+            ),
+        ],
+        # Example with multiple webhooks - you can use a single object or a list of objects
+        webhook=
+            Webhook(
+                endpoint="https://api.example1.com/twitch-notifications",                  # First webhook endpoint
+                method="POST",                                                             # POST method
+                events=[Events.STREAMER_ONLINE, Events.STREAMER_OFFLINE],                  # Only online/offline events
+            ),
         matrix=Matrix(
             username="twitch_miner",                                                   # Matrix username (without homeserver)
             password="...",                                                            # Matrix password

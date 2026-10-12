@@ -18,6 +18,7 @@ from TwitchChannelPointsMiner.classes.Settings import Events
 from TwitchChannelPointsMiner.classes.Telegram import Telegram
 from TwitchChannelPointsMiner.classes.Pushover import Pushover
 from TwitchChannelPointsMiner.classes.Gotify import Gotify
+from typing import Union, List
 from TwitchChannelPointsMiner.utils import remove_emoji
 
 
@@ -96,12 +97,12 @@ class LoggerSettings:
         colored: bool = False,
         color_palette: ColorPalette = ColorPalette(),
         auto_clear: bool = True,
-        telegram: Telegram or None = None,
-        discord: Discord or None = None,
-        webhook: Webhook or None = None,
-        matrix: Matrix or None = None,
-        pushover: Pushover or None = None,
-        gotify: Gotify or None = None,
+        telegram: Union[Telegram, List[Telegram], None] = None,
+        discord: Union[Discord, List[Discord], None] = None,
+        webhook: Union[Webhook, List[Webhook], None] = None,
+        matrix: Union[Matrix, List[Matrix], None] = None,
+        pushover: Union[Pushover, List[Pushover], None] = None,
+        gotify: Union[Gotify, List[Gotify], None] = None,
         username: str or None = None
     ):
         self.save = save
@@ -114,13 +115,24 @@ class LoggerSettings:
         self.colored = colored
         self.color_palette = color_palette
         self.auto_clear = auto_clear
-        self.telegram = telegram
-        self.discord = discord
-        self.webhook = webhook
-        self.matrix = matrix
-        self.pushover = pushover
-        self.gotify = gotify
+        
+        # Normalize inputs to lists (or None)
+        self.telegram = self._normalize_to_list(telegram)
+        self.discord = self._normalize_to_list(discord)
+        self.webhook = self._normalize_to_list(webhook)
+        self.matrix = self._normalize_to_list(matrix)
+        self.pushover = self._normalize_to_list(pushover)
+        self.gotify = self._normalize_to_list(gotify)
         self.username = username
+
+    def _normalize_to_list(self, item):
+        """Convert single item to list, keep lists as-is, return None for None"""
+        if item is None:
+            return None
+        elif isinstance(item, list):
+            return item
+        else:
+            return [item]
 
 
 class FileFormatter(logging.Formatter):
@@ -212,9 +224,10 @@ class GlobalFormatter(logging.Formatter):
         if (
             self.settings.telegram is not None
             and skip_telegram is False
-            and self.settings.telegram.chat_id != 123456789
         ):
-            self.settings.telegram.send(record.msg, record.event)
+            for telegram_client in self.settings.telegram:
+                if telegram_client.chat_id != 123456789:
+                    telegram_client.send(record.msg, record.event)
 
     def discord(self, record):
         skip_discord = False if hasattr(
@@ -223,10 +236,10 @@ class GlobalFormatter(logging.Formatter):
         if (
             self.settings.discord is not None
             and skip_discord is False
-            and self.settings.discord.webhook_api
-            != "https://discord.com/api/webhooks/0123456789/0a1B2c3D4e5F6g7H8i9J"
         ):
-            self.settings.discord.send(record.msg, record.event)
+            for discord_client in self.settings.discord:
+                if discord_client.webhook_api != "https://discord.com/api/webhooks/0123456789/0a1B2c3D4e5F6g7H8i9J":
+                    discord_client.send(record.msg, record.event)
 
     def webhook(self, record):
         skip_webhook = False if hasattr(
@@ -235,10 +248,10 @@ class GlobalFormatter(logging.Formatter):
         if (
             self.settings.webhook is not None
             and skip_webhook is False
-            and self.settings.webhook.endpoint
-            != "https://example.com/webhook"
         ):
-            self.settings.webhook.send(record.msg, record.event)
+            for webhook_client in self.settings.webhook:
+                if webhook_client.endpoint != "https://example.com/webhook":
+                    webhook_client.send(record.msg, record.event)
 
     def matrix(self, record):
         skip_matrix = False if hasattr(
@@ -247,10 +260,10 @@ class GlobalFormatter(logging.Formatter):
         if (
             self.settings.matrix is not None
             and skip_matrix is False
-            and self.settings.matrix.room_id != "..."
-            and self.settings.matrix.access_token
         ):
-            self.settings.matrix.send(record.msg, record.event)
+            for matrix_client in self.settings.matrix:
+                if matrix_client.room_id != "..." and matrix_client.access_token:
+                    matrix_client.send(record.msg, record.event)
 
     def pushover(self, record):
         skip_pushover = False if hasattr(
@@ -259,10 +272,11 @@ class GlobalFormatter(logging.Formatter):
         if (
             self.settings.pushover is not None
             and skip_pushover is False
-            and self.settings.pushover.userkey != "YOUR-ACCOUNT-TOKEN"
-            and self.settings.pushover.token != "YOUR-APPLICATION-TOKEN"
         ):
-            self.settings.pushover.send(record.msg, record.event)
+            for pushover_client in self.settings.pushover:
+                if (pushover_client.userkey != "YOUR-ACCOUNT-TOKEN" and 
+                    pushover_client.token != "YOUR-APPLICATION-TOKEN"):
+                    pushover_client.send(record.msg, record.event)
 
     def gotify(self, record):
         skip_gotify = False if hasattr(
@@ -271,10 +285,10 @@ class GlobalFormatter(logging.Formatter):
         if (
             self.settings.gotify is not None
             and skip_gotify is False
-            and self.settings.gotify.endpoint
-            != "https://example.com/message?token=TOKEN"
         ):
-            self.settings.gotify.send(record.msg, record.event)
+            for gotify_client in self.settings.gotify:
+                if gotify_client.endpoint != "https://example.com/message?token=TOKEN":
+                    gotify_client.send(record.msg, record.event)
 
 
 def configure_loggers(username, settings):

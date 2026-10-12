@@ -201,7 +201,8 @@ def check_versions():
                     s.strip("/")
                     for s in [GITHUB_url, "TwitchChannelPointsMiner", "__init__.py"]
                 ]
-            )
+            ),
+            timeout=5,
         )
         github_version = init2dict(r.text)
         github_version = (
