@@ -1,6 +1,5 @@
 """Shared read cache, single-flight requests, and observable Twitch backoff."""
 
-import copy
 import json
 import logging
 import threading
@@ -56,6 +55,30 @@ class ReadCoordinator:
         self.on_backoff = None
         self.last_miner_request = 0
 
+    def _prune(self):
+        self.cache = {
+            key: value
+            for key, value in self.cache.items()
+            if self.clock() - value[0] < 15
+        }
+
+    def _remember(self, key, result):
+        # ASCII JSON uses much less memory than duplicated GraphQL object graphs.
+        encoded = json.dumps(result, separators=(",", ":"), ensure_ascii=True)
+        with self.lock:
+            self._prune()
+            self.cache.pop(key, None)
+            size = len(key) + len(encoded)
+            if size <= 4 * 1024 * 1024:
+                while self.cache and (
+                    len(self.cache) >= 64
+                    or sum(len(k) + len(v[1]) for k, v in self.cache.items()) + size
+                    > 4 * 1024 * 1024
+                ):
+                    self.cache.pop(next(iter(self.cache)))
+                self.cache[key] = (self.clock(), encoded)
+        return encoded
+
     @contextmanager
     def observation(self):
         previous = getattr(self.local, "observing", False)
@@ -80,11 +103,7 @@ class ReadCoordinator:
             if isinstance(result, list) and len(result) == len(payload):
                 for query, item in zip(payload, result):
                     if successful(item):
-                        with self.lock:
-                            self.cache[json.dumps(query, sort_keys=True)] = (
-                                self.clock(),
-                                copy.deepcopy(item),
-                            )
+                        self._remember(json.dumps(query, sort_keys=True), item)
                     if self.on_result:
                         try:
                             self.on_result(query, item, started, self.clock())
@@ -99,35 +118,32 @@ class ReadCoordinator:
             return callback()
         key = json.dumps(payload, sort_keys=True)
         with self.lock:
+            self._prune()
             entry = self.cache.get(key)
             if entry and self.clock() - entry[0] < 15:
                 self.cache_hits += 1
-                return copy.deepcopy(entry[1])
+                return json.loads(entry[1])
             pending = self.inflight.get(key)
             if pending is None:
-                pending = self.inflight[key] = threading.Event()
+                pending = self.inflight[key] = {
+                    "event": threading.Event(),
+                    "value": None,
+                }
                 owner = True
             else:
                 owner = False
         if not owner:
-            while not pending.wait(0.1):
+            while not pending["event"].wait(0.1):
                 if self.stopping.is_set():
                     raise requests.exceptions.ConnectionError("Dashboard is stopping")
-            with self.lock:
-                entry = self.cache.get(key)
-                return copy.deepcopy(entry[1]) if entry else {}
+            return json.loads(pending["value"]) if pending["value"] is not None else {}
         started = self.clock()
         try:
             result = callback()
             if successful(result):
-                with self.lock:
-                    self.cache[key] = (self.clock(), copy.deepcopy(result))
-                    if len(self.cache) > 2000:
-                        self.cache = {
-                            k: v
-                            for k, v in self.cache.items()
-                            if self.clock() - v[0] < 60
-                        }
+                pending["value"] = self._remember(key, result)
+            else:
+                pending["value"] = json.dumps(result)
             if self.on_result:
                 try:
                     self.on_result(payload, result, started, self.clock())
@@ -139,7 +155,7 @@ class ReadCoordinator:
         finally:
             with self.lock:
                 self.inflight.pop(key, None)
-                pending.set()
+                pending["event"].set()
 
     def before_request(self):
         observing = getattr(self.local, "observing", False)

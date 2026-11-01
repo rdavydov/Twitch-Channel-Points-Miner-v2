@@ -170,9 +170,18 @@ def normalize(name, response):
             raise ValueError("Drop inventory unavailable")
         return {"drops": inventory_drops(inventory)}
     if name == "ViewerDropsDashboard":
-        campaigns = (data.get("currentUser") or {}).get("dropCampaigns")
-        if not isinstance(campaigns, list):
+        own = data.get("currentUser")
+        if not isinstance(own, dict) or "dropCampaigns" not in own:
             raise ValueError("Drop campaigns unavailable")
+        campaigns = own["dropCampaigns"]
+        if campaigns is None:
+            campaigns = []
+        if not isinstance(campaigns, list):
+            raise ValueError("Drop campaigns response incomplete")
+        # Twitch now also supplies event-based reward campaigns at the root.
+        rewards = data.get("rewardCampaignsAvailableToUser")
+        if isinstance(rewards, list):
+            campaigns = campaigns + rewards
         return {
             "campaigns": [campaign_summary(c) for c in campaigns if isinstance(c, dict)]
         }
@@ -194,8 +203,8 @@ def campaign_summary(campaign):
         "game": (campaign.get("game") or {}).get("displayName")
         or (campaign.get("game") or {}).get("name"),
         "status": campaign.get("status"),
-        "starts_at": timestamp(campaign.get("startAt")),
-        "ends_at": timestamp(campaign.get("endAt")),
+        "starts_at": timestamp(campaign.get("startAt") or campaign.get("startsAt")),
+        "ends_at": timestamp(campaign.get("endAt") or campaign.get("endsAt")),
     }
 
 

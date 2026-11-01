@@ -5,6 +5,7 @@ import os
 import tempfile
 import unittest
 from datetime import datetime, timedelta, timezone
+from importlib import import_module
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
@@ -539,8 +540,8 @@ class MinerStartupRegressionTest(unittest.TestCase):
                 "_watch_streak_cache_load_path",
                 return_value="unused",
             ),
-            patch(
-                "TwitchChannelPointsMiner.TwitchChannelPointsMiner.WatchStreakCache.load_from_disk",
+            patch.object(
+                import_module("TwitchChannelPointsMiner.TwitchChannelPointsMiner").WatchStreakCache, "load_from_disk",
                 return_value=None,
             ),
             patch.object(TwitchChannelPointsMiner, "_export_streamers_snapshot"),
@@ -568,8 +569,8 @@ class MinerStartupRegressionTest(unittest.TestCase):
                 "_watch_streak_cache_load_path",
                 return_value="unused",
             ),
-            patch(
-                "TwitchChannelPointsMiner.TwitchChannelPointsMiner.WatchStreakCache.load_from_disk",
+            patch.object(
+                import_module("TwitchChannelPointsMiner.TwitchChannelPointsMiner").WatchStreakCache, "load_from_disk",
                 return_value=None,
             ),
             patch.object(TwitchChannelPointsMiner, "_export_streamers_snapshot"),

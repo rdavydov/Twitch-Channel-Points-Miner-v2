@@ -4,6 +4,7 @@ import tempfile
 import time
 import unittest
 from datetime import datetime, timezone
+from importlib import import_module
 from unittest.mock import Mock, patch
 
 from openpyxl import load_workbook
@@ -644,8 +645,8 @@ class StreamersExportTest(unittest.TestCase):
                 TwitchChannelPointsMiner,
                 "_export_streamers_snapshot",
                 side_effect=fake_export,
-            ), patch(
-                "TwitchChannelPointsMiner.TwitchChannelPointsMiner.interruptible_sleep",
+            ), patch.object(
+                import_module("TwitchChannelPointsMiner.TwitchChannelPointsMiner"), "interruptible_sleep",
                 return_value=None,
             ):
                 miner._streamers_export_loop()

@@ -398,6 +398,48 @@ class DashboardTest(unittest.TestCase):
 
 
 class CoordinatorTest(unittest.TestCase):
+    def test_read_cache_expires_and_has_a_four_megabyte_ceiling(self):
+        clock = Clock()
+        broker = ReadCoordinator(clock=clock, wait=clock.wait)
+        for index in range(70):
+            broker.run(
+                operation("ChannelPointsContext", {"channelLogin": str(index)}),
+                lambda: {"data": {"padding": "x" * 100000}},
+            )
+        self.assertLessEqual(
+            sum(len(k) + len(v[1]) for k, v in broker.cache.items()), 4 * 1024 * 1024
+        )
+        self.assertLessEqual(len(broker.cache), 64)
+        clock.value += 16
+        broker.run(operation("Inventory"), lambda: {"data": {"inventory": {}}})
+        self.assertEqual(len(broker.cache), 1)
+
+    def test_oversized_response_is_still_shared_with_inflight_waiters(self):
+        broker = ReadCoordinator()
+        started, release = threading.Event(), threading.Event()
+        calls = []
+
+        def work():
+            calls.append(1)
+            started.set()
+            release.wait(2)
+            return {"data": {"padding": "x" * (4 * 1024 * 1024)}}
+
+        results = []
+        payload = operation("Inventory")
+        a = threading.Thread(target=lambda: results.append(broker.run(payload, work)))
+        b = threading.Thread(target=lambda: results.append(broker.run(payload, work)))
+        a.start()
+        started.wait(1)
+        b.start()
+        time.sleep(0.02)
+        release.set()
+        a.join()
+        b.join()
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(len(results[1]["data"]["padding"]), 4 * 1024 * 1024)
+        self.assertEqual(broker.cache, {})
+
     def test_existing_batch_results_can_be_reused_without_new_requests(self):
         broker = ReadCoordinator()
         payload = [
@@ -560,6 +602,25 @@ class StoreTest(unittest.TestCase):
 
 
 class ReaderSecurityTest(unittest.TestCase):
+    def test_current_twitch_campaign_response_accepts_explicit_empty_drop_list(self):
+        response = {
+            "data": {
+                "currentUser": {"dropCampaigns": None},
+                "rewardCampaignsAvailableToUser": [
+                    {
+                        "id": "reward",
+                        "name": "Reward event",
+                        "status": "ACTIVE",
+                        "startsAt": "2026-11-01T00:00:00Z",
+                        "endsAt": "2026-11-02T00:00:00Z",
+                    }
+                ],
+            }
+        }
+        result = normalize("ViewerDropsDashboard", response)
+        self.assertEqual(result["campaigns"][0]["id"], "reward")
+        self.assertIsNotNone(result["campaigns"][0]["ends_at"])
+
     def test_pure_fetch_helpers_do_not_claim_available_rewards(self):
         twitch = object.__new__(Twitch)
         with patch.object(

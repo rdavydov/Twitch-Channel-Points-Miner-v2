@@ -19,7 +19,7 @@ from pathlib import Path
 import pandas as pd
 from openpyxl import load_workbook
 from openpyxl.formatting.rule import DataBarRule
-from openpyxl.styles import Alignment, Font, PatternFill
+from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.table import Table, TableStyleInfo
 from TwitchChannelPointsMiner.classes.Chat import ChatPresence, ThreadChat
@@ -1032,6 +1032,7 @@ class TwitchChannelPointsMiner:
             header_cell.font = Font(bold=True, color="FFFFFF")
             header_cell.fill = header_fill
             header_cell.alignment = Alignment(horizontal="center", vertical="center")
+            header_cell.border = Border(bottom=Side())
         sheet.row_dimensions[header_row].height = 22
 
         sheet.freeze_panes = "A2"
