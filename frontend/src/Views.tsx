@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
   Activity as ActivityIcon,
@@ -603,6 +603,8 @@ export function ActivityLogs({ data }: { data: Snapshot }) {
   const [debug, setDebug] = useState(false),
     [following, setFollowing] = useState(true),
     [error, setError] = useState("");
+  const followingRef = useRef(following);
+  followingRef.current = following;
   const [range, setRange] = useState({
     start: Date.now() / 1000 - 7 * 86400,
     end: Date.now() / 1000,
@@ -633,24 +635,30 @@ export function ActivityLogs({ data }: { data: Snapshot }) {
     if (tab !== "Logs") return;
     let alive = true,
       timer: ReturnType<typeof setTimeout>,
-      cursor = "";
+      cursor = "",
+      initial = true;
     const controller = new AbortController();
     setLogs([]);
     async function poll() {
+      if (!followingRef.current && !initial) {
+        if (alive) timer = setTimeout(poll, document.hidden ? 30000 : 5000);
+        return;
+      }
       try {
         const result = await api<{ lines: LogLine[]; cursor: string }>(
           `logs?debug=${debug}&cursor=${encodeURIComponent(cursor)}`,
           { signal: controller.signal },
         );
-        if (alive) {
+        if (alive && (followingRef.current || initial)) {
           cursor = result.cursor;
           setLogs((v) => [...v, ...result.lines].slice(-1000));
           setError("");
+          initial = false;
         }
       } catch (e) {
         if (alive) setError((e as Error).message);
       }
-      if (alive && following) timer = setTimeout(poll, 5000);
+      if (alive) timer = setTimeout(poll, document.hidden ? 30000 : 5000);
     }
     void poll();
     return () => {
@@ -658,7 +666,7 @@ export function ActivityLogs({ data }: { data: Snapshot }) {
       clearTimeout(timer);
       controller.abort();
     };
-  }, [tab, debug, following]);
+  }, [tab, debug]);
   const lines = logs.filter((l) =>
     l.message.toLowerCase().includes(search.toLowerCase()),
   );

@@ -1,12 +1,57 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { DataTable } from "./Table";
 import { csvCell, dayBoundary } from "./lib";
 import { TimeRange } from "./components";
 import { useState } from "react";
+import { ActivityLogs } from "./Views";
+import type { Snapshot } from "./types";
 
 describe("dashboard table QoL", () => {
+  it("pauses log following without clearing records or starting another request", async () => {
+    const fetcher = vi.fn(async (url: string) => ({
+      ok: true,
+      json: async () =>
+        url.includes("logs?")
+          ? {
+              lines: [
+                {
+                  level: "INFO",
+                  message: "Keep this record",
+                  at: "01/11/26 10:00:00",
+                },
+              ],
+              cursor: "saved",
+            }
+          : [],
+    }));
+    vi.stubGlobal("fetch", fetcher);
+    try {
+      const user = userEvent.setup();
+      render(
+        <ActivityLogs
+          data={
+            {
+              channels: [],
+              timezone: "Europe/Budapest",
+              generated_at: 1,
+            } as unknown as Snapshot
+          }
+        />,
+      );
+      await user.click(
+        screen.getByRole("button", { name: "Logs" }),
+      );
+      await screen.findByText("Keep this record");
+      const count = fetcher.mock.calls.length;
+      await user.click(screen.getByRole("button", { name: "Pause following" }));
+      expect(screen.getByText("Keep this record")).toBeInTheDocument();
+      expect(fetcher.mock.calls.length).toBe(count);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
   it("uses the configured timezone across 23-hour and 25-hour days", () => {
     expect(
       dayBoundary("2026-03-29", "Europe/Budapest", true) -
