@@ -153,6 +153,8 @@ class Twitch(object):
         "_drop_claims",
         "_drop_claim_lock",
         "prediction_tracker",
+        "query_coordinator",
+        "dashboard_service",
     ]
 
     def __init__(self, username, user_agent, password=None, watch_streak_max_parallel=None):
@@ -212,6 +214,16 @@ class Twitch(object):
         } if isinstance(claims, dict) else {}
         self._drop_claim_lock = RLock()
         self.prediction_tracker = None
+        self.query_coordinator = None
+        self.dashboard_service = None
+
+    def _dashboard_event(self, kind, **details):
+        service = getattr(self, "dashboard_service", None)
+        if service is not None:
+            try:
+                service.event(kind, **details)
+            except Exception:
+                logger.debug("Dashboard observation deferred", exc_info=True)
 
     def login(self):
         if os.path.isfile(self.cookies_file):
@@ -975,7 +987,13 @@ class Twitch(object):
         attempt = 1
         while True:
             try:
-                return requests.request(method, url, **kwargs)
+                coordinator = getattr(self, "query_coordinator", None) if url == GQLOperations.url else None
+                if coordinator is not None:
+                    coordinator.before_request()
+                response = requests.request(method, url, **kwargs)
+                if coordinator is not None:
+                    coordinator.response(response)
+                return response
             except requests.exceptions.RequestException as exc:
                 if (
                     attempt >= max_attempts
@@ -1632,6 +1650,12 @@ class Twitch(object):
             self._last_watch_issue_log[key] = now
 
     def post_gql_request(self, json_data):
+        coordinator = getattr(self, "query_coordinator", None)
+        if coordinator is not None:
+            return coordinator.run(json_data, lambda: self._post_gql_request(json_data))
+        return self._post_gql_request(json_data)
+
+    def _post_gql_request(self, json_data):
         operation_name = self._operation_name_from_json_data(json_data)
         try:
             response = self._request_with_retry(
@@ -1673,7 +1697,11 @@ class Twitch(object):
                         response.status_code,
                     )
             try:
-                return response.json()
+                decoded = response.json()
+                coordinator = getattr(self, "query_coordinator", None)
+                if coordinator is not None:
+                    coordinator.decoded(decoded)
+                return decoded
             except ValueError:
                 key = ("gql_invalid_json", operation_name, response.status_code)
                 now = time.time()
@@ -2668,6 +2696,12 @@ class Twitch(object):
                 streamers_watching = self._select_streamers_to_watch(
                     streamers, streamers_index, priority
                 )
+                self._dashboard_event("watch_selection", channels=[
+                    {"channel": streamers[i].username,
+                     "reason": "Streak slot" if streamers[i].username in self._last_streak_selection
+                     else "Priority rules: " + " > ".join(p.name.replace("_", " ").title() for p in priority if p != Priority.STREAK)}
+                    for i in streamers_watching
+                ])
 
                 drops_logging_enabled = Priority.DROPS in priority
 
@@ -2716,6 +2750,7 @@ class Twitch(object):
                             )
                             if response.status_code == 204:
                                 streamers[index].stream.update_minute_watched()
+                                self._dashboard_event("watch_request", channel=streamers[index].username)
 
                                 """
                                 Remember, you can only earn progress towards a time-based Drop on one participating channel at a time.  [ ! ! ! ]
@@ -2778,11 +2813,17 @@ class Twitch(object):
 
     # Load the amount of current points for a channel, check if a bonus is available
     def load_channel_points_context(self, streamer):
-        json_data = copy.deepcopy(GQLOperations.ChannelPointsContext)
-        json_data["variables"] = {"channelLogin": streamer.username}
+        response = self.fetch_channel_points_context(streamer.username)
+        self._apply_channel_points_context(streamer, response)
 
-        response = self.post_gql_request(json_data)
-        if not response or self._log_gql_errors(json_data.get("operationName"), response):
+    def fetch_channel_points_context(self, channel_login):
+        """Read Twitch context without claiming bonuses or contributing points."""
+        json_data = copy.deepcopy(GQLOperations.ChannelPointsContext)
+        json_data["variables"] = {"channelLogin": channel_login}
+        return self.post_gql_request(json_data)
+
+    def _apply_channel_points_context(self, streamer, response):
+        if not response or self._log_gql_errors("ChannelPointsContext", response):
             return
         data = response.get("data") if isinstance(response, dict) else None
         if not isinstance(data, dict):
@@ -3173,6 +3214,12 @@ class Twitch(object):
         return ids
 
     def __get_inventory(self):
+        inventory = self.fetch_inventory()
+        self._confirm_drop_claims(inventory)
+        return inventory
+
+    def fetch_inventory(self):
+        """Read the inventory without claim verification or notifications."""
         json_data = GQLOperations.Inventory
         response = self.post_gql_request(json_data)
         if self._log_gql_errors(json_data.get("operationName"), response):
@@ -3182,7 +3229,6 @@ class Twitch(object):
         inventory = ((response.get("data") or {}).get("currentUser") or {}).get(
             "inventory", {}
         ) or {}
-        self._confirm_drop_claims(inventory)
         return inventory
 
     def __get_drops_dashboard(self, status=None):

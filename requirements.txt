@@ -81,6 +81,8 @@ pandas==3.0.1 ; python_full_version >= '3.11'
     # via twitch-channel-points-miner-v2
 pillow==12.1.1
     # via twitch-channel-points-miner-v2
+psutil==7.2.2
+    # via twitch-channel-points-miner-v2
 pygments==2.19.2
     # via rich
 python-dateutil==2.9.0.post0
@@ -113,6 +115,8 @@ tzdata==2025.3 ; python_full_version < '3.11' or sys_platform == 'emscripten' or
     # via pandas
 urllib3==2.6.3
     # via requests
+waitress==3.0.2
+    # via twitch-channel-points-miner-v2
 websocket-client==1.9.0
     # via twitch-channel-points-miner-v2
 werkzeug==3.1.6

@@ -256,6 +256,11 @@ class RewardAutomation(Thread):
             success = state is not None and state.progressed_from(baseline)
         if not success:
             return False
+        callback = getattr(self.twitch, "_dashboard_event", None)
+        if callback:
+            callback(kind + "_confirmed", channel=streamer.username, job_kind=kind,
+                     streak_days=getattr(state, "streak_days", None),
+                     message="Watch streak recovery confirmed by Twitch" if kind == "recovery" else "Weekly visit confirmed by Twitch")
         if kind == "recovery" and streamer.watch_streak_cache is not None:
             # Recovery preserves the count; it must not claim a new live broadcast.
             streamer.watch_streak_cache.set_streamer_status(
@@ -285,6 +290,10 @@ class RewardAutomation(Thread):
         return True
 
     def _watch_clip(self, streamer, kind, baseline, clip):
+        callback = getattr(self.twitch, "_dashboard_event", None)
+        if callback:
+            callback(kind + "_clip", channel=streamer.username, job_kind=kind,
+                     replay_id=clip.id, replay_url=clip.url, method="Clip")
         properties = {
             "location": "vod",
             "url": clip.url,
@@ -338,6 +347,10 @@ class RewardAutomation(Thread):
         return False
 
     def _watch_vod(self, streamer, kind, baseline, vod):
+        callback = getattr(self.twitch, "_dashboard_event", None)
+        if callback:
+            callback(kind + "_vod", channel=streamer.username, job_kind=kind,
+                     replay_id=vod.id, replay_url=f"https://www.twitch.tv/videos/{vod.id}", method="VOD")
         payload = [
             {
                 "event": "minute-watched",
@@ -381,6 +394,11 @@ class RewardAutomation(Thread):
         )
         if baseline is None or not self._job_active(streamer, kind):
             return False
+        callback = getattr(self.twitch, "_dashboard_event", None)
+        if callback:
+            callback(kind + "_trying", channel=streamer.username, job_kind=kind,
+                     expires_at=getattr(baseline, "expires_at", None),
+                     streak_days=getattr(baseline, "streak_days", None))
         logger.info(
             "Trying %s for %s using a clip or VOD",
             "watch streak recovery" if kind == "recovery" else "a weekly visit",
@@ -470,12 +488,22 @@ class RewardAutomation(Thread):
             self._retry_after[key] = time.time() + self.settings.cooldown_seconds
             try:
                 if not self._attempt(streamer, kind):
+                    callback = getattr(self.twitch, "_dashboard_event", None)
+                    if callback:
+                        callback(kind + "_unverified", channel=streamer.username, job_kind=kind,
+                                 next_retry_at=self._retry_after[key],
+                                 message="No Twitch-confirmed progress; retry deferred")
                     logger.debug(
                         "No Twitch-confirmed %s progress for %s; retry deferred",
                         kind,
                         streamer.username,
                     )
             except Exception as exc:
+                callback = getattr(self.twitch, "_dashboard_event", None)
+                if callback:
+                    callback(kind + "_failed", channel=streamer.username, job_kind=kind,
+                             next_retry_at=self._retry_after.get(key),
+                             message=f"Reward attempt interrupted ({type(exc).__name__})")
                 logger.debug(
                     "Reward playback failed for %s (%s)",
                     streamer.username,

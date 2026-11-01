@@ -345,6 +345,94 @@ Notes:
 - `chat=ChatPresence.NEVER` disables only the IRC subscription path for that channel.
 - Websocket gift-sub notices use the same `Events.SUBSCRIPTION` message format and are locally deduped.
 
+## Local dashboard
+
+The dashboard is an observation-only interface for your running miner. It shows
+the two watch slots and selection reasons, searchable channel tables, confirmed
+streaks, clip/VOD recovery attempts, drops, weekly rewards, prediction results,
+activity, redacted logs, reports, and process CPU/RAM. Channel and betting settings
+are visible but cannot be changed through the dashboard.
+
+Enable it in your private runner:
+
+```python
+from TwitchChannelPointsMiner import DashboardSettings, TwitchChannelPointsMiner
+
+miner = TwitchChannelPointsMiner(
+    # Keep your existing account, logger, priorities, and streamer settings.
+    username="YOUR_USERNAME",
+    dashboard_settings=DashboardSettings(
+        host="127.0.0.1",
+        port=5000,
+        refresh_seconds=300,
+        cooldown_seconds=60,
+        request_interval_seconds=1,
+        timezone="Europe/Budapest",
+    ),
+)
+# Keep your existing miner.mine(...) call.
+```
+
+Open <http://127.0.0.1:5000/>. The server accepts only loopback access. It starts
+and stops with the miner; closing a browser tab leaves mining running. The
+example keeps it disabled by default (`ENABLE_DASHBOARD=False`). The existing
+`analytics(...)` call now opens the new dashboard instead of the old chart page.
+
+The page displays local snapshots every five seconds (30 seconds in a background
+tab). Current balances, stream status, streak eligibility, reward windows, and
+inventory are checked against Twitch. Live socket events update values between
+full checks. A full automatic check starts five minutes after the previous one
+finishes. **Refresh all** starts the same read-only check, with a 60-second
+cooldown after completion. A full pass can take several minutes for many channels.
+Progress, per-group timestamps, partial failures, and backoff are visible.
+
+All tabs share one server-side refresh job. Reloading the page or restarting the
+miner does not bypass its saved cooldown. Additional dashboard reads are limited
+to one per second, retries included; recent miner reads and in-flight identical
+requests are shared. HTTP 429 responses honor available retry/reset headers and
+otherwise use increasing backoff. These are conservative client limits, not an
+assumption that private GQL endpoints have Helix's documented quota.
+
+Collected points exclude prediction payouts and refunds. Collection totals cover
+captured events since dashboard history began; balances and prediction net
+results are separate. Missing history stays missing. Recovery playback is shown
+as an attempt until Twitch confirms recovery. Older cached streak confirmations,
+prediction records, and available legacy analytics are imported without sending
+notifications. No refresh action places a bet or claims a reward.
+
+History lives in `logs/.state/dashboard.<account>.sqlite3` (including SQLite's
+adjacent WAL/SHM files while open). Important events, hourly history, and daily
+summaries are retained; minute samples are compacted after 90 days. Existing
+prediction JSON/CSV and Excel reports remain the authoritative existing records.
+Back up the SQLite database while the miner is stopped, or use SQLite's backup
+API. Do not copy only the main database file while it has an active WAL.
+
+Table sorting, multiple-column sorting, sizing, visibility, column order, saved
+views, density, and dark/light theme are stored locally in the browser per
+account. CSV exports include the visible columns and filtered rows. Dates use
+the configured timezone, including daylight-saving transitions. Diagnostics are
+bounded and credential-redacted; tokens, cookies and webhook URLs are never part
+of configuration responses.
+
+### Build and test the dashboard
+
+From a source checkout, use Node.js 24 for the frontend build:
+
+```sh
+npm ci --prefix frontend
+npm run build --prefix frontend
+npm test --prefix frontend
+npm run test:e2e --prefix frontend
+```
+
+Install Playwright's Chromium once with `npx playwright install chromium` from
+`frontend/` before browser tests. The browser fixture never logs in to Twitch.
+Build before creating a Python wheel: the generated frontend and local fonts are
+included as package data. Docker builds the frontend automatically in a separate
+Node stage; its runtime contains only the Python application and built assets.
+The running dashboard has no Node server or CDN dependency. To run the Python
+checks, use `python -m unittest discover -s tests -q`.
+
 ## Reports and state files
 
 Reports are written under `logs/reports/` by period:

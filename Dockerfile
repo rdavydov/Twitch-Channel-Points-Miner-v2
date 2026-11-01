@@ -1,3 +1,10 @@
+FROM node:24-bookworm-slim AS dashboard-builder
+WORKDIR /build/frontend
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci
+COPY frontend ./
+RUN npm run build
+
 FROM python:3.10-bookworm
 
 ARG BUILDX_QEMU_ENV
@@ -41,4 +48,5 @@ RUN apt-get update \
   && rm -rf /usr/share/doc/*
 
 COPY assets ./assets
+COPY --from=dashboard-builder /build/TwitchChannelPointsMiner/dashboard/static ./TwitchChannelPointsMiner/dashboard/static
 ENTRYPOINT [ "python", "run.py" ]

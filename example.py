@@ -15,7 +15,7 @@ This example is intentionally biased toward a safe first run:
 """
 
 import logging
-from TwitchChannelPointsMiner import TwitchChannelPointsMiner
+from TwitchChannelPointsMiner import DashboardSettings, TwitchChannelPointsMiner
 from TwitchChannelPointsMiner.classes.Chat import ChatPresence
 from TwitchChannelPointsMiner.classes.Settings import Events, FollowersOrder, Priority
 from TwitchChannelPointsMiner.classes.entities.Bet import (
@@ -243,6 +243,7 @@ DEFAULT_STREAMER_SETTINGS = StreamerSettings(
 USE_HERMES = True  # False = force the legacy PubSub websocket transport
 CLAIM_DROPS_ON_STARTUP = False
 ENABLE_ANALYTICS = False
+ENABLE_DASHBOARD = False  # Read-only local UI at http://127.0.0.1:5000
 DISABLE_SSL_CERT_VERIFICATION = False
 MATCH_MENTIONS_WITHOUT_AT = False
 DAILY_REPORTS = True
@@ -256,6 +257,7 @@ twitch_miner = TwitchChannelPointsMiner(
     claim_drops_startup=CLAIM_DROPS_ON_STARTUP,
     priority=PRIORITY_ORDER,
     enable_analytics=ENABLE_ANALYTICS,
+    dashboard_settings=DashboardSettings() if ENABLE_DASHBOARD else None,
     disable_ssl_cert_verification=DISABLE_SSL_CERT_VERIFICATION,
     disable_at_in_nickname=MATCH_MENTIONS_WITHOUT_AT,
     use_hermes=USE_HERMES,
@@ -287,7 +289,7 @@ twitch_miner = TwitchChannelPointsMiner(
 # 2. Settings passed to TwitchChannelPointsMiner(...)
 # 3. Default settings
 
-# twitch_miner.analytics(host="127.0.0.1", port=5000, refresh=5, days_ago=7)
+# analytics(...) remains a compatibility entry point for the dashboard.
 
 twitch_miner.mine(
     STREAMERS,

@@ -8,6 +8,8 @@ on:
       - docker-compose.yml
       - example.py
       - README.md
+      - 'frontend/**'
+      - 'TwitchChannelPointsMiner/dashboard/**'
       - pyproject.toml
       - requirements.txt
       - tests/test_setup_examples.py
@@ -21,6 +23,8 @@ on:
       - docker-compose.yml
       - example.py
       - README.md
+      - 'frontend/**'
+      - 'TwitchChannelPointsMiner/dashboard/**'
       - pyproject.toml
       - requirements.txt
       - tests/test_setup_examples.py

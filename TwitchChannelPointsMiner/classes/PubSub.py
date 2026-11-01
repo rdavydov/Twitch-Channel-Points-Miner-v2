@@ -57,6 +57,12 @@ class PubSubHandler(MessageListener):
             return
 
         try:
+            dashboard = getattr(self.twitch, "dashboard_service", None)
+            if dashboard is not None:
+                try:
+                    dashboard.live_message(message, self.streamers[streamer_index] if streamer_index >= 0 else None)
+                except Exception:
+                    logger.debug("Dashboard live observation deferred", exc_info=True)
             if message.topic == "user-subscribe-events-v1":
                 notification = message.message.get("notification", {})
                 pubsub = self._decode_pubsub_payload(

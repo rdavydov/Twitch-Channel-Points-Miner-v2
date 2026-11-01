@@ -370,6 +370,13 @@ class WatchStreakCache:
             return None
         return max(sessions, key=lambda s: s.started_at)
 
+    def snapshot_sessions(self, account_name: str | None = None):
+        """Return detached account-scoped observations for read-only reporting."""
+        account = self._resolve_account(account_name)
+        with self._lock:
+            return [session.to_dict() for session in self._sessions.values()
+                    if session.account_name == account]
+
     def claimed_streak_days(
         self, streamer_login: str, account_name: str | None = None
     ) -> int:

@@ -25,6 +25,7 @@ from openpyxl.worksheet.table import Table, TableStyleInfo
 from TwitchChannelPointsMiner.classes.Chat import ChatPresence, ThreadChat
 from TwitchChannelPointsMiner.classes.PubSub import PubSubHandler
 from TwitchChannelPointsMiner.classes.PredictionTracker import PredictionTracker
+from TwitchChannelPointsMiner.dashboard import DashboardSettings
 from TwitchChannelPointsMiner.classes.RewardAutomation import (
     RewardAutomation,
     RewardAutomationSettings,
@@ -173,6 +174,8 @@ class TwitchChannelPointsMiner:
         "_period_points_baseline_dirty",
         "_watch_streak_days_lookup_attempted",
         "_chat_ban_lookup_attempted",
+        "dashboard_service",
+        "dashboard_settings",
     ]
 
     def __init__(
@@ -199,6 +202,7 @@ class TwitchChannelPointsMiner:
         weekly_rewards: bool = True,
         watch_streak_recovery: bool = True,
         reward_automation_settings: RewardAutomationSettings | None = None,
+        dashboard_settings: DashboardSettings | None = None,
     ):
         # Fixes TypeError: 'NoneType' object is not subscriptable
         if not username or username == "your-twitch-username":
@@ -356,6 +360,12 @@ class TwitchChannelPointsMiner:
         self.logs_file, self.queue_listener = configure_loggers(
             self.username, logger_settings
         )
+        self.dashboard_service = None
+        self.dashboard_settings = dashboard_settings
+        if dashboard_settings is not None and not isinstance(dashboard_settings, DashboardSettings):
+            raise TypeError("dashboard_settings must be DashboardSettings")
+        if dashboard_settings is not None and dashboard_settings.enabled:
+            self._start_dashboard(dashboard_settings)
 
         # Check for the latest version of the script
         current_version, github_version = check_versions()
@@ -383,24 +393,29 @@ class TwitchChannelPointsMiner:
         refresh: int = 5,
         days_ago: int = 7,
     ):
-        # Analytics switch
-        if Settings.enable_analytics is True:
-            from TwitchChannelPointsMiner.classes.AnalyticsServer import AnalyticsServer
+        """Compatibility entry point for the read-only local dashboard."""
+        self._start_dashboard(DashboardSettings(host=host, port=port, refresh_seconds=max(60, refresh*60)))
 
-            days_ago = days_ago if days_ago <= 365 * 15 else 365 * 15
-            http_server = AnalyticsServer(
-                host=host,
-                port=port,
-                refresh=refresh,
-                days_ago=days_ago,
-                username=self.username,
-                log_file_path=self.logs_file,
-            )
-            http_server.daemon = True
-            http_server.name = "Analytics Thread"
-            http_server.start()
-        else:
-            logger.error("Can't start analytics(), please set enable_analytics=True")
+    def _start_dashboard(self, settings):
+        existing = getattr(self, "dashboard_service", None)
+        if existing is not None and not existing.stopping.is_set():
+            return
+        service = None
+        try:
+            from TwitchChannelPointsMiner.dashboard.service import DashboardService
+            from TwitchChannelPointsMiner.dashboard.server import start_server
+            service = DashboardService(self, settings)
+            start_server(service)
+            self.dashboard_service = self.twitch.dashboard_service = service
+            self.twitch.query_coordinator = service.coordinator
+            service.start()
+            logger.info("Dashboard running on http://%s:%s/", settings.host, settings.port)
+        except Exception as exc:
+            if service:
+                service.stop()
+            self.dashboard_service = self.twitch.dashboard_service = None
+            self.twitch.query_coordinator = None
+            logger.warning("Dashboard unavailable (%s); mining will continue", type(exc).__name__)
 
     def _format_followdate(self, followed_at: str | None) -> str:
         if not followed_at:
@@ -1239,6 +1254,9 @@ class TwitchChannelPointsMiner:
         logger.info(f"Session started: {self.session_id}", extra={"emoji": ":bomb:"})
         self.running = self.twitch.running = True
         self.start_datetime = datetime.now()
+        dashboard = getattr(self, "dashboard_service", None)
+        if dashboard is not None and dashboard.stopping.is_set():
+            self._start_dashboard(self.dashboard_settings or dashboard.settings)
 
         try:
             self.twitch.login()
@@ -1522,6 +1540,9 @@ class TwitchChannelPointsMiner:
                             )
         finally:
             self.running = self.twitch.running = False
+            dashboard = getattr(self, "dashboard_service", None)
+            if dashboard:
+                dashboard.stop()
             prediction_worker = getattr(self, "prediction_tracker", None)
             if prediction_worker is not None:
                 prediction_worker.stop()
@@ -1566,6 +1587,9 @@ class TwitchChannelPointsMiner:
                     streamer.irc_chat.join()
 
         self.running = self.twitch.running = False
+        dashboard = getattr(self, "dashboard_service", None)
+        if dashboard:
+            dashboard.stop()
         prediction_worker = getattr(self, "prediction_tracker", None)
         if prediction_worker is not None:
             prediction_worker.stop()

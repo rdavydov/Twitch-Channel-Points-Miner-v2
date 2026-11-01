@@ -54,6 +54,13 @@ See the [notification reference](README.md#notifications) for events and setup.
 
 ## Reports and deployment
 
+- Optional local, read-only dashboard with channel tables, streak/recovery status,
+  drops, predictions, redacted logs, saved views, and process resource usage.
+- Twitch-backed refresh jobs shared across tabs, persisted cooldown, bounded
+  extra reads, and visible rate-limit backoff.
+- Dashboard history uses account-scoped SQLite storage and imports available
+  legacy history without replaying notifications.
+
 - Excel reports are grouped into daily, weekly, monthly, and yearly folders.
 - Watch streak, report baseline, and subscription state live under `logs/.state/`.
 - Python 3.10 or later is required; dependencies are declared in `pyproject.toml`.

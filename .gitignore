@@ -142,6 +142,11 @@ cython_debug/
 
 # Custom files
 run.py
+node_modules/
+frontend/*.tsbuildinfo
+frontend/playwright-report/
+frontend/test-results/
+TwitchChannelPointsMiner/dashboard/static/
 chromedriver*
 pycache_clear.sh
 
