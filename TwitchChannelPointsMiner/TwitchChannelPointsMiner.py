@@ -24,6 +24,7 @@ from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.table import Table, TableStyleInfo
 from TwitchChannelPointsMiner.classes.Chat import ChatPresence, ThreadChat
 from TwitchChannelPointsMiner.classes.PubSub import PubSubHandler
+from TwitchChannelPointsMiner.classes.PredictionTracker import PredictionTracker
 from TwitchChannelPointsMiner.classes.RewardAutomation import (
     RewardAutomation,
     RewardAutomationSettings,
@@ -132,6 +133,7 @@ class TwitchChannelPointsMiner:
         "priority",
         "streamers",
         "events_predictions",
+        "prediction_tracker",
         "minute_watcher_thread",
         "sync_campaigns_thread",
         "reward_automation_thread",
@@ -335,6 +337,12 @@ class TwitchChannelPointsMiner:
 
         self.streamers: list[Streamer] = []
         self.events_predictions = {}
+        self.prediction_tracker = PredictionTracker(
+            self.twitch, self.username,
+            state_path=os.path.join("logs", ".state", f"predictions.{safe_account_name}.json"),
+            events=self.events_predictions,
+        )
+        self.twitch.prediction_tracker = self.prediction_tracker
         self.minute_watcher_thread = None
         self.sync_campaigns_thread = None
         self.reward_automation_thread = None
@@ -1168,11 +1176,21 @@ class TwitchChannelPointsMiner:
             self._export_streamers_snapshot()
 
     def _create_ws_pool(self):
+        tracker = getattr(self, "prediction_tracker", None)
+        if tracker is not None and (tracker.ident is not None or tracker.stopping.is_set()):
+            tracker = PredictionTracker(
+                self.twitch, self.username, state_path=tracker.path,
+                events=self.events_predictions, streamers=self.streamers,
+            )
+            self.prediction_tracker = self.twitch.prediction_tracker = tracker
+        if tracker is not None:
+            tracker.bind(self.streamers)
         listeners = [
             PubSubHandler(
                 twitch=self.twitch,
                 streamers=self.streamers,
                 events_predictions=self.events_predictions,
+                prediction_tracker=tracker,
             )
         ]
         if self.use_hermes:
@@ -1393,11 +1411,6 @@ class TwitchChannelPointsMiner:
             self.streamers_export_thread.name = "Streamers export"
             self.streamers_export_thread.start()
 
-            # If we have at least one streamer with settings = make_predictions True
-            make_predictions = at_least_one_value_in_settings_is(
-                self.streamers, "make_predictions", True
-            )
-
             # If we have at least one streamer with settings = claim_drops True
             # Spawn a thread for sync inventory and dashboard
             if (
@@ -1450,14 +1463,16 @@ class TwitchChannelPointsMiner:
                 )
             )
 
-            # Going to subscribe to predictions-user-v1. Get update when we place a new prediction (confirm)
-            if make_predictions is True:
-                self.ws_pool.submit(
-                    PubsubTopic(
-                        "predictions-user-v1",
-                        user_id=user_id,
-                    )
+            # Observing manual bets must not depend on permission to place automatic bets.
+            self.ws_pool.submit(
+                PubsubTopic(
+                    "predictions-user-v1",
+                    user_id=user_id,
                 )
+            )
+            self.prediction_tracker.account_id = user_id
+            self.prediction_tracker.bind(self.streamers)
+            self.prediction_tracker.start()
 
             for streamer in self.streamers:
                 self.ws_pool.submit(
@@ -1507,6 +1522,9 @@ class TwitchChannelPointsMiner:
                             )
         finally:
             self.running = self.twitch.running = False
+            prediction_worker = getattr(self, "prediction_tracker", None)
+            if prediction_worker is not None:
+                prediction_worker.stop()
             reward_worker = getattr(self, "reward_automation_thread", None)
             if reward_worker is not None:
                 reward_worker.stop()
@@ -1519,6 +1537,7 @@ class TwitchChannelPointsMiner:
                 self.minute_watcher_thread,
                 self.sync_campaigns_thread,
                 reward_worker,
+                prediction_worker if prediction_worker is not None and prediction_worker.ident is not None else None,
             ):
                 if worker is not None:
                     worker.join()
@@ -1547,6 +1566,11 @@ class TwitchChannelPointsMiner:
                     streamer.irc_chat.join()
 
         self.running = self.twitch.running = False
+        prediction_worker = getattr(self, "prediction_tracker", None)
+        if prediction_worker is not None:
+            prediction_worker.stop()
+            if prediction_worker.ident is not None:
+                prediction_worker.join()
         reward_worker = getattr(self, "reward_automation_thread", None)
         if reward_worker is not None:
             reward_worker.stop()

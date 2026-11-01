@@ -7,6 +7,7 @@ from threading import Timer
 from dateutil import parser
 
 from TwitchChannelPointsMiner.classes.Settings import Events, Settings
+from TwitchChannelPointsMiner.classes.PredictionTracker import PredictionTracker
 from TwitchChannelPointsMiner.classes.entities.CommunityGoal import CommunityGoal
 from TwitchChannelPointsMiner.classes.entities.EventPrediction import EventPrediction
 from TwitchChannelPointsMiner.classes.entities.Message import Message
@@ -14,7 +15,7 @@ from TwitchChannelPointsMiner.classes.entities.Raid import Raid
 from TwitchChannelPointsMiner.utils import get_streamer_index
 
 logger = logging.getLogger(__name__)
-USER_NOTIFICATION_TOPICS = {"user-subscribe-events-v1", "onsite-notifications"}
+USER_NOTIFICATION_TOPICS = {"user-subscribe-events-v1", "onsite-notifications", "predictions-user-v1"}
 
 
 class MessageListener(abc.ABC):
@@ -30,10 +31,13 @@ class PubSubHandler(MessageListener):
     same Message model before they reach this handler.
     """
 
-    def __init__(self, twitch, streamers, events_predictions):
+    def __init__(self, twitch, streamers, events_predictions, prediction_tracker=None):
         self.twitch = twitch
         self.streamers = streamers
         self.events_predictions = events_predictions
+        self.prediction_tracker = prediction_tracker or PredictionTracker(
+            twitch, "in-memory", events=events_predictions, streamers=streamers
+        )
 
     @staticmethod
     def _decode_pubsub_payload(payload):
@@ -102,7 +106,10 @@ class PubSubHandler(MessageListener):
                             "event": Events.get(f"GAIN_FOR_{reason_code}"),
                         },
                     )
-                    self.streamers[streamer_index].update_history(reason_code, earned)
+                    # Prediction profits are accounted from the authoritative result once,
+                    # not again from the separate payout/refund balance notification.
+                    if reason_code not in {"PREDICTION", "REFUND"}:
+                        self.streamers[streamer_index].update_history(reason_code, earned)
                     if reason_code is not None and "WATCH_STREAK" in str(reason_code):
                         self.twitch.record_watch_streak_evidence(
                             self.streamers[streamer_index],
@@ -148,6 +155,9 @@ class PubSubHandler(MessageListener):
                 event_dict = message.data["event"]
                 event_id = event_dict["id"]
                 event_status = event_dict["status"]
+                self.prediction_tracker.remember_event(
+                    event_id, event_dict, self.streamers[streamer_index]
+                )
 
                 current_tmsp = parser.parse(message.timestamp)
 
@@ -177,6 +187,8 @@ class PubSubHandler(MessageListener):
                         ):
                             streamer = self.streamers[streamer_index]
                             bet_settings = streamer.settings.bet
+                            if streamer.settings.make_predictions is False:
+                                return
                             if (
                                 bet_settings.minimum_points is None
                                 or streamer.channel_points
@@ -223,97 +235,10 @@ class PubSubHandler(MessageListener):
                         )
 
             elif message.topic == "predictions-user-v1":
-                event_id = message.data["prediction"]["event_id"]
-                if event_id in self.events_predictions:
-                    event_prediction = self.events_predictions[event_id]
-                    if (
-                        message.type == "prediction-result"
-                        and event_prediction.bet_confirmed
-                    ):
-                        points = event_prediction.parse_result(
-                            message.data["prediction"]["result"]
-                        )
-
-                        decision = event_prediction.bet.get_decision()
-                        choice = event_prediction.bet.decision["choice"]
-
-                        logger.info(
-                            (
-                                f"{event_prediction} - Decision: {choice}: {decision['title']} "
-                                f"({decision['color']}) - Result: {event_prediction.result['string']}"
-                            ),
-                            extra={
-                                "emoji": ":bar_chart:",
-                                "event": Events.get(
-                                    f"BET_{event_prediction.result['type']}"
-                                ),
-                                "discord_details": {
-                                    "channel": event_prediction.streamer.username,
-                                    "prediction": event_prediction.title,
-                                    "outcome": decision["title"],
-                                    "stake": event_prediction.bet.decision["amount"],
-                                    "payout": (
-                                        event_prediction.bet.decision["amount"]
-                                        if event_prediction.result["type"] == "REFUND"
-                                        else points["won"]
-                                    ),
-                                    "net_points": points["gained"],
-                                },
-                            },
-                        )
-
-                        self.streamers[streamer_index].update_history(
-                            "PREDICTION", points["gained"]
-                        )
-
-                        if event_prediction.result["type"] == "REFUND":
-                            self.streamers[streamer_index].update_history(
-                                "REFUND",
-                                -points["placed"],
-                                counter=-1,
-                            )
-                        elif event_prediction.result["type"] == "WIN":
-                            self.streamers[streamer_index].update_history(
-                                "PREDICTION",
-                                -points["won"],
-                                counter=-1,
-                            )
-
-                        if event_prediction.result["type"]:
-                            if Settings.enable_analytics is True:
-                                self.streamers[streamer_index].persistent_annotations(
-                                    event_prediction.result["type"],
-                                    f"{self.events_predictions[event_id].title}",
-                                )
-                    elif message.type == "prediction-made":
-                        first_confirmation = not event_prediction.bet_confirmed
-                        event_prediction.bet_confirmed = True
-                        if first_confirmation:
-                            decision = event_prediction.bet.decision
-                            choice = decision.get("choice")
-                            outcomes = event_prediction.bet.outcomes
-                            logger.info(
-                                "Bet confirmed by Twitch for %s", event_prediction,
-                                extra={
-                                    "emoji": ":dart:",
-                                    "event": Events.BET_PLACED,
-                                    "discord_details": {
-                                        "channel": event_prediction.streamer.username,
-                                        "prediction": event_prediction.title,
-                                        "outcome": (
-                                            outcomes[choice].get("title")
-                                            if isinstance(choice, int) and 0 <= choice < len(outcomes)
-                                            else None
-                                        ),
-                                        "stake": decision.get("amount"),
-                                    },
-                                },
-                            )
-                        if Settings.enable_analytics is True:
-                            self.streamers[streamer_index].persistent_annotations(
-                                "PREDICTION_MADE",
-                                f"Decision: {event_prediction.bet.decision['choice']} - {event_prediction.title}",
-                            )
+                self.prediction_tracker.handle_user(
+                    message.data.get("prediction") if isinstance(message.data, dict) else None,
+                    message.type,
+                )
 
             elif message.topic == "community-points-channel-v1":
                 if message.type == "community-goal-created":

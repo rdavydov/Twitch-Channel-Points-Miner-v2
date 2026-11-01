@@ -200,6 +200,9 @@ class GlobalFormatter(logging.Formatter):
                 "pushover",
                 "gotify",
             ):
+                targets = getattr(record, "notification_targets", None)
+                if targets is not None and service not in targets:
+                    continue
                 try:
                     getattr(self, service)(record)
                 except (requests.exceptions.RequestException, ValueError) as exc:
@@ -207,6 +210,13 @@ class GlobalFormatter(logging.Formatter):
                     logging.getLogger(__name__).warning(
                         "%s notification failed (%s)", service, type(exc).__name__
                     )
+                else:
+                    acknowledge = getattr(record, "notification_ack", None)
+                    if callable(acknowledge):
+                        acknowledge(service)
+            finished = getattr(record, "notification_finished", None)
+            if callable(finished):
+                finished()
 
             if self.settings.colored is True:
                 record.msg = (

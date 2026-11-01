@@ -134,6 +134,9 @@ class Discord(object):
             add("Prediction", details.get("prediction"), inline=False)
             add("Outcome", details.get("outcome"), inline=False)
             add("Stake", _points(details.get("stake")))
+            add("Source", details.get("source"))
+            if details.get("recovered"):
+                add("Delivery", "Recovered from Twitch", inline=False)
             add("Payout", _points(details.get("payout")))
             net = _points(details.get("net_points"), signed=True)
             if net is not None:

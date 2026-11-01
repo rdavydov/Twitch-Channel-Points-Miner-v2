@@ -152,6 +152,7 @@ class Twitch(object):
         "subscription_notification_cache_path",
         "_drop_claims",
         "_drop_claim_lock",
+        "prediction_tracker",
     ]
 
     def __init__(self, username, user_agent, password=None, watch_streak_max_parallel=None):
@@ -210,6 +211,7 @@ class Twitch(object):
             key: value for key, value in claims.items() if isinstance(value, dict)
         } if isinstance(claims, dict) else {}
         self._drop_claim_lock = RLock()
+        self.prediction_tracker = None
 
     def login(self):
         if os.path.isfile(self.cookies_file):
@@ -2900,6 +2902,14 @@ class Twitch(object):
     def make_predictions(self, event):
         if not self.running:
             return
+        if getattr(getattr(event.streamer, "settings", None), "make_predictions", True) is False:
+            return
+        if getattr(event, "bet_confirmed", False) or (
+            self.prediction_tracker is not None
+            and self.prediction_tracker.has_prediction(event.event_id)
+        ):
+            logger.info("Skipping automatic bet: Twitch already confirmed a prediction for %s", event)
+            return
         decision = event.bet.calculate(event.streamer.channel_points)
         outcomes = getattr(event.bet, "outcomes", [])
         choice = decision.get("choice")
@@ -2964,6 +2974,9 @@ class Twitch(object):
                             "transactionID": token_hex(16),
                         }
                     }
+                    if self.prediction_tracker is not None:
+                        if not self.prediction_tracker.register_intent(event, decision):
+                            return
                     response = self.post_gql_request(json_data)
                     if self._log_gql_errors(
                         json_data.get("operationName"), response, extra=failed_extra
@@ -3035,6 +3048,53 @@ class Twitch(object):
                     },
                 },
             )
+
+    def get_prediction_snapshot(self, event_id, channel_id):
+        """Read a current or resolved prediction; this operation never places a bet."""
+        request = {
+            "operationName": "PredictionRecovery",
+            "query": """query PredictionRecovery($id: ID!, $channelID: ID) {
+                user(id: $channelID) { id login }
+                predictionEvent(id: $id) {
+                    id title status createdAt endedAt
+                    outcomes { id title color }
+                    channel { id }
+                    self { prediction {
+                        id points predictedAt updatedAt outcome { id } result pointsWon
+                    } }
+                }
+            }""",
+            "variables": {"id": event_id, "channelID": str(channel_id)},
+        }
+        response = self.post_gql_request(request)
+        if self._log_gql_errors(request["operationName"], response) or not isinstance(response, dict):
+            return None
+        data = response.get("data")
+        if not isinstance(data, dict):
+            return None
+        event = data.get("predictionEvent")
+        if not isinstance(event, dict) or event.get("id") != event_id:
+            return None
+        channel = event.get("channel")
+        if not isinstance(channel, dict) or str(channel.get("id")) != str(channel_id):
+            return None
+        user = data.get("user")
+        viewer = event.get("self")
+        snapshot = {**event, "channel_id": str(channel_id),
+                    "channel_login": user.get("login") if isinstance(user, dict) else None}
+        prediction = viewer.get("prediction") if isinstance(viewer, dict) else None
+        if isinstance(prediction, dict):
+            outcome = prediction.get("outcome")
+            snapshot["prediction"] = {
+                "id": prediction.get("id"), "event_id": event_id,
+                "channel_id": snapshot["channel_id"],
+                "outcome_id": outcome.get("id") if isinstance(outcome, dict) else None,
+                "points": prediction.get("points"), "predicted_at": prediction.get("predictedAt"),
+                "updated_at": prediction.get("updatedAt") or event.get("endedAt"),
+                "result": ({"type": prediction["result"], "points_won": prediction.get("pointsWon")}
+                           if prediction.get("result") else None),
+            }
+        return snapshot
 
     def claim_bonus(self, streamer, claim_id):
         if Settings.logger.less is False:

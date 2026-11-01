@@ -217,12 +217,14 @@ class DiscordIntegrationTest(unittest.TestCase):
                 event.bet_confirmed = True
                 handler = PubSubHandler(Mock(), [streamer], {"evt": event})
                 message = SimpleNamespace(channel_id="123", topic="predictions-user-v1", type="prediction-result", data={
-                    "prediction": {"event_id": "evt", "result": {"type": result_type, "points_won": won}},
+                    "prediction": {"id": "prediction-1", "event_id": "evt", "channel_id": "123",
+                                   "outcome_id": "blue", "points": 5000,
+                                   "result": {"type": result_type, "points_won": won}},
                 })
                 with (
                     patch.object(Settings, "logger", LoggerSettings(less=True)),
                     patch.object(Settings, "enable_analytics", False),
-                    patch("TwitchChannelPointsMiner.classes.PubSub.logger") as logger,
+                    patch("TwitchChannelPointsMiner.classes.PredictionTracker.logger") as logger,
                 ):
                     handler.on_message(message)
                 logger.error.assert_not_called()
@@ -242,11 +244,12 @@ class DiscordIntegrationTest(unittest.TestCase):
         event.bet.calculate(10000)
         handler = PubSubHandler(Mock(), [streamer], {"evt": event})
         message = SimpleNamespace(channel_id="123", topic="predictions-user-v1", type="prediction-updated",
-                                  data={"prediction": {"event_id": "evt"}})
+                                  data={"prediction": {"id": "prediction-1", "event_id": "evt",
+                                                       "channel_id": "123", "outcome_id": "blue", "points": 5000}})
         with (
             patch.object(Settings, "logger", LoggerSettings(less=True)),
             patch.object(Settings, "enable_analytics", False),
-            patch("TwitchChannelPointsMiner.classes.PubSub.logger") as logger,
+            patch("TwitchChannelPointsMiner.classes.PredictionTracker.logger") as logger,
         ):
             handler.on_message(message)
             logger.info.assert_not_called()
@@ -261,6 +264,7 @@ class DiscordIntegrationTest(unittest.TestCase):
         self.assertEqual(extra["event"], Events.BET_PLACED)
         self.assertEqual(extra["discord_details"], {
             "channel": "2okos", "prediction": "Blue wins?", "outcome": "Blue", "stake": 5000,
+            "source": "Manual / external",
         })
 
     def test_drop_is_not_announced_before_or_without_new_success(self):

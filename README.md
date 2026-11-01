@@ -72,6 +72,29 @@ Set `message_format="plain"` in `Discord(...)` to restore text-only messages.
 Discord emojis work independently of the console's `emoji` setting. Mentions are
 disabled, and long text is shortened to fit Discord's message limits.
 
+Prediction cards use Twitch's confirmed stake, outcome, and payout rather than
+the miner's planned decision. The source distinguishes miner bets from manual
+or external bets. Manual bets are observed even with `make_predictions=False`;
+that setting still prevents the miner from submitting automatic bets.
+
+Open predictions and notification delivery receipts are saved per account in
+`logs/.state/predictions.<account>.json`. A background worker checks pending bets
+with read-only Twitch queries after a restart or a missed socket message. It
+never submits another bet while recovering a result. Notifications that fail
+are retried only for the providers that have not acknowledged delivery.
+
+The complete captured history is exported to
+`logs/reports/predictions/predictions.<account>.csv`, including Twitch timestamps,
+source, stake, outcome, payout, and net result. This is the reference for results
+recovered from earlier days; old Excel files are not retroactively rewritten.
+Existing state is needed for bets that started in a previous session. Twitch
+API failures leave those bets pending for another check.
+
+Normal replayed events and restarts do not repeat acknowledged notifications.
+A crash exactly between a provider accepting a message and saving its receipt
+can still repeat that message; external providers do not offer a shared
+transaction with the local state file.
+
 | Event | Discord card | Sent when |
 |---|---|---|
 | `DROP_CLAIM` | 🎁 Drop claimed | Twitch inventory confirms a new claim |
@@ -338,6 +361,7 @@ Local state files are kept in `logs/.state/`, including:
 - watch streak cache
 - daily points baselines
 - subscription notification dedupe data
+- pending predictions, confirmed results, and per-provider delivery receipts
 
 Drop claim confirmation and duplicate protection are stored separately in
 `cookies/<account>.drop-claims.json`, alongside the saved login session.
