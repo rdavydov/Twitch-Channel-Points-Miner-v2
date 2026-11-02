@@ -384,6 +384,8 @@ class Twitch(object):
                         streamers[i].online_at == 0
                         or (time.time() - streamers[i].online_at) > 30
                     )
+                    # claim_points is False: watch only if a watch reason is still active
+                    and streamers[i].watch_condition() is True
                 ]
 
                 for index in streamers_index:
@@ -781,6 +783,12 @@ class Twitch(object):
             )
 
     def claim_bonus(self, streamer, claim_id):
+        if streamer.settings.claim_points is False:
+            logger.debug(
+                f"Skip the claim of the bonus for {streamer} (claim_points=False)"
+            )
+            return
+
         if Settings.logger.less is False:
             logger.info(
                 f"Claiming the bonus for {streamer}!",
