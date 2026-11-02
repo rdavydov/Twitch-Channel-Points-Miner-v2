@@ -289,7 +289,9 @@ twitch_miner = TwitchChannelPointsMiner(
 # 2. Settings passed to TwitchChannelPointsMiner(...)
 # 3. Default settings
 
-# analytics(...) remains a compatibility entry point for the dashboard.
+# Optional legacy chart UI; requires ENABLE_ANALYTICS=True and no frontend build.
+# Use a different port if ENABLE_DASHBOARD=True.
+# twitch_miner.analytics(host="127.0.0.1", port=5001, refresh=5, days_ago=7)
 
 twitch_miner.mine(
     STREAMERS,

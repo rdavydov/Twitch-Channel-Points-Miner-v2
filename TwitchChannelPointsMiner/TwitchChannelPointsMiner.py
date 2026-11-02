@@ -393,8 +393,24 @@ class TwitchChannelPointsMiner:
         refresh: int = 5,
         days_ago: int = 7,
     ):
-        """Compatibility entry point for the read-only local dashboard."""
-        self._start_dashboard(DashboardSettings(host=host, port=port, refresh_seconds=max(60, refresh*60)))
+        """Start the legacy analytics UI without opting into the new dashboard."""
+        if Settings.enable_analytics is not True:
+            logger.error("Can't start analytics(), please set enable_analytics=True")
+            return
+
+        from TwitchChannelPointsMiner.classes.AnalyticsServer import AnalyticsServer
+
+        http_server = AnalyticsServer(
+            host=host,
+            port=port,
+            refresh=refresh,
+            days_ago=min(days_ago, 365 * 15),
+            username=self.username,
+            log_file_path=self.logs_file,
+        )
+        http_server.daemon = True
+        http_server.name = "Analytics Thread"
+        http_server.start()
 
     def _start_dashboard(self, settings):
         existing = getattr(self, "dashboard_service", None)

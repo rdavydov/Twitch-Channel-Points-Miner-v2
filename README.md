@@ -375,8 +375,17 @@ miner = TwitchChannelPointsMiner(
 
 Open <http://127.0.0.1:5000/>. The server accepts only loopback access. It starts
 and stops with the miner; closing a browser tab leaves mining running. The
-example keeps it disabled by default (`ENABLE_DASHBOARD=False`). The existing
-`analytics(...)` call now opens the new dashboard instead of the old chart page.
+example keeps it disabled by default (`ENABLE_DASHBOARD=False`). Existing runners
+that omit `dashboard_settings` do not start its server, refresh worker, or history
+database. Updating the miner does not open a browser or enable the dashboard.
+
+The existing `analytics(...)` method still starts the legacy chart interface and
+requires `enable_analytics=True`. Its host, port, refresh interval in minutes, and
+`days_ago` retain their previous meaning, including explicit `host="0.0.0.0"`
+network bindings. A source checkout can keep using that interface with the
+existing `assets/` files; no Node.js build is needed. The new dashboard is enabled
+separately with `dashboard_settings=DashboardSettings(...)` and remains loopback
+only. If both interfaces are enabled, configure different ports.
 
 The page displays local snapshots every five seconds (30 seconds in a background
 tab). Current balances, stream status, streak eligibility, reward windows, and
