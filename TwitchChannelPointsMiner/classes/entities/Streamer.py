@@ -21,6 +21,7 @@ class StreamerSettings(object):
         "follow_raid",
         "claim_drops",
         "claim_moments",
+        "claim_points",
         "watch_streak",
         "community_goals",
         "bet",
@@ -33,6 +34,7 @@ class StreamerSettings(object):
         follow_raid: bool = None,
         claim_drops: bool = None,
         claim_moments: bool = None,
+        claim_points: bool = None,
         watch_streak: bool = None,
         community_goals: bool = None,
         bet: BetSettings = None,
@@ -42,6 +44,7 @@ class StreamerSettings(object):
         self.follow_raid = follow_raid
         self.claim_drops = claim_drops
         self.claim_moments = claim_moments
+        self.claim_points = claim_points
         self.watch_streak = watch_streak
         self.community_goals = community_goals
         self.bet = bet
@@ -53,6 +56,7 @@ class StreamerSettings(object):
             "follow_raid",
             "claim_drops",
             "claim_moments",
+            "claim_points",
             "watch_streak",
         ]:
             if getattr(self, name) is None:
@@ -65,7 +69,7 @@ class StreamerSettings(object):
             self.chat = ChatPresence.ONLINE
 
     def __repr__(self):
-        return f"BetSettings(make_predictions={self.make_predictions}, follow_raid={self.follow_raid}, claim_drops={self.claim_drops}, claim_moments={self.claim_moments}, watch_streak={self.watch_streak}, community_goals={self.community_goals}, bet={self.bet}, chat={self.chat})"
+        return f"BetSettings(make_predictions={self.make_predictions}, follow_raid={self.follow_raid}, claim_drops={self.claim_drops}, claim_moments={self.claim_moments}, claim_points={self.claim_points}, watch_streak={self.watch_streak}, community_goals={self.community_goals}, bet={self.bet}, chat={self.chat})"
 
 
 class Streamer(object):
@@ -183,6 +187,27 @@ class Streamer(object):
             # and self.stream.drops_tags is True
             and self.stream.campaigns_ids != []
         )
+
+    def watch_condition(self):
+        if self.settings.claim_points is True:
+            return True
+        # claim_points is False: watch the channel only while a task requires it,
+        # then stop sending minute watched requests to avoid the passive points.
+        # 1. Secure the watch streak (same conditions of Priority.STREAK)
+        if (
+            self.settings.watch_streak is True
+            and self.stream.watch_streak_missing is True
+            and (
+                self.offline_at == 0
+                or ((time.time() - self.offline_at) // 60) > 30
+            )
+            and self.stream.minute_watched < 7
+        ):
+            return True
+        # 2. Earn the drops still available for the current game
+        if self.drops_condition() is True and self.stream.campaigns != []:
+            return True
+        return False
 
     def viewer_has_points_multiplier(self):
         return self.activeMultipliers is not None and len(self.activeMultipliers) > 0
