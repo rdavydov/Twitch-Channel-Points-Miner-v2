@@ -81,7 +81,6 @@ export function ChannelDetails({
       >
         <div className="drawer-heading">
           <div>
-            <span className="eyebrow">Channel details</span>
             <h2 id="detail-title">{channel}</h2>
           </div>
           <a
@@ -219,10 +218,7 @@ export function ChannelDetails({
           )}
           {tab === "Activity" && (
             <>
-              <SectionHeading
-                title="Channel timeline"
-                caption="Recorded events, including available imported history."
-              />
+              <SectionHeading title="Channel timeline" />
               {events.length ? (
                 events.map((e) => (
                   <div className="timeline-event" key={e.id}>
@@ -238,10 +234,10 @@ export function ChannelDetails({
           )}
           {tab === "Configuration" && (
             <>
-              <p className="notice">
-                Read-only configuration from your runner. Changes are made in
-                run.py.
-              </p>
+              <SectionHeading
+                title="Channel settings"
+                caption="Change these settings in run.py."
+              />
               <ConfigList value={row.settings} />
               <SectionHeading title="Prediction settings" />
               <ConfigList value={row.settings.bet as Record<string, unknown>} />

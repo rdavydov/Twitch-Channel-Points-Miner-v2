@@ -301,7 +301,7 @@ export function Channels({
         caption={
           streaks
             ? "A successful playback request is an attempt. Twitch must confirm completion."
-            : "Your tracked channels, live balances and reward status."
+            : undefined
         }
       />
       <div className="filter-tabs">

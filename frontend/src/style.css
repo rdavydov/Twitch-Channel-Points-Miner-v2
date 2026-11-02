@@ -587,6 +587,61 @@ main {
 .section-heading:first-child {
   margin-top: 0;
 }
+.section-heading h2,
+.column-menu h3 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.hint {
+  display: inline-flex;
+  position: relative;
+  vertical-align: middle;
+  margin-left: 5px;
+}
+.hint-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  color: var(--muted);
+  border-radius: 4px;
+}
+.hint-priorities {
+  display: grid;
+  margin-top: 4px;
+}
+.hint-text {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 5px);
+  z-index: 80;
+  width: min(275px, 65vw);
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: 0 5px 20px #0003;
+  font:
+    400 11px/1.6 "IBM Plex Sans",
+    sans-serif;
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: normal;
+}
+.breadcrumb h1 {
+  font-size: 13px;
+  font-weight: 500;
+}
+.sidebar nav {
+  margin-top: 36px;
+}
+main {
+  padding-bottom: 28px;
+}
 .filter-tabs {
   display: flex;
   flex-wrap: wrap;

@@ -176,11 +176,8 @@ function Dashboard({
           <span className="brand-mark">
             <Radio size={21} />
           </span>
-          <span>
-            Twitch Miner<small>PERSONAL DASHBOARD</small>
-          </span>
+          <span>Twitch Miner</span>
         </a>
-        <div className="sidebar-group-label">WORKSPACE</div>
         <nav aria-label="Main navigation">
           {pages.map(({ name, icon: Icon }) => (
             <button
@@ -221,14 +218,13 @@ function Dashboard({
             target="_blank"
             rel="noreferrer"
           >
-            Project on GitHub
+            GitHub
             <ArrowUpRight size={13} />
           </a>
           <div className="profile">
             <span>{data.account.slice(0, 2).toUpperCase()}</span>
             <div>
               <strong>{data.account}</strong>
-              <small>Local workspace</small>
             </div>
             <ShieldCheck size={15} />
           </div>
@@ -237,9 +233,7 @@ function Dashboard({
       <div className="workspace">
         <header className="topbar">
           <div className="breadcrumb">
-            <span>Workspace</span>
-            <span>/</span>
-            <strong>{page}</strong>
+            <h1>{page}</h1>
           </div>
           <div className="topbar-actions">
             <button
@@ -291,7 +285,10 @@ function Dashboard({
           </div>
         </header>
         <div className="freshness-bar">
-          <span className="freshness-status">
+          <span
+            className="freshness-status"
+            title={"Page updated " + date(data.generated_at, data.timezone)}
+          >
             <span
               className={"status-dot " + (error || stale ? "offline" : "")}
             />
@@ -299,10 +296,7 @@ function Dashboard({
               ? "Disconnected"
               : stale
                 ? "Waiting for a new snapshot"
-                : "Live observation"}
-          </span>
-          <span>
-            View updated {Math.max(0, Math.floor(now - data.generated_at))}s ago
+                : "Connected"}
           </span>
           <span className="freshness-divider" />
           <span>
@@ -364,11 +358,18 @@ function Dashboard({
                   {refresh.completed ?? 0} / {refresh.total ?? 0} groups
                 </Badge>
               </div>
-              <p className="muted">
-                Automatic Twitch refresh: every 5 minutes after completion.
-                Manual cooldown: 60 seconds. Live Twitch events update values
-                between full refreshes.
-              </p>
+              <dl className="config-list">
+                <div>
+                  <dt>Automatic refresh</dt>
+                  <dd>
+                    {duration(data.system.refresh_seconds)} after completion
+                  </dd>
+                </div>
+                <div>
+                  <dt>Manual cooldown</dt>
+                  <dd>{duration(data.system.cooldown_seconds)}</dd>
+                </div>
+              </dl>
               <p>
                 Next automatic refresh:{" "}
                 {date(refresh.next_auto_at, data.timezone)}
@@ -416,13 +417,6 @@ function Dashboard({
               Select a page from the navigation.
             </Empty>
           )}
-          <footer className="workspace-footer">
-            <span>
-              <ShieldCheck size={12} />
-              Observation only · Your miner settings stay in run.py
-            </span>
-            <span>{data.timezone} · Armi1014 fork</span>
-          </footer>
         </main>
       </div>
       {selected && (

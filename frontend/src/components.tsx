@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Check, Copy, Info } from "lucide-react";
+import { useId, useState } from "react";
+import { Check, Copy, Info, CircleHelp } from "lucide-react";
 import { date, dayBoundary, duration, inputDate, label, number } from "./lib";
 
 export function Badge({
@@ -22,8 +22,50 @@ export function Empty({
     <div className="empty">
       <Info size={25} />
       <h3>{title}</h3>
-      <p>{children}</p>
+      {children && <p>{children}</p>}
     </div>
+  );
+}
+export function Hint({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  const id = useId();
+  const [open, setOpen] = useState(false);
+  return (
+    <span
+      className="hint"
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={(e) => {
+        if (!e.currentTarget.contains(document.activeElement)) setOpen(false);
+      }}
+    >
+      <button
+        type="button"
+        className="hint-trigger"
+        aria-label={`About ${label}`}
+        aria-describedby={open ? id : undefined}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setOpen(false)}
+        onClick={() => setOpen(true)}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") {
+            setOpen(false);
+            e.stopPropagation();
+          }
+        }}
+      >
+        <CircleHelp size={13} />
+      </button>
+      {open && (
+        <span id={id} role="tooltip" className="hint-text">
+          {children}
+        </span>
+      )}
+    </span>
   );
 }
 export function SectionHeading({
@@ -38,8 +80,10 @@ export function SectionHeading({
   return (
     <div className="section-heading">
       <div>
-        <h2>{title}</h2>
-        {caption && <p>{caption}</p>}
+        <h2>
+          {title}
+          {caption && <Hint label={title}>{caption}</Hint>}
+        </h2>
       </div>
       {children}
     </div>

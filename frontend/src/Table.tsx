@@ -20,6 +20,7 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { downloadCSV, label, usePreference } from "./lib";
+import { Hint } from "./components";
 
 type View = {
   name: string;
@@ -178,8 +179,13 @@ export function DataTable<T extends object>({
       {menu && (
         <div className="column-menu">
           <div>
-            <h3>Columns</h3>
-            <p className="muted">Drag to reorder, or use the arrow buttons.</p>
+            <h3>
+              Columns
+              <Hint label="Columns">
+                Drag columns or use the arrows to reorder them. Shift-click
+                table headings to sort by multiple columns.
+              </Hint>
+            </h3>
             {table.getAllLeafColumns().map((column, i, all) => (
               <div
                 className="column-option"
@@ -224,10 +230,12 @@ export function DataTable<T extends object>({
             ))}
           </div>
           <div>
-            <h3>Saved views</h3>
-            <p className="muted">
-              Search, sorting and columns are saved on this browser.
-            </p>
+            <h3>
+              Saved views
+              <Hint label="Saved views">
+                Search, sorting and columns are saved in this browser.
+              </Hint>
+            </h3>
             <div className="save-view">
               <input
                 aria-label="View name"
@@ -371,14 +379,6 @@ export function DataTable<T extends object>({
             <p>Try another search or clear the active filters.</p>
           </div>
         )}
-      </div>
-      <div className="table-footer">
-        <span>
-          {frozen
-            ? "Row positions held while you browse"
-            : "Live values update automatically"}
-        </span>
-        <span>Shift-click headers for multiple sorting</span>
       </div>
     </section>
   );

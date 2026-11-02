@@ -3,12 +3,31 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { DataTable } from "./Table";
 import { csvCell, dayBoundary } from "./lib";
-import { TimeRange } from "./components";
+import { SectionHeading, TimeRange } from "./components";
 import { useState } from "react";
 import { ActivityLogs } from "./Views";
 import type { Snapshot } from "./types";
 
 describe("dashboard table QoL", () => {
+  it("keeps explanations hidden until help is focused and closes them with Escape", async () => {
+    const user = userEvent.setup();
+    render(
+      <SectionHeading
+        title="Recovery"
+        caption="Only Twitch confirmation counts as success."
+      />,
+    );
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+    await user.tab();
+    expect(
+      screen.getByRole("button", { name: "About Recovery" }),
+    ).toHaveFocus();
+    expect(screen.getByRole("tooltip")).toHaveTextContent(
+      "Only Twitch confirmation counts as success.",
+    );
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+  });
   it("pauses log following without clearing records or starting another request", async () => {
     const fetcher = vi.fn(async (url: string) => ({
       ok: true,
@@ -40,9 +59,7 @@ describe("dashboard table QoL", () => {
           }
         />,
       );
-      await user.click(
-        screen.getByRole("button", { name: "Logs" }),
-      );
+      await user.click(screen.getByRole("button", { name: "Logs" }));
       await screen.findByText("Keep this record");
       const count = fetcher.mock.calls.length;
       await user.click(screen.getByRole("button", { name: "Pause following" }));

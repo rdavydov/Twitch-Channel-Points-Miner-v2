@@ -1,5 +1,22 @@
 import { test, expect } from "@playwright/test";
 
+test("shows numbered watch priorities and preserves streak slot explanations", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const help = page.getByRole("button", { name: "About Watch slot 1" });
+  await help.click();
+  await expect(page.getByRole("tooltip").getByRole("listitem")).toHaveText([
+    "1. Favorite",
+    "2. Subscribed",
+    "3. Drops",
+  ]);
+  await help.press("Escape");
+  await expect(page.getByRole("tooltip")).toHaveCount(0);
+  await page.getByRole("button", { name: "About Watch slot 2" }).click();
+  await expect(page.getByRole("tooltip")).toHaveText("Streak slot");
+});
+
 test("navigates all observation pages without browser errors or external assets", async ({
   page,
 }) => {
@@ -11,7 +28,7 @@ test("navigates all observation pages without browser errors or external assets"
   });
   await page.goto("/");
   await expect(
-    page.getByRole("heading", { name: "Everything in view." }),
+    page.getByRole("heading", { name: "Overview", exact: true }),
   ).toBeVisible();
   for (const name of [
     "Channels",
@@ -106,13 +123,13 @@ test("keeps the last received data on a connection failure", async ({
 }) => {
   await page.goto("/");
   await expect(
-    page.getByRole("heading", { name: "Everything in view." }),
+    page.getByRole("heading", { name: "Overview", exact: true }),
   ).toBeVisible();
   await page.route("**/api/v1/snapshot", (r) => r.abort());
   await expect(page.getByText("Connection to the miner was lost")).toBeVisible({
     timeout: 12000,
   });
   await expect(
-    page.getByRole("heading", { name: "Everything in view." }),
+    page.getByRole("heading", { name: "Overview", exact: true }),
   ).toBeVisible();
 });

@@ -12,13 +12,13 @@ import {
   Pause,
   Play,
   Radio,
-  ShieldCheck,
 } from "lucide-react";
 import { Channels } from "./Channels";
 import {
   Badge,
   ConfigList,
   Empty,
+  Hint,
   Progress,
   Remaining,
   SectionHeading,
@@ -48,20 +48,12 @@ export function Overview({
     );
   return (
     <>
-      <div className="overview-title">
-        <div>
-          <span className="eyebrow">YOUR MINER, AT A GLANCE</span>
-          <h1>Everything in view.</h1>
-          <p>Live channels, protected streaks and every point accounted for.</p>
-        </div>
-        <Badge>
-          <ShieldCheck size={12} />
-          Read-only dashboard
-        </Badge>
-      </div>
       <div className="watch-lanes">
         {[0, 1].map((i) => {
           const channel = watching[i];
+          const priorities = channel?.reason.startsWith("Priority rules: ")
+            ? channel.reason.slice("Priority rules: ".length).split(" > ")
+            : [];
           return (
             <div
               className={"watch-lane " + (channel ? "occupied" : "")}
@@ -70,6 +62,24 @@ export function Overview({
               <div className="lane-label">
                 <Radio size={14} />
                 <span>WATCH SLOT {i + 1}</span>
+                {channel && (
+                  <Hint label={`Watch slot ${i + 1}`}>
+                    {priorities.length ? (
+                      <>
+                        Priority rules:
+                        <span className="hint-priorities" role="list">
+                          {priorities.map((priority, index) => (
+                            <span role="listitem" key={index}>
+                              {index + 1}. {priority}
+                            </span>
+                          ))}
+                        </span>
+                      </>
+                    ) : (
+                      channel.reason
+                    )}
+                  </Hint>
+                )}
                 <Badge tone={channel ? "accent" : ""}>
                   {channel ? "Active" : "Available"}
                 </Badge>
@@ -83,7 +93,6 @@ export function Overview({
                     {channel.channel}
                     <ArrowUpRight size={19} />
                   </button>
-                  <p className="lane-reason">{channel.reason}</p>
                   <div className="lane-data">
                     <span>
                       <b className="mono">{number(channel.points)}</b> points
@@ -103,11 +112,7 @@ export function Overview({
                 </>
               ) : (
                 <>
-                  <h3>Waiting for an eligible channel</h3>
-                  <p className="muted">
-                    The miner assigns this slot using your configured
-                    priorities.
-                  </p>
+                  <h3>Waiting for channel</h3>
                 </>
               )}
             </div>
@@ -116,11 +121,17 @@ export function Overview({
       </div>
       <div className="stat-strip">
         <div>
-          <span>Captured today</span>
+          <span>
+            Captured today
+            <Hint label="Captured today">
+              Watch and reward gains recorded since{" "}
+              {date(data.system.capture_started_at, data.timezone)}. Prediction
+              payouts and refunds are excluded.
+            </Hint>
+          </span>
           <strong className="success-text mono">
             +{number(data.summary.earned_today)}
           </strong>
-          <small>Watch and reward gains since capture began</small>
         </div>
         <div>
           <span>Channels live</span>
@@ -128,12 +139,15 @@ export function Overview({
             {data.summary.online}
             <small> / {data.channels.length}</small>
           </strong>
-          <small>{data.summary.watching} currently watched</small>
         </div>
         <div>
-          <span>Streaks confirmed</span>
+          <span>
+            Streaks confirmed
+            <Hint label="Streaks confirmed">
+              Confirmed by Twitch during the current live broadcasts.
+            </Hint>
+          </span>
           <strong className="mono">{data.summary.confirmed}</strong>
-          <small>During the current live broadcasts</small>
         </div>
         <div>
           <span>Recovery available</span>
@@ -144,7 +158,6 @@ export function Overview({
           >
             {data.summary.recoverable}
           </strong>
-          <small>Twitch-reported recovery windows</small>
         </div>
       </div>
       {attention.length > 0 && (
@@ -197,10 +210,7 @@ export function Streaks({
         caption="Playback attempts are shown separately from Twitch-confirmed recoveries."
       />
       {!jobs.length ? (
-        <Empty title="No recovery attempts recorded">
-          When the miner tries a clip or VOD, its method and verified result
-          will appear here.
-        </Empty>
+        <Empty title="No recovery attempts recorded" />
       ) : (
         <div className="recovery-cards">
           {jobs.map((c) => (
@@ -302,10 +312,7 @@ export function Drops({ data, now }: { data: Snapshot; now: number }) {
   );
   return (
     <>
-      <SectionHeading
-        title="Drops & rewards"
-        caption="Inventory and progress reported by Twitch."
-      >
+      <SectionHeading title="Drops & rewards">
         <a
           className="button"
           href="https://www.twitch.tv/drops/inventory"
@@ -334,10 +341,7 @@ export function Drops({ data, now }: { data: Snapshot; now: number }) {
         account={data.account}
         name="drops"
       />
-      <SectionHeading
-        title="Weekly rewards"
-        caption="Availability and completion are confirmed by Twitch."
-      />
+      <SectionHeading title="Weekly rewards" />
       <div className="recovery-cards">
         {data.channels
           .filter((c) => c.weekly)
@@ -383,10 +387,7 @@ export function Drops({ data, now }: { data: Snapshot; now: number }) {
           ))}
       </div>
       {!data.channels.some((c) => c.weekly) && (
-        <Empty title="No active weekly rewards reported">
-          Availability depends on your Twitch account and the channel. Check the
-          refresh status for unavailable responses.
-        </Empty>
+        <Empty title="No active weekly rewards" />
       )}
       <SectionHeading title="Available campaigns" />
       <div className="campaign-list">
@@ -514,10 +515,7 @@ export function Predictions({ data }: { data: Snapshot }) {
   );
   return (
     <>
-      <SectionHeading
-        title="Predictions"
-        caption="Twitch-confirmed stakes and payouts, including manual bets."
-      />
+      <SectionHeading title="Predictions" />
       <div className="stat-strip">
         <div>
           <span>Won / lost</span>
@@ -527,20 +525,29 @@ export function Predictions({ data }: { data: Snapshot }) {
           </strong>
           <small>
             {closed.filter((p) => p.result === "REFUND").length} refunds
-            excluded from win rate
           </small>
         </div>
         <div>
-          <span>Win rate</span>
+          <span>
+            Win rate
+            <Hint label="Win rate">
+              Wins divided by wins and losses for the selected filters. Refunds
+              are excluded.
+            </Hint>
+          </span>
           <strong className="mono">
             {wins + losses
               ? ((wins / (wins + losses)) * 100).toFixed(1) + "%"
               : "Not available"}
           </strong>
-          <small>For the current filters</small>
         </div>
         <div>
-          <span>Net result</span>
+          <span>
+            Net result
+            <Hint label="Net result">
+              Payout minus stake for the selected filters.
+            </Hint>
+          </span>
           <strong
             className={
               "mono " +
@@ -551,14 +558,12 @@ export function Predictions({ data }: { data: Snapshot }) {
           >
             {signed(closed.reduce((a, p) => a + (p.net ?? 0), 0))}
           </strong>
-          <small>Payout minus stake</small>
         </div>
         <div>
           <span>Open predictions</span>
           <strong className="mono">
             {rows.filter((p) => !p.result).length}
           </strong>
-          <small>Known bets awaiting a result</small>
         </div>
       </div>
       <div className="view-controls">
@@ -672,10 +677,7 @@ export function ActivityLogs({ data }: { data: Snapshot }) {
   );
   return (
     <>
-      <SectionHeading
-        title="Activity & logs"
-        caption="A searchable timeline and bounded, credential-redacted log viewer."
-      />
+      <SectionHeading title="Activity & logs" />
       <div className="filter-tabs">
         {["Activity", "Logs"].map((t) => (
           <button
@@ -746,7 +748,7 @@ export function ActivityLogs({ data }: { data: Snapshot }) {
               }
             >
               <Copy size={14} />
-              Copy sanitized logs
+              Copy logs
             </button>
           </>
         )}
@@ -819,15 +821,17 @@ export function System({ data, now }: { data: Snapshot; now: number }) {
     <>
       <SectionHeading
         title="System"
-        caption="Current runtime and configuration. All values are read-only."
+        caption="View only. Change miner settings in run.py."
       />
       <div className="stat-strip">
         <div>
-          <span>Process CPU</span>
+          <span>
+            Process CPU
+            <Hint label="Process CPU">Miner and dashboard together.</Hint>
+          </span>
           <strong className="mono">
             {data.system.cpu_percent.toFixed(1)}%
           </strong>
-          <small>Miner and dashboard together</small>
         </div>
         <div>
           <span>Memory</span>
@@ -835,7 +839,6 @@ export function System({ data, now }: { data: Snapshot; now: number }) {
             {data.system.memory_mb}
             <small> MB</small>
           </strong>
-          <small>Resident process memory</small>
         </div>
         <div>
           <span>Uptime</span>
@@ -843,9 +846,13 @@ export function System({ data, now }: { data: Snapshot; now: number }) {
           <small>{data.system.threads} process threads</small>
         </div>
         <div>
-          <span>Read reuse</span>
+          <span>
+            Cached reads
+            <Hint label="Cached reads">
+              Recent Twitch reads reused across workers.
+            </Hint>
+          </span>
           <strong className="mono">{number(data.refresh.cache_hits)}</strong>
-          <small>Recent reads reused across workers</small>
         </div>
       </div>
       <div className="two-columns">
@@ -953,10 +960,7 @@ export function System({ data, now }: { data: Snapshot; now: number }) {
         </section>
       </div>
       <section className="panel">
-        <SectionHeading
-          title="Prediction configuration"
-          caption="Configured limits are shown even when automatic betting is disabled."
-        />
+        <SectionHeading title="Prediction configuration" />
         <ConfigList
           value={data.system.settings.bet as Record<string, unknown>}
         />
@@ -968,10 +972,7 @@ export function System({ data, now }: { data: Snapshot; now: number }) {
         />
       </section>
       <section className="panel">
-        <SectionHeading
-          title="Reports"
-          caption="Existing account-specific Excel and CSV reports."
-        />
+        <SectionHeading title="Reports" />
         {reports.map((r) => (
           <a
             className="report-row"
