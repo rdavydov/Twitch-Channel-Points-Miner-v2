@@ -48,7 +48,7 @@ This project is based on [Tkd-Alex/Twitch-Channel-Points-Miner-v2](https://githu
 
 - 🎁 **Channel points on autopilot**: watch time, bonus chests, raids (`+250`) and watch streaks are collected for you
 - 🏆 **Priority system**: decide who gets watched first (watch streaks, drops, subscriptions, list order or points)
-- 📦 **Drops**: game drops are claimed from your Twitch inventory, and you get a notification when a finished drop could not be claimed
+- 📦 **Drops**: game drops are claimed as soon as Twitch reports them finished, streamers whose drops can still be completed before the campaign ends are watched first, and you get a notification when a finished drop could not be claimed
 - 🎰 **Predictions**: bet with your channel points using one of 13 strategies, with filters, delays and a stealth mode
 - 💬 **Chat presence**: join IRC chat to appear online, collect StreamElements points and get notified when someone mentions you
 - ✨ **Moments and community goals**: claim moments and contribute to streamers' community challenges
@@ -308,7 +308,7 @@ all watch streaks are caught.
 | Value | Watches first |
 | :-- | :-- |
 | `STREAK` | Streamers whose watch streak can still be caught |
-| `DROPS` | Streamers with drops enabled for a game you have an active campaign for |
+| `DROPS` | Streamers with drops enabled for a game you have an active campaign for; those with a drop that can still be finished before it ends come first |
 | `SUBSCRIBED` | Streamers you are subscribed to (higher tiers first) |
 | `ORDER` | The order of your streamer list |
 | `POINTS_ASCENDING` | Streamers where you have the fewest points |
@@ -849,6 +849,8 @@ If Twitch rejects it, delete it and log in again.
 | Garbled characters on Windows | Set `emoji=False` in `LoggerSettings`. |
 | Only two streamers earn watch points | Expected: Twitch counts two streams at a time. Adjust [priority](#priority). |
 | A drop shows **Connect** and is never claimed | The campaign needs your game account linked. Link it on the campaign page; these drops are skipped by `DROP_UNCLAIMED`. |
+| `Persisted query hash for ... is no longer valid` | Twitch changed an internal API ID. Drop operations switch to a built-in fallback automatically; for other operations, update the miner or open an issue. |
+| Drops progress but are not claimed | Look for `Drop claim failed` warnings in the log: they show the status and error Twitch returned. |
 | `analytics()` shows nothing | Set `enable_analytics=True` on `TwitchChannelPointsMiner`. |
 | Apprise notifications don't arrive | Check the URL format in the [Apprise wiki](https://github.com/caronc/apprise/wiki); invalid URLs are logged as errors at startup. |
 
