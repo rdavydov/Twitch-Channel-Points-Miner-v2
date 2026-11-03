@@ -90,17 +90,62 @@ function Write-Log {
     }
 }
 
-# Runs a native exe without PowerShell 5.1 turning stderr output into terminating errors.
+# Quotes one argument for a Windows command line (CommandLineToArgvW rules).
+function ConvertTo-NativeArg {
+    param([string]$Arg)
+    if ($Arg -eq '') { return '""' }
+    if ($Arg -notmatch '[\s"]') { return $Arg }
+    $escaped = ($Arg -replace '(\\*)"', '$1$1\"') -replace '(\\+)$', '$1$1'
+    return '"' + $escaped + '"'
+}
+
+# Runs a program and returns ExitCode/Output (stdout + stderr). A call that takes longer
+# than TimeoutSec is killed (with its child processes) and returns ExitCode -1, so a hung
+# git fetch or notification can never stall the supervisor.
 function Invoke-Native {
-    param([string]$FilePath, [string[]]$ArgList)
-    $old = $ErrorActionPreference
-    $ErrorActionPreference = 'Continue'
+    param(
+        [string]$FilePath,
+        [string[]]$ArgList,
+        [int]$TimeoutSec = 120,
+        [string]$InputText = $null
+    )
+    $psi = New-Object System.Diagnostics.ProcessStartInfo
+    $psi.FileName = $FilePath
+    $psi.Arguments = (@($ArgList) | ForEach-Object { ConvertTo-NativeArg $_ }) -join ' '
+    $psi.UseShellExecute = $false
+    $psi.CreateNoWindow = $true
+    $psi.RedirectStandardOutput = $true
+    $psi.RedirectStandardError = $true
+    $psi.RedirectStandardInput = $true
+    $psi.StandardOutputEncoding = New-Object System.Text.UTF8Encoding($false)
+    $psi.StandardErrorEncoding = New-Object System.Text.UTF8Encoding($false)
+    $psi.EnvironmentVariables['GIT_TERMINAL_PROMPT'] = '0'
+    $psi.EnvironmentVariables['PYTHONIOENCODING'] = 'utf-8'
     try {
-        $out = & $FilePath @ArgList 2>&1 | ForEach-Object { "$_" }
-        [pscustomobject]@{ ExitCode = $LASTEXITCODE; Output = (($out -join "`n").Trim()) }
-    } finally {
-        $ErrorActionPreference = $old
+        $p = [System.Diagnostics.Process]::Start($psi)
+    } catch {
+        return [pscustomobject]@{ ExitCode = -1; Output = "$_"; TimedOut = $false }
     }
+    $outTask = $p.StandardOutput.ReadToEndAsync()
+    $errTask = $p.StandardError.ReadToEndAsync()
+    try {
+        if ($InputText) {
+            $bytes = (New-Object System.Text.UTF8Encoding($false)).GetBytes($InputText)
+            $p.StandardInput.BaseStream.Write($bytes, 0, $bytes.Length)
+        }
+        $p.StandardInput.Close()
+    } catch { }
+    if (-not $p.WaitForExit($TimeoutSec * 1000)) {
+        try { & "$env:SystemRoot\System32\taskkill.exe" /PID $p.Id /T /F 2>&1 | Out-Null } catch { }
+        return [pscustomobject]@{
+            ExitCode = -1
+            Output   = "timed out after $TimeoutSec s: $FilePath $($psi.Arguments)"
+            TimedOut = $true
+        }
+    }
+    $p.WaitForExit()
+    $output = ($outTask.Result + "`n" + $errTask.Result).Trim()
+    return [pscustomobject]@{ ExitCode = $p.ExitCode; Output = $output; TimedOut = $false }
 }
 
 # ---------------------------------------------------------------- single instance
@@ -182,8 +227,8 @@ function Send-Alert {
             $a = @((Join-Path $PSScriptRoot 'notify.py'), '--title', $Title, '--priority', "$Priority")
             if ($Mono) { $a += '--mono' }
             if ($Url)  { $a += @('--url', $Url); if ($UrlTitle) { $a += @('--url-title', $UrlTitle) } }
-            $out = $Msg | & $Python @a 2>&1 | ForEach-Object { "$_" }
-            if ($LASTEXITCODE -ne 0) { Write-Log "Apprise send failed (exit $LASTEXITCODE): $($out -join ' ')" 'WARN' }
+            $r = Invoke-Native $Python $a -TimeoutSec 30 -InputText $Msg
+            if ($r.ExitCode -ne 0) { Write-Log "Apprise send failed (exit $($r.ExitCode)): $($r.Output)" 'WARN' }
             return
         }
         if (-not $cfg.pushoverToken -or -not $cfg.pushoverUser) { return }
@@ -229,7 +274,7 @@ function Set-UpdateResult([string]$Result, [string]$Level = 'INFO') {
 
 function Install-Requirements([string]$Why) {
     Write-Log "Running pip install -r requirements.txt ($Why)."
-    $r = Invoke-Native $Python @('-m', 'pip', 'install', '--disable-pip-version-check', '-q', '-r', $ReqFile)
+    $r = Invoke-Native $Python @('-m', 'pip', 'install', '--disable-pip-version-check', '-q', '-r', $ReqFile) -TimeoutSec 900
     if ($r.ExitCode -ne 0) { Write-Log "pip install failed: $($r.Output)" 'ERROR'; return $false }
     Write-Log 'pip install OK.'
     return $true
@@ -237,7 +282,7 @@ function Install-Requirements([string]$Why) {
 
 function Update-Miner {
     if (-not $Git) { Set-UpdateResult 'Update checks disabled (no git / not a git checkout).' 'WARN'; return }
-    $r = Invoke-Native $Git @('-C', $MinerDir, 'fetch', '--quiet', 'origin', $Branch)
+    $r = Invoke-Native $Git @('-C', $MinerDir, 'fetch', '--quiet', 'origin', $Branch) -TimeoutSec 60
     if ($r.ExitCode -ne 0) { Set-UpdateResult "git fetch failed (offline?): $($r.Output)" 'WARN'; return }
 
     $oldHead = Get-Commit
@@ -309,7 +354,7 @@ function Stop-Miner {
         Where-Object { $_.CommandLine -and $_.CommandLine -match $escaped })
     foreach ($p in $procs) {
         Write-Log "Force-stopping miner PID $($p.ProcessId) ($Reason)."
-        Invoke-Native "$env:SystemRoot\System32\taskkill.exe" @('/PID', "$($p.ProcessId)", '/T', '/F') | Out-Null
+        Invoke-Native "$env:SystemRoot\System32\taskkill.exe" @('/PID', "$($p.ProcessId)", '/T', '/F') -TimeoutSec 30 | Out-Null
     }
 }
 
