@@ -68,6 +68,7 @@ class Twitch(object):
         "unclaimed_notified",
         "raw_query_operations",
         "drops_claim_lock",
+        "channel_campaigns",
     ]
 
     def __init__(self, username, user_agent, password=None):
@@ -87,6 +88,8 @@ class Twitch(object):
         self.raw_query_operations = set()
         # Serialises inventory claim sweeps (sync thread and PubSub drop-claim events)
         self.drops_claim_lock = threading.Lock()
+        # Campaigns seen on channels (DropChannelCampaignsProgress), by campaign id
+        self.channel_campaigns = {}
         # self.integrity = None
         # self.integrity_expire = 0
         self.client_session = token_hex(16)
@@ -891,6 +894,81 @@ class Twitch(object):
 
     # === CAMPAIGNS / DROPS / INVENTORY === #
     def __get_campaign_ids_from_streamer(self, streamer):
+        """Campaign ids on this channel that can be progressed by watching.
+        Campaigns that need a subscription, track/lane drops and claimed drops are
+        skipped. Falls back to DropsHighlightService_AvailableDrops on failure."""
+        json_data = copy.deepcopy(GQLOperations.DropChannelCampaignsProgress)
+        json_data["variables"] = {"channelID": streamer.channel_id}
+        response = self.post_gql_request(json_data)
+        data = response.get("data") if isinstance(response, dict) else None
+        campaigns = (data or {}).get("channelDropCampaignsProgress")
+        if campaigns is None:
+            return self.__get_available_campaign_ids(streamer)
+        campaign_ids = []
+        for campaign in campaigns:
+            converted = self.__campaign_from_channel_progress(campaign)
+            if converted is not None:
+                self.channel_campaigns[converted["id"]] = converted
+                campaign_ids.append(converted["id"])
+        return campaign_ids
+
+    @staticmethod
+    def __campaign_from_channel_progress(campaign):
+        """Converts a DropChannelCampaignsProgress campaign to the DropCampaignDetails
+        shape used by Campaign, keeping only unclaimed watch-time drops.
+        Returns None when nothing on it can be earned by watching."""
+        drops = []
+        channels = None
+        for group in campaign.get("rewardGroups") or []:
+            criteria = group.get("progressCriteria") or {}
+            minutes = (criteria.get("requirements") or {}).get("minutesWatched")
+            status = (group.get("self") or {}).get("status")
+            if (
+                criteria.get("requirementType") != "WATCH"
+                or not minutes
+                or group.get("track") is not None
+                or group.get("lane") is not None
+                or status in ["CLAIMED", "COMPLETED"]
+            ):
+                continue
+            if criteria.get("channels"):
+                channels = (channels or []) + [
+                    channel
+                    for channel in criteria["channels"]
+                    if isinstance(channel, dict) and channel.get("id")
+                ]
+            drops.append(
+                {
+                    "id": group["id"],
+                    "name": group.get("name") or campaign.get("name"),
+                    "requiredMinutesWatched": minutes,
+                    "startAt": campaign["startAt"],
+                    "endAt": campaign["endAt"],
+                    "benefitEdges": [
+                        {
+                            "benefit": {
+                                "id": reward.get("id"),
+                                "name": reward.get("name"),
+                            }
+                        }
+                        for reward in group.get("rewards") or []
+                    ],
+                }
+            )
+        if not drops:
+            return None
+        return {
+            "id": campaign["id"],
+            "name": campaign.get("name"),
+            "status": "ACTIVE",
+            "game": campaign.get("game") or {},
+            "allow": {"channels": channels},
+            "startAt": campaign["startAt"],
+            "endAt": campaign["endAt"],
+            "timeBasedDrops": drops,
+        }
+
+    def __get_available_campaign_ids(self, streamer):
         json_data = copy.deepcopy(
             GQLOperations.DropsHighlightService_AvailableDrops)
         json_data["variables"] = {"channelID": streamer.channel_id}
@@ -1109,6 +1187,14 @@ class Twitch(object):
                         c
                         for c in self.__get_inventory_campaigns()
                         if c.get("status") == "ACTIVE" and c.get("id") not in known_ids
+                    ]
+                    # Campaigns seen on channels but not started yet are not in the
+                    # inventory; add them so their streams can be matched
+                    known_ids = {c["id"] for c in campaigns_details if c}
+                    campaigns_details += [
+                        c
+                        for c in list(self.channel_campaigns.values())
+                        if c["id"] not in known_ids
                     ]
                     campaigns = []
 

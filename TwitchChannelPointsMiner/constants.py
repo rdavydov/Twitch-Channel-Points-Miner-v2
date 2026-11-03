@@ -170,6 +170,15 @@ class GQLOperations:
             }
         },
     }
+    DropChannelCampaignsProgress = {
+        "operationName": "DropChannelCampaignsProgress",
+        "extensions": {
+            "persistedQuery": {
+                "version": 1,
+                "sha256Hash": "3d9ce923899cbab5d7a8481da4e9918b1982a987bac68ac4347b5cf925a1d523",
+            }
+        },
+    }
     GetIDFromLogin = {
         "operationName": "GetIDFromLogin",
         "variables": {"login": None},
@@ -236,5 +245,6 @@ class GQLOperations:
         "ViewerDropsDashboard": "query ViewerDropsDashboard { currentUser { dropCampaigns { id name status startAt endAt game { id name displayName } } } }",
         "DropCampaignDetails": "query DropCampaignDetails($dropID: ID!, $channelLogin: ID!) { user(id: $channelLogin) { id dropCampaign(id: $dropID) { id name status startAt endAt game { id name displayName } allow { channels { id name } } timeBasedDrops { id name requiredMinutesWatched startAt endAt benefitEdges { benefit { id name } } } } } }",
         "DropsHighlightService_AvailableDrops": "query DropsHighlightService_AvailableDrops($channelID: ID!) { channel(id: $channelID) { id viewerDropCampaigns { id name } } }",
+        "DropChannelCampaignsProgress": "query DropChannelCampaignsProgress($channelID: ID!) { channelDropCampaignsProgress(channelID: $channelID) { id name startAt endAt game { id name displayName } rewardGroups { id name track lane progressCriteria { requirementType requirements { minutesWatched } channels { id } } rewards { id name } self { status currentMinutesWatched } } } }",
         "ModViewChannelQuery": "query ModViewChannelQuery($channelLogin: String!) { user(login: $channelLogin) { id self { isModerator } } }",
     }
