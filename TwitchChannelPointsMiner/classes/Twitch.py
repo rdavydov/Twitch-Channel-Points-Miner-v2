@@ -469,6 +469,21 @@ class Twitch(object):
             logger.error(f"Error with update_client_version: {e}")
             return self.client_version
 
+    def __request_remaining_segments(self, streamer, playlist, already_requested):
+        for line in playlist.splitlines():
+            segment_url = line.strip()
+            if not segment_url.startswith("http") or segment_url == already_requested:
+                continue
+            try:
+                requests.head(
+                    segment_url,
+                    headers={"User-Agent": self.user_agent},
+                    timeout=10,
+                )
+            except requests.exceptions.RequestException as e:
+                logger.debug(f"Segment request failed for {streamer}: {e}")
+                break
+
     def send_minute_watched_events(self, streamers, priority, chunk_size=3):
         while self.running:
             try:
@@ -688,6 +703,12 @@ class Twitch(object):
                         )
                         if responseStreamLowestQualityURL.status_code != 200:
                             continue
+                        # While farming drops, request every listed segment like a
+                        # real player does, not only the last one
+                        if streamers[index].drops_condition() is True:
+                            self.__request_remaining_segments(
+                                streamers[index], StreamURLList, StreamLowestQualityURL
+                            )
                         # End of fix for 2024/5 API Change
                         ##################################
                         response = requests.post(
