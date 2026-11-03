@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from TwitchChannelPointsMiner.classes.Settings import Settings
 from TwitchChannelPointsMiner.utils import percentage
@@ -10,6 +10,12 @@ def parse_datetime(datetime_str):
         except ValueError:
             continue
     raise ValueError(f"time data '{datetime_str}' does not match format")
+
+
+def utc_now():
+    # Twitch timestamps are UTC; parse_datetime returns naive UTC datetimes
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
 
 class Drop(object):
     __slots__ = [
@@ -47,7 +53,7 @@ class Drop(object):
 
         self.end_at = parse_datetime(dict["endAt"])
         self.start_at = parse_datetime(dict["startAt"])
-        self.dt_match = self.start_at < datetime.now() < self.end_at
+        self.dt_match = self.start_at < utc_now() < self.end_at
 
     def update(
         self,
