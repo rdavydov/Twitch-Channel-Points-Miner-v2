@@ -64,6 +64,7 @@ class Twitch(object):
         "client_session",
         "client_version",
         "twilight_build_id_pattern",
+        "unclaimed_notified",
     ]
 
     def __init__(self, username, user_agent, password=None):
@@ -78,6 +79,7 @@ class Twitch(object):
             CLIENT_ID, self.device_id, username, self.user_agent, password=password
         )
         self.running = True
+        self.unclaimed_notified = set()  # dropInstanceIDs already reported as unclaimed
         # self.integrity = None
         # self.integrity_expire = 0
         self.client_session = token_hex(16)
@@ -936,7 +938,29 @@ class Twitch(object):
                         drop.update(drop_dict["self"])
                         if drop.is_claimable is True:
                             drop.is_claimed = self.claim_drop(drop)
+                            if drop.is_claimed is False:
+                                self.notify_unclaimed_drop(campaign, drop)
                             time.sleep(random.uniform(5, 10))
+
+    def notify_unclaimed_drop(self, campaign, drop):
+        """Reports a finished drop that could not be claimed (once per drop instance).
+        Campaigns that need a linked game account (Twitch shows "Connect" instead of "Claim") are skipped.
+        """
+        if (campaign.get("self") or {}).get("isAccountConnected") is False:
+            logger.debug(
+                f"Unclaimed drop {drop.name} skipped: campaign {campaign.get('name')} needs an account connection"
+            )
+            return
+        if drop.drop_instance_id in self.unclaimed_notified:
+            return
+        self.unclaimed_notified.add(drop.drop_instance_id)
+        game = campaign.get("game") or {}
+        game_name = game.get("displayName") or game.get("name") or "unknown game"
+        logger.info(
+            f"Unclaimed drop: {drop.name} ({drop.benefit}) from {campaign.get('name')} [{game_name}]. "
+            "Claim it at https://www.twitch.tv/drops/inventory",
+            extra={"emoji": ":gift:", "event": Events.DROP_UNCLAIMED},
+        )
 
     def sync_campaigns(self, streamers, chunk_size=3):
         campaigns_update = 0
