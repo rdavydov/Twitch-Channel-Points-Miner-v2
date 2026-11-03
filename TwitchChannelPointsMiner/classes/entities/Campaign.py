@@ -64,6 +64,10 @@ class Campaign(object):
             filter(lambda x: x.dt_match is True and x.is_claimed is False, self.drops)
         )
 
+    def can_finish(self):
+        """True if at least one drop can still be completed before it ends."""
+        return any(drop.can_finish(self.end_at) for drop in self.drops)
+
     def __eq__(self, other):
         if isinstance(other, self.__class__):
             return self.id == other.id

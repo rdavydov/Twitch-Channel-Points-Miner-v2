@@ -526,11 +526,23 @@ class Twitch(object):
                                     break
 
                     elif prior == Priority.DROPS:
-                        for index in streamers_index:
-                            if streamers[index].drops_condition() is True:
-                                streamers_watching.add(index)
-                                if remaining_watch_amount() <= 0:
-                                    break
+                        drop_streamers = [
+                            index
+                            for index in streamers_index
+                            if streamers[index].drops_condition() is True
+                        ]
+                        # Prefer streamers with a drop that can still be finished in time;
+                        # the sort is stable, so the configured order is kept otherwise
+                        drop_streamers.sort(
+                            key=lambda index: not any(
+                                campaign.can_finish()
+                                for campaign in streamers[index].stream.campaigns
+                            )
+                        )
+                        for index in drop_streamers:
+                            streamers_watching.add(index)
+                            if remaining_watch_amount() <= 0:
+                                break
 
                     elif prior == Priority.SUBSCRIBED:
                         streamers_with_multiplier = [
