@@ -1028,7 +1028,9 @@ class Twitch(object):
     def claim_drops_from_event(self, data):
         """Handles a PubSub user-drop-events 'drop-claim' message: a drop just became
         claimable, so sweep the inventory now instead of waiting for the next sync."""
-        drop_instance_id = (data or {}).get("drop_instance_id")
+        if not isinstance(data, dict):
+            return
+        drop_instance_id = data.get("drop_instance_id")
         logger.debug(f"PubSub drop-claim received: {data}")
         if not drop_instance_id:
             return
@@ -1042,14 +1044,13 @@ class Twitch(object):
     def __claim_drops_from_event_worker(self):
         # Give the inventory a moment to reflect the new dropInstanceID
         time.sleep(random.uniform(2, 5))
+        # If a sweep is already running its inventory may predate this drop:
+        # wait for it to finish, then run our own sweep
+        if self.drops_claim_lock.acquire(timeout=300):
+            self.drops_claim_lock.release()
         try:
             self.claim_all_drops_from_inventory()
-        except (
-            ValueError,
-            KeyError,
-            TypeError,
-            requests.exceptions.RequestException,
-        ) as e:
+        except Exception as e:
             logger.error(f"Error while claiming drops after PubSub event: {e}")
 
     def notify_unclaimed_drop(self, campaign, drop):
@@ -1123,6 +1124,7 @@ class Twitch(object):
                         streamers[i].stream.campaigns = list(
                             filter(
                                 lambda x: x.drops != []
+                                and (x.game or {}).get("id") is not None
                                 and (x.game or {}).get("id")
                                 == (streamers[i].stream.game or {}).get("id")
                                 and x.id in streamers[i].stream.campaigns_ids,
