@@ -54,7 +54,7 @@ class Campaign(object):
 
     def __str__(self):
         return (
-            f"{self.name}, Game: {self.game['displayName']} - Drops: {len(self.drops)} pcs. - In inventory: {self.in_inventory}"
+            f"{self.name}, Game: {self.game.get('displayName') or self.game.get('name')} - Drops: {len(self.drops)} pcs. - In inventory: {self.in_inventory}"
             if Settings.logger.less
             else self.__repr__()
         )

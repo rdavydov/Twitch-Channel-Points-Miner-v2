@@ -916,6 +916,10 @@ class Twitch(object):
         except (ValueError, KeyError, TypeError):
             return {}
 
+    def __get_inventory_campaigns(self):
+        inventory = self.__get_inventory() or {}
+        return inventory.get("dropCampaignsInProgress") or []
+
     def __get_drops_dashboard(self, status=None):
         response = self.post_gql_request(GQLOperations.ViewerDropsDashboard)
         campaigns = (
@@ -1098,6 +1102,14 @@ class Twitch(object):
                     campaigns_details = self.__get_campaigns_details(
                         self.__get_drops_dashboard(status="ACTIVE")
                     )
+                    # Twitch may return no dashboard campaigns or details for this
+                    # client; campaigns already in the inventory carry the same fields
+                    known_ids = {c["id"] for c in campaigns_details if c}
+                    campaigns_details += [
+                        c
+                        for c in self.__get_inventory_campaigns()
+                        if c.get("status") == "ACTIVE" and c.get("id") not in known_ids
+                    ]
                     campaigns = []
 
                     # Going to clear array and structure. Remove all the timeBasedDrops expired or not started yet
