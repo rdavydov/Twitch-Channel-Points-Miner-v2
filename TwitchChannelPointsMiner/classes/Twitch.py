@@ -65,6 +65,7 @@ class Twitch(object):
         "client_version",
         "twilight_build_id_pattern",
         "unclaimed_notified",
+        "raw_query_operations",
     ]
 
     def __init__(self, username, user_agent, password=None):
@@ -80,6 +81,8 @@ class Twitch(object):
         )
         self.running = True
         self.unclaimed_notified = set()  # dropInstanceIDs already reported as unclaimed
+        # Operations whose persisted query hash was rejected; sent as raw queries
+        self.raw_query_operations = set()
         # self.integrity = None
         # self.integrity_expire = 0
         self.client_session = token_hex(16)
@@ -275,7 +278,13 @@ class Twitch(object):
             )
             self.__chuncked_sleep(random_sleep * 60, chunk_size=chunk_size)
 
-    def post_gql_request(self, json_data):
+    def post_gql_request(self, json_data, raw_fallback=True):
+        operation_name = self.__gql_operation_name(json_data)
+        if raw_fallback and operation_name in self.raw_query_operations:
+            raw = self.__to_raw_query(json_data)
+            if raw is not None:
+                json_data = raw
+                raw_fallback = False
         try:
             response = requests.post(
                 GQLOperations.url,
@@ -293,12 +302,68 @@ class Twitch(object):
             logger.debug(
                 f"Data: {json_data}, Status code: {response.status_code}, Content: {response.text}"
             )
-            return response.json()
+            data = response.json()
         except requests.exceptions.RequestException as e:
-            logger.error(
-                f"Error with GQLOperations ({json_data['operationName']}): {e}"
+            logger.error(f"Error with GQLOperations ({operation_name}): {e}")
+            return {}
+        except ValueError:
+            logger.warning(
+                f"Invalid GQL response ({operation_name}), status code: {response.status_code}"
             )
             return {}
+
+        errors = self.__gql_error_messages(data)
+        if "PersistedQueryNotFound" in errors:
+            raw = self.__to_raw_query(json_data) if raw_fallback else None
+            if raw is not None:
+                logger.warning(
+                    f"Persisted query hash for {operation_name} is no longer valid, using the raw query"
+                )
+                self.raw_query_operations.add(operation_name)
+                return self.post_gql_request(raw, raw_fallback=False)
+            logger.warning(
+                f"Persisted query hash for {operation_name} is no longer valid and no raw query is available"
+            )
+        elif errors:
+            logger.debug(
+                f"GQL errors ({operation_name}): {', '.join(sorted(set(errors)))}"
+            )
+        return data
+
+    @staticmethod
+    def __gql_operation_name(json_data):
+        if isinstance(json_data, list):
+            json_data = json_data[0] if json_data else {}
+        return json_data.get("operationName", "unknown")
+
+    @staticmethod
+    def __gql_error_messages(response):
+        items = response if isinstance(response, list) else [response]
+        messages = []
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            for error in item.get("errors") or []:
+                if isinstance(error, dict):
+                    messages.append(error.get("message", ""))
+        return messages
+
+    @staticmethod
+    def __to_raw_query(json_data):
+        def convert(operation):
+            query = GQLOperations.raw_queries.get(operation.get("operationName"))
+            if query is None:
+                return None
+            raw = {
+                key: value for key, value in operation.items() if key != "extensions"
+            }
+            raw["query"] = query
+            return raw
+
+        if isinstance(json_data, list):
+            converted = [convert(operation) for operation in json_data]
+            return None if any(item is None for item in converted) else converted
+        return convert(json_data)
 
     # Request for Integrity Token
     # Twitch needs Authorization, Client-Id, X-Device-Id to generate JWT which is used for authorize gql requests
@@ -910,23 +975,17 @@ class Twitch(object):
             "input": {"dropInstanceID": drop.drop_instance_id}}
         response = self.post_gql_request(json_data)
         try:
-            # response["data"]["claimDropRewards"] can be null and respose["data"]["errors"] != []
-            # or response["data"]["claimDropRewards"]["status"] === DROP_INSTANCE_ALREADY_CLAIMED
-            if ("claimDropRewards" in response["data"]) and (
-                response["data"]["claimDropRewards"] is None
-            ):
-                return False
-            elif ("errors" in response["data"]) and (response["data"]["errors"] != []):
-                return False
-            elif ("claimDropRewards" in response["data"]) and (
-                response["data"]["claimDropRewards"]["status"]
-                in ["ELIGIBLE_FOR_ALL", "DROP_INSTANCE_ALREADY_CLAIMED"]
-            ):
-                return True
-            else:
-                return False
-        except (ValueError, KeyError):
-            return False
+            result = (response.get("data") or {}).get("claimDropRewards") or {}
+            status = result.get("status")
+        except AttributeError:
+            status = None
+        if status in ["ELIGIBLE_FOR_ALL", "DROP_INSTANCE_ALREADY_CLAIMED"]:
+            return True
+        errors = self.__gql_error_messages(response)
+        logger.warning(
+            f"Drop claim failed for {drop.name}: status={status}, errors={errors or None}"
+        )
+        return False
 
     def claim_all_drops_from_inventory(self):
         inventory = self.__get_inventory()
@@ -1013,7 +1072,8 @@ class Twitch(object):
                         streamers[i].stream.campaigns = list(
                             filter(
                                 lambda x: x.drops != []
-                                and x.game == streamers[i].stream.game
+                                and (x.game or {}).get("id")
+                                == (streamers[i].stream.game or {}).get("id")
                                 and x.id in streamers[i].stream.campaigns_ids,
                                 campaigns,
                             )

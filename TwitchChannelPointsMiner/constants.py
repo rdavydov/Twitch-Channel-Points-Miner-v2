@@ -228,3 +228,13 @@ class GQLOperations:
             }
         }
     }
+    # Raw query text used when a persisted query hash is rejected
+    # (PersistedQueryNotFound). Twitch ignores unused variables.
+    raw_queries = {
+        "DropsPage_ClaimDropRewards": "mutation DropsPage_ClaimDropRewards($input: ClaimDropRewardsInput!) { claimDropRewards(input: $input) { status } }",
+        "Inventory": "query Inventory { currentUser { inventory { dropCampaignsInProgress { id name status startAt endAt self { isAccountConnected } game { id name displayName } timeBasedDrops { id name requiredMinutesWatched startAt endAt benefitEdges { benefit { id name } } self { dropInstanceID isClaimed currentMinutesWatched hasPreconditionsMet } } } } } }",
+        "ViewerDropsDashboard": "query ViewerDropsDashboard { currentUser { dropCampaigns { id name status startAt endAt game { id name displayName } } } }",
+        "DropCampaignDetails": "query DropCampaignDetails($dropID: ID!, $channelLogin: ID!) { user(id: $channelLogin) { id dropCampaign(id: $dropID) { id name status startAt endAt game { id name displayName } allow { channels { id name } } timeBasedDrops { id name requiredMinutesWatched startAt endAt benefitEdges { benefit { id name } } } } } }",
+        "DropsHighlightService_AvailableDrops": "query DropsHighlightService_AvailableDrops($channelID: ID!) { channel(id: $channelID) { id viewerDropCampaigns { id name } } }",
+        "ModViewChannelQuery": "query ModViewChannelQuery($channelLogin: String!) { user(login: $channelLogin) { id self { isModerator } } }",
+    }
