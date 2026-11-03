@@ -155,3 +155,7 @@ analytics/*
 keep_replit_alive.py
 .replit
 replit.nix
+
+# Supervisor: local alert config and runtime state
+supervisor/miner-alerts.json
+supervisor-logs/

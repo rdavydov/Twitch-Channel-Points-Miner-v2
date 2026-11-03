@@ -1,0 +1,4 @@
+{
+  "appriseUrls": ["tgram://BOT_TOKEN/CHAT_ID"],
+  "appriseUrgentUrls": ["pover://USER_KEY@APP_TOKEN?priority=emergency"]
+}
