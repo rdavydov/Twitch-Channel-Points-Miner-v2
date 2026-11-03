@@ -2,6 +2,7 @@ import logging
 import os
 import platform
 import queue
+import re
 import pytz
 import sys
 from datetime import datetime
@@ -286,6 +287,44 @@ class GlobalFormatter(logging.Formatter):
             self.settings.apprise.send(record.msg, record.event)
 
 
+class RedactSecretsFilter(logging.Filter):
+    """Removes Twitch credentials (OAuth tokens, signed playback URLs) from log
+    records before any handler formats or sends them."""
+
+    PATTERNS = [
+        (
+            re.compile(
+                r"""(["']?(?:auth_token|access_token|refresh_token)["']?\s*[:=]\s*["']?)[^"'\s,&}]+"""
+            ),
+            r"\1<redacted>",
+        ),
+        (re.compile(r"((?:OAuth|Bearer)\s+)[A-Za-z0-9]+"), r"\1<redacted>"),
+        (re.compile(r"([?&](?:sig|token)=)[^&\s\"']+"), r"\1<redacted>"),
+        (re.compile(r"(/v1/(?:playlist|segment)/)[^\s\"']+"), r"\1<redacted>"),
+    ]
+
+    @classmethod
+    def redact(cls, text):
+        for pattern, replacement in cls.PATTERNS:
+            text = pattern.sub(replacement, text)
+        return text
+
+    def filter(self, record):
+        try:
+            message = record.getMessage()
+        except Exception:
+            return True
+        redacted = self.redact(message)
+        if redacted != message:
+            record.msg = redacted
+            record.args = None
+        if record.exc_info and not record.exc_text:
+            record.exc_text = logging.Formatter().formatException(record.exc_info)
+        if record.exc_text:
+            record.exc_text = self.redact(record.exc_text)
+        return True
+
+
 def configure_loggers(username, settings):
     if settings.colored is True:
         init(autoreset=True)
@@ -293,6 +332,7 @@ def configure_loggers(username, settings):
     # Queue handler that will handle the logger queue
     logger_queue = queue.Queue(-1)
     queue_handler = QueueHandler(logger_queue)
+    queue_handler.addFilter(RedactSecretsFilter())
     root_logger = logging.getLogger()
     root_logger.setLevel(logging.DEBUG)
     # Add the queue handler to the root logger
