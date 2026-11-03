@@ -51,6 +51,11 @@ from TwitchChannelPointsMiner.utils import (
 )
 
 logger = logging.getLogger(__name__)
+
+# The inventory can keep listing a claimed drop for a while; don't re-send the
+# claim for this long after Twitch accepted it
+ACCEPTED_CLAIM_RETRY_SECONDS = 60 * 60
+
 JsonType = Dict[str, Any]
 
 
@@ -69,6 +74,7 @@ class Twitch(object):
         "twilight_build_id_pattern",
         "unclaimed_notified",
         "raw_query_operations",
+        "accepted_drop_claims",
         "drops_claim_lock",
         "channel_campaigns",
     ]
@@ -92,6 +98,8 @@ class Twitch(object):
         self.unclaimed_notified = self.__load_unclaimed_notified()
         # Operations whose persisted query hash was rejected; sent as raw queries
         self.raw_query_operations = set()
+        # dropInstanceID -> time.monotonic() of the accepted claim
+        self.accepted_drop_claims = {}
         # Serialises inventory claim sweeps (sync thread and PubSub drop-claim events)
         self.drops_claim_lock = threading.Lock()
         # Campaigns seen on channels (DropChannelCampaignsProgress), by campaign id
@@ -1156,6 +1164,14 @@ class Twitch(object):
         return campaigns
 
     def claim_drop(self, drop):
+        now = time.monotonic()
+        accepted_at = self.accepted_drop_claims.get(drop.drop_instance_id)
+        if accepted_at is not None and now - accepted_at < ACCEPTED_CLAIM_RETRY_SECONDS:
+            logger.debug(
+                f"Skipping claim of {drop}: Twitch already accepted it and the "
+                "inventory has not caught up yet"
+            )
+            return True
         logger.info(
             f"Claim {drop}", extra={"emoji": ":package:", "event": Events.DROP_CLAIM}
         )
@@ -1170,6 +1186,13 @@ class Twitch(object):
         except AttributeError:
             status = None
         if status in ["ELIGIBLE_FOR_ALL", "DROP_INSTANCE_ALREADY_CLAIMED"]:
+            # Forget entries the inventory no longer lists
+            self.accepted_drop_claims = {
+                instance_id: stamp
+                for instance_id, stamp in self.accepted_drop_claims.items()
+                if now - stamp < 2 * ACCEPTED_CLAIM_RETRY_SECONDS
+            }
+            self.accepted_drop_claims[drop.drop_instance_id] = now
             return True
         errors = self.__gql_error_messages(response)
         logger.warning(
