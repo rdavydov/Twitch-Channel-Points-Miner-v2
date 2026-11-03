@@ -18,6 +18,7 @@ from TwitchChannelPointsMiner.classes.Settings import Events
 from TwitchChannelPointsMiner.classes.Telegram import Telegram
 from TwitchChannelPointsMiner.classes.Pushover import Pushover
 from TwitchChannelPointsMiner.classes.Gotify import Gotify
+from TwitchChannelPointsMiner.classes.Apprise import Apprise
 from TwitchChannelPointsMiner.utils import remove_emoji
 
 
@@ -81,7 +82,8 @@ class LoggerSettings:
         "matrix",
         "pushover",
         "gotify",
-        "username"
+        "apprise",
+        "username",
     ]
 
     def __init__(
@@ -102,7 +104,8 @@ class LoggerSettings:
         matrix: Matrix or None = None,
         pushover: Pushover or None = None,
         gotify: Gotify or None = None,
-        username: str or None = None
+        apprise: Apprise or None = None,
+        username: str or None = None,
     ):
         self.save = save
         self.less = less
@@ -120,6 +123,7 @@ class LoggerSettings:
         self.matrix = matrix
         self.pushover = pushover
         self.gotify = gotify
+        self.apprise = apprise
         self.username = username
 
 
@@ -197,6 +201,7 @@ class GlobalFormatter(logging.Formatter):
             self.matrix(record)
             self.pushover(record)
             self.gotify(record)
+            self.apprise(record)
 
             if self.settings.colored is True:
                 record.msg = (
@@ -275,6 +280,10 @@ class GlobalFormatter(logging.Formatter):
             != "https://example.com/message?token=TOKEN"
         ):
             self.settings.gotify.send(record.msg, record.event)
+
+    def apprise(self, record):
+        if self.settings.apprise is not None and not hasattr(record, "skip_apprise"):
+            self.settings.apprise.send(record.msg, record.event)
 
 
 def configure_loggers(username, settings):

@@ -11,6 +11,7 @@ from TwitchChannelPointsMiner.classes.Telegram import Telegram
 from TwitchChannelPointsMiner.classes.Matrix import Matrix
 from TwitchChannelPointsMiner.classes.Pushover import Pushover
 from TwitchChannelPointsMiner.classes.Gotify import Gotify
+from TwitchChannelPointsMiner.classes.Apprise import Apprise
 from TwitchChannelPointsMiner.classes.Settings import Priority, Events, FollowersOrder
 from TwitchChannelPointsMiner.classes.entities.Bet import Strategy, BetSettings, Condition, OutcomeKeys, FilterCondition, DelayMode
 from TwitchChannelPointsMiner.classes.entities.Streamer import Streamer, StreamerSettings
@@ -78,7 +79,12 @@ twitch_miner = TwitchChannelPointsMiner(
             endpoint="https://example.com/message?token=TOKEN",
             priority=8,
             events=[Events.STREAMER_ONLINE, Events.STREAMER_OFFLINE,
-                    Events.BET_LOSE, Events.CHAT_MENTION], 
+                    Events.BET_LOSE, Events.CHAT_MENTION],
+        ),
+        apprise=Apprise(                                                            # One notifier for 100+ services (Discord, Telegram, ntfy, email, ...)
+            urls=["discord://WEBHOOK_ID/WEBHOOK_TOKEN", "ntfy://my-topic"],          # URL formats: https://github.com/caronc/apprise/wiki
+            events=[Events.DROP_CLAIM, Events.DROP_UNCLAIMED,
+                    Events.CHAT_MENTION],                                           # Only these events will be sent
         )
     ),
     streamer_settings=StreamerSettings(
