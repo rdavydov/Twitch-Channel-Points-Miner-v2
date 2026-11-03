@@ -308,7 +308,7 @@ all watch streaks are caught.
 | Value | Watches first |
 | :-- | :-- |
 | `STREAK` | Streamers whose watch streak can still be caught |
-| `DROPS` | Streamers with drops enabled for a game you have an active campaign for; those with a drop that can still be finished before it ends come first |
+| `DROPS` | Streamers with a drop campaign you can progress by watching (subscription-only and already claimed drops don't count); those with a drop that can still be finished before it ends come first |
 | `SUBSCRIBED` | Streamers you are subscribed to (higher tiers first) |
 | `ORDER` | The order of your streamer list |
 | `POINTS_ASCENDING` | Streamers where you have the fewest points |
@@ -467,7 +467,7 @@ See `example.py` for a filled-in example of each.
 | `JOIN_RAID` | A raid is followed |
 | `DROP_CLAIM` | A drop is claimed |
 | `DROP_STATUS` | Drop progress changes |
-| `DROP_UNCLAIMED` | A finished drop could not be claimed. Drops whose campaign needs a linked game account (Twitch shows **Connect** instead of **Claim**) are skipped |
+| `DROP_UNCLAIMED` | A finished drop could not be claimed. Drops whose campaign needs a linked game account (Twitch shows **Connect** instead of **Claim**) are skipped. Each drop is reported once, also across restarts (kept in `cookies/<username>.drop-claims.json`) |
 | `CHAT_MENTION` | Someone mentions you in chat |
 
 ## Streamer and bet settings
