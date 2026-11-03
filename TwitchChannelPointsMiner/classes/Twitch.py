@@ -24,7 +24,7 @@ from typing import Dict, Any
 # from base64 import urlsafe_b64decode
 # from datetime import datetime
 
-from TwitchChannelPointsMiner.classes.entities.Campaign import Campaign
+from TwitchChannelPointsMiner.classes.entities.Campaign import Campaign, parse_datetime
 from TwitchChannelPointsMiner.classes.entities.CommunityGoal import CommunityGoal
 from TwitchChannelPointsMiner.classes.entities.Drop import Drop
 from TwitchChannelPointsMiner.classes.Exceptions import (
@@ -291,9 +291,12 @@ class Twitch(object):
             )
             self.__chuncked_sleep(random_sleep * 60, chunk_size=chunk_size)
 
-    def __request_with_retry(self, method, url, attempts=3, **kwargs):
+    def __request_with_retry(
+        self, method, url, attempts=3, retry_after_send=True, **kwargs
+    ):
         """requests.request with retries on transient network errors (timeouts,
-        dropped connections, DNS failures). HTTP error statuses are not retried."""
+        dropped connections, DNS failures). HTTP error statuses are not retried;
+        with retry_after_send=False only connection timeouts are."""
         for attempt in range(1, attempts + 1):
             try:
                 return requests.request(method, url, **kwargs)
@@ -302,6 +305,12 @@ class Twitch(object):
                 requests.exceptions.Timeout,
                 requests.exceptions.ChunkedEncodingError,
             ) as e:
+                # A request that may already have reached Twitch is not repeated
+                # for mutations (e.g. spending channel points twice)
+                if not retry_after_send and not isinstance(
+                    e, requests.exceptions.ConnectTimeout
+                ):
+                    raise
                 if attempt >= attempts:
                     raise
                 delay = min(0.5 * 2 ** (attempt - 1), 5) + random.uniform(0, 0.25)
@@ -324,6 +333,7 @@ class Twitch(object):
                 GQLOperations.url,
                 json=json_data,
                 timeout=20,
+                retry_after_send=self.__gql_is_query(json_data),
                 headers={
                     "Authorization": f"OAuth {self.twitch_login.get_auth_token()}",
                     "Client-Id": CLIENT_ID,
@@ -370,6 +380,23 @@ class Twitch(object):
         if isinstance(json_data, list):
             json_data = json_data[0] if json_data else {}
         return json_data.get("operationName", "unknown")
+
+    @staticmethod
+    def __gql_is_query(json_data):
+        """False for mutations, which must not be sent twice."""
+        operations = json_data if isinstance(json_data, list) else [json_data]
+        mutations = {
+            "ClaimCommunityPoints",
+            "CommunityMomentCallout_Claim",
+            "ContributeCommunityPointsCommunityGoal",
+            "DropsPage_ClaimDropRewards",
+            "JoinRaid",
+            "MakePrediction",
+        }
+        return not any(
+            isinstance(operation, dict) and operation.get("operationName") in mutations
+            for operation in operations
+        )
 
     @staticmethod
     def __gql_error_messages(response):
@@ -458,7 +485,7 @@ class Twitch(object):
 
     def update_client_version(self):
         try:
-            response = requests.get(URL)
+            response = requests.get(URL, timeout=20)
             if response.status_code != 200:
                 logger.debug(
                     f"Error with update_client_version: {response.status_code}"
@@ -476,7 +503,8 @@ class Twitch(object):
             return self.client_version
 
     def __request_remaining_segments(self, streamer, playlist, already_requested):
-        for line in playlist.splitlines():
+        # Bounded so a long playlist cannot stall the minute-watched loop
+        for line in playlist.splitlines()[-30:]:
             segment_url = line.strip()
             if not segment_url.startswith("http") or segment_url == already_requested:
                 continue
@@ -484,7 +512,7 @@ class Twitch(object):
                 requests.head(
                     segment_url,
                     headers={"User-Agent": self.user_agent},
-                    timeout=10,
+                    timeout=5,
                 )
             except requests.exceptions.RequestException as e:
                 logger.debug(f"Segment request failed for {streamer}: {e}")
@@ -663,6 +691,7 @@ class Twitch(object):
                         responseBroadcastQualities = self.__request_with_retry(
                             "GET",
                             RequestBroadcastQualitiesURL,
+                            attempts=2,
                             headers={"User-Agent": self.user_agent},
                             timeout=20,
                         )  # timeout=60
@@ -683,6 +712,7 @@ class Twitch(object):
                         responseStreamURLList = self.__request_with_retry(
                             "GET",
                             BroadcastLowestQualityURL,
+                            attempts=2,
                             headers={"User-Agent": self.user_agent},
                             timeout=20,
                         )  # timeout=60
@@ -953,14 +983,22 @@ class Twitch(object):
         response = self.post_gql_request(json_data)
         data = response.get("data") if isinstance(response, dict) else None
         campaigns = (data or {}).get("channelDropCampaignsProgress")
-        if campaigns is None:
+        if not isinstance(campaigns, list):
             return self.__get_available_campaign_ids(streamer)
         campaign_ids = []
         for campaign in campaigns:
-            converted = self.__campaign_from_channel_progress(campaign)
-            if converted is not None:
-                self.channel_campaigns[converted["id"]] = converted
-                campaign_ids.append(converted["id"])
+            try:
+                converted = self.__campaign_from_channel_progress(campaign)
+            except (AttributeError, KeyError, TypeError, ValueError) as e:
+                logger.debug(f"Skipping malformed channel campaign on {streamer}: {e}")
+                continue
+            if converted is None:
+                # Nothing left to earn by watching (e.g. all drops claimed)
+                if isinstance(campaign, dict):
+                    self.channel_campaigns.pop(campaign.get("id"), None)
+                continue
+            self.channel_campaigns[converted["id"]] = converted
+            campaign_ids.append(converted["id"])
         return campaign_ids
 
     @staticmethod
@@ -968,6 +1006,9 @@ class Twitch(object):
         """Converts a DropChannelCampaignsProgress campaign to the DropCampaignDetails
         shape used by Campaign, keeping only unclaimed watch-time drops.
         Returns None when nothing on it can be earned by watching."""
+        # Raises ValueError on an unexpected date format; the caller skips the campaign
+        parse_datetime(campaign["startAt"])
+        parse_datetime(campaign["endAt"])
         drops = []
         channels = None
         for group in campaign.get("rewardGroups") or []:
@@ -999,7 +1040,7 @@ class Twitch(object):
                         {
                             "benefit": {
                                 "id": reward.get("id"),
-                                "name": reward.get("name"),
+                                "name": reward.get("name") or "",
                             }
                         }
                         for reward in group.get("rewards") or []
@@ -1136,8 +1177,15 @@ class Twitch(object):
         )
         return False
 
-    def claim_all_drops_from_inventory(self):
-        if not self.drops_claim_lock.acquire(blocking=False):
+    def claim_all_drops_from_inventory(self, wait=False):
+        # wait=True (PubSub events): a running sweep may predate the new drop, so
+        # wait for it and then sweep again instead of skipping
+        acquired = (
+            self.drops_claim_lock.acquire(timeout=300)
+            if wait
+            else self.drops_claim_lock.acquire(blocking=False)
+        )
+        if not acquired:
             logger.debug("Drop claim sweep already running, skipping")
             return
         try:
@@ -1177,12 +1225,8 @@ class Twitch(object):
     def __claim_drops_from_event_worker(self):
         # Give the inventory a moment to reflect the new dropInstanceID
         time.sleep(random.uniform(2, 5))
-        # If a sweep is already running its inventory may predate this drop:
-        # wait for it to finish, then run our own sweep
-        if self.drops_claim_lock.acquire(timeout=300):
-            self.drops_claim_lock.release()
         try:
-            self.claim_all_drops_from_inventory()
+            self.claim_all_drops_from_inventory(wait=True)
         except Exception as e:
             logger.error(f"Error while claiming drops after PubSub event: {e}")
 
@@ -1190,7 +1234,7 @@ class Twitch(object):
         try:
             with open(self.drop_claims_file, encoding="utf-8") as f:
                 return set(json.load(f).get("unclaimed_notified", []))
-        except (OSError, ValueError, AttributeError):
+        except (OSError, ValueError, AttributeError, TypeError):
             return set()
 
     def __save_unclaimed_notified(self):
@@ -1200,7 +1244,7 @@ class Twitch(object):
                 json.dump({"unclaimed_notified": sorted(self.unclaimed_notified)}, f)
             os.replace(temp_file, self.drop_claims_file)
         except OSError as e:
-            logger.debug(f"Could not save {self.drop_claims_file}: {e}")
+            logger.warning(f"Could not save {self.drop_claims_file}: {e}")
 
     def notify_unclaimed_drop(self, campaign, drop):
         """Reports a finished drop that could not be claimed (once per drop instance).
@@ -1298,7 +1342,13 @@ class Twitch(object):
                             )
                         )
 
-            except (ValueError, KeyError, requests.exceptions.ConnectionError) as e:
+            except (
+                ValueError,
+                KeyError,
+                TypeError,
+                AttributeError,
+                requests.exceptions.ConnectionError,
+            ) as e:
                 logger.error(f"Error while syncing inventory: {e}")
                 campaigns = []
                 self.__check_connection_handler(chunk_size)

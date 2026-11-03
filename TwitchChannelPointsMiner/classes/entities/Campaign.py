@@ -36,10 +36,9 @@ class Campaign(object):
         self.game = dict["game"]
         self.name = dict["name"]
         self.status = dict["status"]
+        allowed_channels = (dict.get("allow") or {}).get("channels")
         self.channels = (
-            []
-            if dict["allow"]["channels"] is None
-            else list(map(lambda x: x["id"], dict["allow"]["channels"]))
+            [] if allowed_channels is None else [x["id"] for x in allowed_channels]
         )
         self.in_inventory = False
 
