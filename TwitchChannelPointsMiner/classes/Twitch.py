@@ -5,6 +5,7 @@
 
 
 import copy
+import json
 import logging
 import os
 import random
@@ -56,6 +57,7 @@ JsonType = Dict[str, Any]
 class Twitch(object):
     __slots__ = [
         "cookies_file",
+        "drop_claims_file",
         "user_agent",
         "twitch_login",
         "running",
@@ -75,6 +77,9 @@ class Twitch(object):
         cookies_path = os.path.join(Path().absolute(), "cookies")
         Path(cookies_path).mkdir(parents=True, exist_ok=True)
         self.cookies_file = os.path.join(cookies_path, f"{username}.pkl")
+        self.drop_claims_file = os.path.join(
+            cookies_path, f"{username}.drop-claims.json"
+        )
         self.user_agent = user_agent
         self.device_id = "".join(
             choice(string.ascii_letters + string.digits) for _ in range(32)
@@ -83,7 +88,8 @@ class Twitch(object):
             CLIENT_ID, self.device_id, username, self.user_agent, password=password
         )
         self.running = True
-        self.unclaimed_notified = set()  # dropInstanceIDs already reported as unclaimed
+        # dropInstanceIDs already reported as unclaimed, kept across restarts
+        self.unclaimed_notified = self.__load_unclaimed_notified()
         # Operations whose persisted query hash was rejected; sent as raw queries
         self.raw_query_operations = set()
         # Serialises inventory claim sweeps (sync thread and PubSub drop-claim events)
@@ -1180,6 +1186,22 @@ class Twitch(object):
         except Exception as e:
             logger.error(f"Error while claiming drops after PubSub event: {e}")
 
+    def __load_unclaimed_notified(self):
+        try:
+            with open(self.drop_claims_file, encoding="utf-8") as f:
+                return set(json.load(f).get("unclaimed_notified", []))
+        except (OSError, ValueError, AttributeError):
+            return set()
+
+    def __save_unclaimed_notified(self):
+        temp_file = f"{self.drop_claims_file}.tmp"
+        try:
+            with open(temp_file, "w", encoding="utf-8") as f:
+                json.dump({"unclaimed_notified": sorted(self.unclaimed_notified)}, f)
+            os.replace(temp_file, self.drop_claims_file)
+        except OSError as e:
+            logger.debug(f"Could not save {self.drop_claims_file}: {e}")
+
     def notify_unclaimed_drop(self, campaign, drop):
         """Reports a finished drop that could not be claimed (once per drop instance).
         Campaigns that need a linked game account (Twitch shows "Connect" instead of "Claim") are skipped.
@@ -1192,6 +1214,7 @@ class Twitch(object):
         if drop.drop_instance_id in self.unclaimed_notified:
             return
         self.unclaimed_notified.add(drop.drop_instance_id)
+        self.__save_unclaimed_notified()
         game = campaign.get("game") or {}
         game_name = game.get("displayName") or game.get("name") or "unknown game"
         logger.info(
