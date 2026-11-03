@@ -285,6 +285,26 @@ class Twitch(object):
             )
             self.__chuncked_sleep(random_sleep * 60, chunk_size=chunk_size)
 
+    def __request_with_retry(self, method, url, attempts=3, **kwargs):
+        """requests.request with retries on transient network errors (timeouts,
+        dropped connections, DNS failures). HTTP error statuses are not retried."""
+        for attempt in range(1, attempts + 1):
+            try:
+                return requests.request(method, url, **kwargs)
+            except (
+                requests.exceptions.ConnectionError,
+                requests.exceptions.Timeout,
+                requests.exceptions.ChunkedEncodingError,
+            ) as e:
+                if attempt >= attempts:
+                    raise
+                delay = min(0.5 * 2 ** (attempt - 1), 5) + random.uniform(0, 0.25)
+                logger.debug(
+                    f"{method} {url.split('?')[0]} failed ({e.__class__.__name__}), "
+                    f"retry {attempt}/{attempts - 1} in {delay:.1f}s"
+                )
+                time.sleep(delay)
+
     def post_gql_request(self, json_data, raw_fallback=True):
         operation_name = self.__gql_operation_name(json_data)
         if raw_fallback and operation_name in self.raw_query_operations:
@@ -293,9 +313,11 @@ class Twitch(object):
                 json_data = raw
                 raw_fallback = False
         try:
-            response = requests.post(
+            response = self.__request_with_retry(
+                "POST",
                 GQLOperations.url,
                 json=json_data,
+                timeout=20,
                 headers={
                     "Authorization": f"OAuth {self.twitch_login.get_auth_token()}",
                     "Client-Id": CLIENT_ID,
@@ -617,7 +639,8 @@ class Twitch(object):
                         RequestBroadcastQualitiesURL = f"https://usher.ttvnw.net/api/channel/hls/{streamers[index].username}.m3u8?sig={signature}&token={value}"
 
                         # Get list of video qualities
-                        responseBroadcastQualities = requests.get(
+                        responseBroadcastQualities = self.__request_with_retry(
+                            "GET",
                             RequestBroadcastQualitiesURL,
                             headers={"User-Agent": self.user_agent},
                             timeout=20,
@@ -636,7 +659,8 @@ class Twitch(object):
                             continue
 
                         # Get list of video URLs
-                        responseStreamURLList = requests.get(
+                        responseStreamURLList = self.__request_with_retry(
+                            "GET",
                             BroadcastLowestQualityURL,
                             headers={"User-Agent": self.user_agent},
                             timeout=20,
