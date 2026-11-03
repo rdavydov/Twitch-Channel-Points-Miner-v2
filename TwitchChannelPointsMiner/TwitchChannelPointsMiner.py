@@ -361,6 +361,18 @@ class TwitchChannelPointsMiner:
                 )
             )
 
+            # Going to subscribe to user-drop-events. Claim drops as soon as Twitch reports them claimable
+            if (
+                at_least_one_value_in_settings_is(self.streamers, "claim_drops", True)
+                is True
+            ):
+                self.ws_pool.submit(
+                    PubsubTopic(
+                        "user-drop-events",
+                        user_id=user_id,
+                    )
+                )
+
             # Going to subscribe to predictions-user-v1. Get update when we place a new prediction (confirm)
             if make_predictions is True:
                 self.ws_pool.submit(

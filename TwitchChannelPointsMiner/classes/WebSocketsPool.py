@@ -187,6 +187,14 @@ class WebSocketsPool:
             ws.last_message_timestamp = message.timestamp
             ws.last_message_type_channel = message.identifier
 
+            # user-drop-events are per user; channel_id may be a channel we don't track
+            if message.topic == "user-drop-events":
+                if message.type == "drop-claim":
+                    ws.twitch.claim_drops_from_event(message.data)
+                elif message.type == "drop-progress":
+                    logger.debug(f"Drop progress: {message.data}")
+                return
+
             streamer_index = get_streamer_index(ws.streamers, message.channel_id)
             if streamer_index != -1:
                 try:

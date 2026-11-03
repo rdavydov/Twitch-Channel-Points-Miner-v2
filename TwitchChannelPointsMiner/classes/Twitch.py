@@ -10,6 +10,7 @@ import os
 import random
 import re
 import string
+import threading
 import time
 import requests
 import validators
@@ -66,6 +67,7 @@ class Twitch(object):
         "twilight_build_id_pattern",
         "unclaimed_notified",
         "raw_query_operations",
+        "drops_claim_lock",
     ]
 
     def __init__(self, username, user_agent, password=None):
@@ -83,6 +85,8 @@ class Twitch(object):
         self.unclaimed_notified = set()  # dropInstanceIDs already reported as unclaimed
         # Operations whose persisted query hash was rejected; sent as raw queries
         self.raw_query_operations = set()
+        # Serialises inventory claim sweeps (sync thread and PubSub drop-claim events)
+        self.drops_claim_lock = threading.Lock()
         # self.integrity = None
         # self.integrity_expire = 0
         self.client_session = token_hex(16)
@@ -988,18 +992,53 @@ class Twitch(object):
         return False
 
     def claim_all_drops_from_inventory(self):
-        inventory = self.__get_inventory()
-        if inventory not in [None, {}]:
-            if inventory["dropCampaignsInProgress"] not in [None, {}]:
-                for campaign in inventory["dropCampaignsInProgress"]:
-                    for drop_dict in campaign["timeBasedDrops"]:
-                        drop = Drop(drop_dict)
-                        drop.update(drop_dict["self"])
-                        if drop.is_claimable is True:
-                            drop.is_claimed = self.claim_drop(drop)
-                            if drop.is_claimed is False:
-                                self.notify_unclaimed_drop(campaign, drop)
-                            time.sleep(random.uniform(5, 10))
+        if not self.drops_claim_lock.acquire(blocking=False):
+            logger.debug("Drop claim sweep already running, skipping")
+            return
+        try:
+            inventory = self.__get_inventory()
+            if inventory in [None, {}]:
+                return
+            for campaign in inventory.get("dropCampaignsInProgress") or []:
+                for drop_dict in campaign.get("timeBasedDrops") or []:
+                    if drop_dict.get("self") is None:
+                        continue
+                    drop = Drop(drop_dict)
+                    drop.update(drop_dict["self"])
+                    if drop.is_claimable is True:
+                        drop.is_claimed = self.claim_drop(drop)
+                        if drop.is_claimed is False:
+                            self.notify_unclaimed_drop(campaign, drop)
+                        time.sleep(random.uniform(5, 10))
+        finally:
+            self.drops_claim_lock.release()
+
+    def claim_drops_from_event(self, data):
+        """Handles a PubSub user-drop-events 'drop-claim' message: a drop just became
+        claimable, so sweep the inventory now instead of waiting for the next sync."""
+        drop_instance_id = (data or {}).get("drop_instance_id")
+        logger.debug(f"PubSub drop-claim received: {data}")
+        if not drop_instance_id:
+            return
+        thread = threading.Thread(
+            target=self.__claim_drops_from_event_worker,
+            name="Drop claim (PubSub)",
+            daemon=True,
+        )
+        thread.start()
+
+    def __claim_drops_from_event_worker(self):
+        # Give the inventory a moment to reflect the new dropInstanceID
+        time.sleep(random.uniform(2, 5))
+        try:
+            self.claim_all_drops_from_inventory()
+        except (
+            ValueError,
+            KeyError,
+            TypeError,
+            requests.exceptions.RequestException,
+        ) as e:
+            logger.error(f"Error while claiming drops after PubSub event: {e}")
 
     def notify_unclaimed_drop(self, campaign, drop):
         """Reports a finished drop that could not be claimed (once per drop instance).
