@@ -373,6 +373,21 @@ class Twitch(object):
             logger.error(f"Error with update_client_version: {e}")
             return self.client_version
 
+    def __send_drop_status(self, message):
+        for notifier in (
+            Settings.logger.telegram,
+            Settings.logger.discord,
+            Settings.logger.webhook,
+            Settings.logger.gotify,
+            Settings.logger.pushover,
+        ):
+            if notifier is None:
+                continue
+            try:
+                notifier.send(message, Events.DROP_STATUS)
+            except Exception as e:  # a failed notification must never stop watching
+                logger.debug(f"Drop status notification failed: {e}")
+
     def send_minute_watched_events(self, streamers, priority, chunk_size=3):
         while self.running:
             try:
@@ -599,6 +614,7 @@ class Twitch(object):
                             For time-based Drops, if you are unable to claim the Drop in time, you will be able to claim it from the inventory page until the Drops campaign ends.
                             """
 
+                            drop_notes = []
                             for campaign in streamers[index].stream.campaigns:
                                 for drop in campaign.drops:
                                     # We could add .has_preconditions_met condition inside is_printable
@@ -606,6 +622,10 @@ class Twitch(object):
                                         drop.has_preconditions_met is not False
                                         and drop.is_printable is True
                                     ):
+                                        # is_printable stays True until the next campaign
+                                        # sync, which can be several watch cycles away:
+                                        # report each milestone once
+                                        drop.is_printable = False
                                         drop_messages = [
                                             f"{streamers[index]} is streaming {streamers[index].stream}",
                                             f"Campaign: {campaign}",
@@ -621,31 +641,15 @@ class Twitch(object):
                                                     "skip_discord": True,
                                                     "skip_webhook": True,
                                                     "skip_matrix": True,
-                                                    "skip_gotify": True
+                                                    "skip_gotify": True,
+                                                    "skip_pushover": True,
                                                 },
                                             )
+                                        drop_notes.append("\n".join(drop_messages))
 
-                                        if Settings.logger.telegram is not None:
-                                            Settings.logger.telegram.send(
-                                                "\n".join(drop_messages),
-                                                Events.DROP_STATUS,
-                                            )
-
-                                        if Settings.logger.discord is not None:
-                                            Settings.logger.discord.send(
-                                                "\n".join(drop_messages),
-                                                Events.DROP_STATUS,
-                                            )
-                                        if Settings.logger.webhook is not None:
-                                            Settings.logger.webhook.send(
-                                                "\n".join(drop_messages),
-                                                Events.DROP_STATUS,
-                                            )
-                                        if Settings.logger.gotify is not None:
-                                            Settings.logger.gotify.send(
-                                                "\n".join(drop_messages),
-                                                Events.DROP_STATUS,
-                                            )
+                            # One notification per cycle for all drops, not one per log line
+                            if drop_notes:
+                                self.__send_drop_status("\n\n".join(drop_notes))
 
                     except requests.exceptions.ConnectionError as e:
                         logger.error(
